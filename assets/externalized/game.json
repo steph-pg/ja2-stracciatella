@@ -268,5 +268,11 @@
     //  Is the start sector revealed at game start?
     //  vanilla settings: true
     "start_sector_revealed": true
-  }
+    },
+
+    // Scales AP loss from suppression (numerator of the AP-loss formula); vanilla 6, recommended setting is 24
+    "suppression_fire_modifier": 6,
+    // Close call bullets always cause soldier to drop to lower stance (1.13 behaviour)
+    // vanilla settings: false, and use formula with a chance instead
+    "suppression_fire_soldiers_always_react": false
 }
