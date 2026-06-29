@@ -10,6 +10,7 @@
 #include "Game_Clock.h"
 #include "Game_Events.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "GameSettings.h"
 #include "Inventory_Choosing.h"
 #include "Items.h"
@@ -1693,7 +1694,16 @@ static void InitiateGroupMovementToNextSector(GROUP* pGroup)
 	if (!pGroup->ubSector.z)
 	{
 		BOOLEAN fCalcRegularTime = TRUE;
-		if( !pGroup->fPlayer )
+		//HACK: SAM reinforcements (all-elite enemy groups sent to a SAM site) should sneak in
+		//under cover of darkness.  On the final leg into the SAM sector, delay their arrival
+		//until night time and never let them stop to sleep along the way.
+		if( !pGroup->fPlayer && gamepolicy(reinforce_all_sam_sites) && pGroup->pEnemyGroup &&
+			pGroup->pEnemyGroup->ubNumElites > 0 &&
+			pGroup->pEnemyGroup->ubNumTroops == 0 && pGroup->pEnemyGroup->ubNumAdmins == 0)
+		{
+			uiSleepMinutes = 0;
+		}
+		else if( !pGroup->fPlayer )
 		{ //Determine if the enemy group is "sleeping".  If so, then simply delay their arrival time by the amount of time
 			//they are going to be sleeping for.
 			if( GetWorldHour() >= 21 || GetWorldHour() <= 4 )
