@@ -34,6 +34,14 @@ pub extern "C" fn Logger_getLevel() -> LogLevel {
     Logger::get_level()
 }
 
+/// Checks whether a target passes the JA2_LOG_FILTER environment variable
+#[unsafe(no_mangle)]
+pub extern "C" fn Logger_isTargetEnabled(level: LogLevel, target: *const c_char) -> bool {
+    let target = str_from_c_str_or_panic(unsafe_c_str(target));
+
+    Logger::is_target_enabled(level, target)
+}
+
 /// Log with custom metadata
 #[unsafe(no_mangle)]
 pub extern "C" fn Logger_log(level: LogLevel, message: *const c_char, target: *const c_char) {
