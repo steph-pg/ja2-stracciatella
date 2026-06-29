@@ -31,7 +31,7 @@ template<typename... Args>
 void LogMessageST([[maybe_unused]] bool isAssert, LogLevel level,
 	const char* file, const char* fmtString, Args && ... args)
 {
-	if (level <= Logger_getLevel()) {
+	if (level <= Logger_getLevel() && Logger_isTargetEnabled(level, file)) {
 		Logger_log(level, ST::format(fmtString, std::forward<Args>(args)...).c_str(), file);
 	}
 

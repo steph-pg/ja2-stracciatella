@@ -7,6 +7,7 @@
 //! [`stracciatella_c_api::c::logger`]: ../../stracciatella_c_api/c/logger/index.html
 
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::{
@@ -70,6 +71,36 @@ impl From<usize> for LogLevel {
     }
 }
 
+/// Per-target filter for Debug/Trace messages, read from `JA2_LOG_FILTER`.
+///
+/// The variable holds a comma separated list of fragments, e.g.
+/// `TacticalAI/DecideAction.cc,stracciatella::vfs`. A fragment is matched as a
+/// substring against the message target, which is the source file for messages
+/// coming from C++ and the module path for messages coming from Rust.
+static LOG_FILTER: LazyLock<Vec<String>> = LazyLock::new(|| {
+    std::env::var("JA2_LOG_FILTER")
+        .unwrap_or_default()
+        .split(',')
+        // Accept either separator so the same filter works on every platform.
+        .map(|fragment| fragment.trim().replace('\\', "/"))
+        .filter(|fragment| !fragment.is_empty())
+        .collect()
+});
+
+/// Checks `target` against the `JA2_LOG_FILTER` fragments.
+///
+/// Only Debug and Trace are noisy enough to filter, everything more important
+/// always passes so that diagnostics are never hidden. An unset or empty
+/// variable lets every target through.
+fn target_allowed(level: Level, target: &str) -> bool {
+    if level < Level::Debug || LOG_FILTER.is_empty() {
+        return true;
+    }
+
+    let target = target.replace('\\', "/");
+    LOG_FILTER.iter().any(|fragment| target.contains(fragment))
+}
+
 /// Runtime level filter to filter messages based on a global variable
 ///
 /// Other log levels should be set to max level in order for the filter
@@ -102,6 +133,7 @@ impl Log for RuntimeLevelFilter {
     fn enabled(&self, metadata: &Metadata) -> bool {
         let current_level = Self::get_global_log_level();
         metadata.level() <= current_level
+            && target_allowed(metadata.level(), metadata.target())
     }
 
     fn log(&self, record: &Record) {
@@ -177,6 +209,13 @@ impl Logger {
     /// Gets the global log level
     pub fn get_level() -> LogLevel {
         RuntimeLevelFilter::get_global_log_level().into()
+    }
+
+    /// Checks whether `target` passes the `JA2_LOG_FILTER` for `level`
+    ///
+    /// Lets callers skip the cost of building a message that would be dropped.
+    pub fn is_target_enabled(level: LogLevel, target: &str) -> bool {
+        target_allowed(level.into(), target)
     }
 
     /// Logs message with specific metadata
