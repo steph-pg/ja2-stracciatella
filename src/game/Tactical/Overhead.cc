@@ -5168,6 +5168,7 @@ static void HandleSuppressionFire(const SOLDIERTYPE* const targeted_merc, SOLDIE
 	INT16 sClosestOpponent, sClosestOppLoc;
 	UINT8 ubPointsLost, ubTotalPointsLost, ubNewStance;
 	UINT8 ubLoop2;
+	const UINT8 ubSuppressionModifier = gamepolicy(suppression_fire_modifier);
 
 	for (SOLDIERTYPE * const pSoldier : MercSlots)
 	{
@@ -5176,7 +5177,7 @@ static void HandleSuppressionFire(const SOLDIERTYPE* const targeted_merc, SOLDIE
 			bTolerance = CalcSuppressionTolerance( pSoldier );
 
 			// multiply by 2, add 1 and divide by 2 to round off to nearest whole number
-			ubPointsLost = ( ((pSoldier->ubSuppressionPoints * 6) / (bTolerance + 6)) * 2 + 1 ) / 2;
+			ubPointsLost = ( ((pSoldier->ubSuppressionPoints * ubSuppressionModifier) / (bTolerance + 6)) * 2 + 1 ) / 2;
 
 			// reduce loss of APs based on stance
 			// ATE: Taken out because we can possibly supress ourselves...
@@ -5219,7 +5220,7 @@ static void HandleSuppressionFire(const SOLDIERTYPE* const targeted_merc, SOLDIE
 			ubNewStance = 0;
 
 			// merc may get to react
-			if ( pSoldier->ubSuppressionPoints >= ( 130 / (6 + bTolerance) ) )
+			if (gamepolicy(suppression_fire_soldiers_always_react) || pSoldier->ubSuppressionPoints >= (130 / (6 + bTolerance)))
 			{
 				// merc gets to use APs to react!
 				switch (gAnimControl[ pSoldier->usAnimState ].ubEndHeight)
@@ -5762,6 +5763,15 @@ static SOLDIERTYPE* InternalReduceAttackBusyCount(SOLDIERTYPE* const pSoldier, c
 	DequeueAllDemandGameEvents();
 
 	CheckForEndOfBattle( FALSE );
+
+	// While the firer is still lit by his muzzle flash (turn-based combat; in realtime
+	// it is cleared just below), let the other teams look for him so they can spot him
+	// at the flash's extended sighting range. EndMuzzleFlash() (called later from the AI)
+	// keeps any sighting made here for the rest of the turn.
+	if ( (gTacticalStatus.uiFlags & INCOMBAT) && pSoldier && pSoldier->fMuzzleFlash )
+	{
+		HandleSight( *pSoldier, SIGHT_LOOK | SIGHT_RADIO );
+	}
 
 	// if we're in realtime, turn off the attacker's muzzle flash at this point
 	if ( !(gTacticalStatus.uiFlags & INCOMBAT) && pSoldier )
