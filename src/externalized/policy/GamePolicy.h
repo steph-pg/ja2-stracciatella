@@ -51,6 +51,7 @@ public:
 	int8_t enemy_weapon_minimal_status;   /**< Minimal status of the enemy weapon (0 - 100). */
 
 	bool gui_extras;                      /* graphical user interface cosmetic mod */
+	bool hide_terrorist_names;            // don't reveal a terrorist's name on the tactical selection UI
 	bool informative_tooltips;            /* Reveal modifiers in hover boxes */
 	bool extra_attachments;               // allow more item attachments options
 	bool skip_sleep_explanation;          // skip annoying popups

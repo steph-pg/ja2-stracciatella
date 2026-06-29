@@ -12,6 +12,8 @@
 #include "GameInstance.h"
 #include "GameScreen.h"
 #include "GameSettings.h"
+#include "GamePolicy.h"
+#include "Soldier_Profile.h"
 #include "Handle_Doors.h"
 #include "Handle_UI.h"
 #include "HImage.h"
@@ -991,7 +993,8 @@ void DrawSelectedUIAboveGuy(SOLDIERTYPE& s)
 	// Display name
 	SetFontAttributes(TINYFONT1, FONT_MCOLOR_WHITE);
 
-	if (s.ubProfile != NO_PROFILE || s.uiStatusFlags & SOLDIER_VEHICLE)
+	// With hide_terrorist_names, don't reveal a terrorist's name on the selection UI.
+	if ((s.ubProfile != NO_PROFILE && !(gamepolicy(hide_terrorist_names) && IsProfileATerrorist(s.ubProfile))) || s.uiStatusFlags & SOLDIER_VEHICLE)
 	{
 		ST::string action;
 		if (&s == gUIValidCatcher && gfUIMouseOnValidCatcher == 1)

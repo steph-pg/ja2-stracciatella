@@ -136,6 +136,10 @@
   //  vanilla_setting: false
   "gui_extras": true,
 
+  //  Don't reveal a terrorist's name on the tactical selection UI.
+  //  vanilla_setting: false
+  "hide_terrorist_names": false,
+
   //  Displays modifiers in hover boxes revealing hidden mechanics.
   //  vanilla_setting: false
   "informative_tooltips": false,
