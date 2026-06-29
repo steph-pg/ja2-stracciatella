@@ -7,6 +7,7 @@
 //! [`stracciatella_c_api::c::logger`]: ../../stracciatella_c_api/c/logger/index.html
 
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::{
@@ -70,6 +71,48 @@ impl From<usize> for LogLevel {
     }
 }
 
+/// Per-target filter for Debug/Trace messages, read from `JA2_LOG_FILTER`.
+///
+/// The variable holds a comma separated list of fragments, e.g.
+/// `TacticalAI/DecideAction.cc,stracciatella::vfs`. A fragment is matched as a
+/// substring against the message target, which is the source file for messages
+/// coming from C++ and the module path for messages coming from Rust.
+static LOG_FILTER: LazyLock<Vec<String>> =
+    LazyLock::new(|| parse_filter(&std::env::var("JA2_LOG_FILTER").unwrap_or_default()));
+
+/// Splits a `JA2_LOG_FILTER` value into fragments.
+fn parse_filter(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(|fragment| fragment.trim().replace('\\', "/"))
+        .filter(|fragment| !fragment.is_empty())
+        // Keep both separators so the same filter works on every platform, and
+        // matching never has to rewrite the target it is given.
+        .flat_map(|fragment| {
+            let backslash = fragment.replace('/', "\\");
+            if backslash == fragment {
+                vec![fragment]
+            } else {
+                vec![fragment, backslash]
+            }
+        })
+        .collect()
+}
+
+/// Checks `target` against `fragments`, each matched as a substring.
+fn target_matches(fragments: &[String], target: &str) -> bool {
+    fragments.iter().any(|fragment| target.contains(fragment))
+}
+
+/// Checks `target` against the `JA2_LOG_FILTER` fragments.
+///
+/// Only Debug and Trace are noisy enough to filter, everything more important
+/// always passes so that diagnostics are never hidden. An unset or empty
+/// variable lets every target through.
+fn target_allowed(level: Level, target: &str) -> bool {
+    level < Level::Debug || LOG_FILTER.is_empty() || target_matches(&LOG_FILTER, target)
+}
+
 /// Runtime level filter to filter messages based on a global variable
 ///
 /// Other log levels should be set to max level in order for the filter
@@ -101,7 +144,7 @@ impl RuntimeLevelFilter {
 impl Log for RuntimeLevelFilter {
     fn enabled(&self, metadata: &Metadata) -> bool {
         let current_level = Self::get_global_log_level();
-        metadata.level() <= current_level
+        metadata.level() <= current_level && target_allowed(metadata.level(), metadata.target())
     }
 
     fn log(&self, record: &Record) {
@@ -167,6 +210,15 @@ impl Logger {
                 warn!("Failed to log to {:?}: {}", &log_file, err);
             }
         }
+
+        // Not from the LazyLock itself: it is first read while logging, so
+        // logging from there would re-enter the logger.
+        if !LOG_FILTER.is_empty() {
+            log::info!(
+                "Debug log filter: {}",
+                std::env::var("JA2_LOG_FILTER").unwrap_or_default()
+            );
+        }
     }
 
     /// Sets the global log level to a specific value
@@ -177,6 +229,13 @@ impl Logger {
     /// Gets the global log level
     pub fn get_level() -> LogLevel {
         RuntimeLevelFilter::get_global_log_level().into()
+    }
+
+    /// Checks whether `target` passes the `JA2_LOG_FILTER` for `level`
+    ///
+    /// Lets callers skip the cost of building a message that would be dropped.
+    pub fn is_target_enabled(level: LogLevel, target: &str) -> bool {
+        target_allowed(level.into(), target)
     }
 
     /// Logs message with specific metadata
@@ -195,5 +254,46 @@ impl Logger {
                     .build(),
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Level, parse_filter, target_allowed, target_matches};
+
+    #[test]
+    fn parse_filter_trims_and_drops_empty_fragments() {
+        assert_eq!(parse_filter(""), Vec::<String>::new());
+        assert_eq!(parse_filter(" , ,"), Vec::<String>::new());
+        assert_eq!(parse_filter(" vfs , keys "), vec!["vfs", "keys"]);
+    }
+
+    #[test]
+    fn parse_filter_keeps_both_separators() {
+        assert_eq!(
+            parse_filter("Tactical\\Items.cc"),
+            vec!["Tactical/Items.cc", "Tactical\\Items.cc"]
+        );
+    }
+
+    #[test]
+    fn target_matches_a_fragment_as_a_substring() {
+        let fragments = parse_filter("Tactical/Items.cc");
+
+        assert!(target_matches(&fragments, "game/Tactical/Items.cc"));
+        assert!(target_matches(&fragments, "game\\Tactical\\Items.cc"));
+        assert!(!target_matches(&fragments, "game/Tactical/Weapons.cc"));
+    }
+
+    #[test]
+    fn target_matches_nothing_without_fragments() {
+        assert!(!target_matches(&[], "game/Tactical/Items.cc"));
+    }
+
+    #[test]
+    fn levels_above_debug_are_never_filtered() {
+        assert!(target_allowed(Level::Error, "any"));
+        assert!(target_allowed(Level::Warn, "any"));
+        assert!(target_allowed(Level::Info, "any"));
     }
 }
