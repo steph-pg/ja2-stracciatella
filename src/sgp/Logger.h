@@ -3,7 +3,10 @@
 
 #include "Platform.h"
 #include "RustInterface.h"
+#include <cstdlib>
+#include <string>
 #include <string_view>
+#include <vector>
 #include <string_theory/format>
 #include <string_theory/string>
 
@@ -27,10 +30,67 @@ template <size_t p> constexpr const char* ToRelativePath(const char* filename)
 #define SOURCE_PATH_SIZE (GetSourcePathSize(__FILE__))
 #define __FILENAME__ (ToRelativePath<SOURCE_PATH_SIZE>(__FILE__))
 
+/** Per-file debug log filter.
+ *
+ * Controlled by the JA2_LOG_FILTER environment variable: a comma-separated list
+ * of path fragments (e.g. "TacticalAI/DecideAction.cc,TacticalAI/AIUtils.cc").
+ * When set, Debug/Trace messages are only emitted from files whose relative path
+ * contains one of the fragments; Info/Warn/Error messages always pass so that
+ * important diagnostics are never hidden. When unset/empty, every file passes
+ * (legacy behavior). The env var is parsed once on first use. */
+inline bool LogFilterAllowsFile(LogLevel level, const char* file)
+{
+	// Only Debug/Trace are noisy enough to filter; let everything else through.
+	if (level < LogLevel::Debug) {
+		return true;
+	}
+
+	static const std::vector<std::string> filter = []
+	{
+		std::vector<std::string> result;
+		const char* env = std::getenv("JA2_LOG_FILTER");
+		if (env != nullptr && env[0] != '\0') {
+			std::string_view s(env);
+			size_t start = 0;
+			while (start <= s.size()) {
+				size_t comma = s.find(',', start);
+				if (comma == std::string_view::npos) comma = s.size();
+				std::string_view tok = s.substr(start, comma - start);
+				while (!tok.empty() && tok.front() == ' ') tok.remove_prefix(1);
+				while (!tok.empty() && tok.back()  == ' ') tok.remove_suffix(1);
+				if (!tok.empty()) {
+					// Normalize separators so the env var can use either
+					// '/' or '\' regardless of the platform's __FILE__ style.
+					std::string frag(tok);
+					for (char& c : frag) if (c == '\\') c = '/';
+					result.emplace_back(std::move(frag));
+				}
+				start = comma + 1;
+			}
+		}
+		return result;
+	}();
+
+	if (filter.empty()) {
+		return true; // no filter configured -> show everything
+	}
+
+	// Normalize the file path the same way before matching, because
+	// __FILE__ uses backslashes on MSVC builds (see SOURCE_ROOT).
+	std::string f(file);
+	for (char& c : f) if (c == '\\') c = '/';
+	for (const std::string& fragment : filter) {
+		if (f.find(fragment) != std::string::npos) {
+			return true;
+		}
+	}
+	return false;
+}
+
 template<typename... Args>
 constexpr void LogMessageST([[maybe_unused]] bool isAssert, LogLevel level, const char* file, Args && ... args)
 {
-	if (level <= Logger_getLevel()) {
+	if (level <= Logger_getLevel() && LogFilterAllowsFile(level, file)) {
 		Logger_log(level, ST::format(std::forward<Args>(args)...).c_str(), file);
 	}
 
