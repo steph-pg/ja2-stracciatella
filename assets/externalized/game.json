@@ -100,7 +100,20 @@
 
     //  Enemy guards on rooftop are disallowed to climb down
     //  vanilla value: false
-    "stay_on_rooftop": false
+    "stay_on_rooftop": false,
+
+    //  At night, % chance a generic enemy soldier that would RUN instead moves in
+    //  a low, quiet SWAT (stalk). 0 = vanilla always-run, 100 = always swat.
+    //  vanilla value: 0
+    "night_swat_chance": 0,
+
+    //  % bonus to cover value for tiles inside a building, biasing the AI to hide
+    //  indoors. 0 = vanilla.
+    "cover_building_bonus": 0,
+
+    //  Treat the AI as having at least this much Wisdom when sizing the cover
+    //  search radius (1 tile per 8 Wisdom). 0 = use actual Wisdom (vanilla).
+    "cover_search_wisdom": 0
   },
 
   //  How much variation should there be in elite soldier xp level?

@@ -123,12 +123,25 @@ static BOOLEAN ConsiderProne(SOLDIERTYPE* pSoldier)
 	INT8  bOpponentLevel;
 	INT32 iRange;
 
-	if (pSoldier->bAIMorale >= MORALE_NORMAL)
+	// With go_prone_more_often, a soldier that has nothing better to do drops prone
+	// even at normal/high morale - e.g. a seeker that just spotted the player and
+	// would otherwise end its turn standing (the easiest target). Without the policy,
+	// keep the vanilla behaviour of only going prone once morale has dropped.
+	const BOOLEAN fProneWhenSpotted = gamepolicy(ai_go_prone_more_often);
+
+	if (!fProneWhenSpotted && pSoldier->bAIMorale >= MORALE_NORMAL)
 	{
 		return( FALSE );
 	}
 	// We don't want to go prone if there is a nearby enemy
 	ClosestKnownOpponent( pSoldier, &sOpponentGridNo, &bOpponentLevel );
+	if (fProneWhenSpotted)
+	{
+		// going prone at point-blank range is pointless - the engine zeroes prone
+		// effectiveness that close (see ShootingStanceChange) - so stay up when very near
+		iRange = GetRangeInCellCoordsFromGridNoDiff( pSoldier->sGridNo, sOpponentGridNo );
+		return( iRange > POINT_BLANK_RANGE );
+	}
 	iRange = GetRangeFromGridNoDiff( pSoldier->sGridNo, sOpponentGridNo );
 	if (iRange > 10)
 	{
@@ -348,7 +361,22 @@ UINT16 DetermineMovementMode( SOLDIERTYPE * pSoldier, INT8 bAction )
 		}
 		else
 		{
-			return( MovementMode[bAction][Urgency[pSoldier->bAlertStatus][pSoldier->bAIMorale]] );
+			UINT16 usMovementMode = MovementMode[bAction][Urgency[pSoldier->bAlertStatus][pSoldier->bAIMorale]];
+
+			// Night ops: a running enemy is loud and stands tall - easy to hear and
+			// spot in the dark. Prefer a low, quiet SWAT some of the time so they
+			// stalk rather than charge. The chance is externalized via
+			// ai_night_swat_chance (0 = vanilla always-run, 100 = always swat when it
+			// would otherwise run). Only generic enemy soldiers, only on the surface
+			// at night (mirrors InLightAtNight()'s "is it night" test).
+			if ( usMovementMode == RUNNING && pSoldier->bTeam == ENEMY_TEAM && IS_MERC_BODY_TYPE( pSoldier )
+				&& gWorldSector.z == 0 && GetTimeOfDayAmbientLightLevel() >= NORMAL_LIGHTLEVEL_DAY + 2
+				&& (INT32) PreRandom( 100 ) < gamepolicy( ai_night_swat_chance ) )
+			{
+				usMovementMode = SWATTING;
+			}
+
+			return( usMovementMode );
 		}
 	}
 }
@@ -1611,7 +1639,7 @@ INT8 CalcMorale(SOLDIERTYPE *pSoldier)
 	// if army guy has NO weapons left then panic!
 	if ( pSoldier->bTeam == ENEMY_TEAM )
 	{
-		if ( FindAIUsableObjClass( pSoldier, IC_WEAPON ) == NO_SLOT )
+		if ( (FindAIUsableObjClass( pSoldier, IC_WEAPON ) == NO_SLOT) || pSoldier->bLife <= 45 )
 		{
 			return( MORALE_HOPELESS );
 		}
@@ -1748,6 +1776,34 @@ INT8 CalcMorale(SOLDIERTYPE *pSoldier)
 	else                           // odds better than 3:1
 		bMoraleCategory = MORALE_FEARLESS;
 
+	// change orders depending on morale
+	if (pSoldier->bTeam == ENEMY_TEAM && pSoldier->bAlertStatus > STATUS_YELLOW)
+	{
+		if (bMoraleCategory >= MORALE_NORMAL)
+		{
+			// Whole sector engages: even passive guards leave their posts and converge.
+			pSoldier->bOrders = SEEKENEMY;
+
+			if (pSoldier->bOppCnt > 0)
+			{
+				// We can actually see the player right now. Fight smart: CUNNING reserves
+				// APs for crouch+shot, favours cover in DecideActionBlack, and (with the
+				// interrupt buff) holds to punish the crouch-shoot-prone pop-up instead of
+				// charging into the open.
+				pSoldier->bAttitude = CUNNINGSOLO;
+			}
+			else
+			{
+				// No line of sight yet - advancing to contact, so push hard to close in.
+				pSoldier->bAttitude = AGGRESSIVE;
+			}
+		}
+		else if (bMoraleCategory < MORALE_NORMAL)
+		{
+			pSoldier->bAttitude = DEFENSIVE;
+			pSoldier->bOrders = ONGUARD;
+		}
+	}
 
 	switch (pSoldier->bAttitude)
 	{

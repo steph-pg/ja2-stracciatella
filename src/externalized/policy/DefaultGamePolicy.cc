@@ -35,6 +35,10 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	avoid_ambushes = ai.getOptionalBool("avoid_ambushes");
 	stay_on_rooftop = ai.getOptionalBool("stay_on_rooftop");
+	ai_night_swat_chance = ai.getOptionalInt("night_swat_chance", 0);
+
+	ai_cover_building_bonus = ai.getOptionalInt("cover_building_bonus", 0);
+	ai_cover_search_wisdom = ai.getOptionalInt("cover_search_wisdom", 0);
 
 	enemy_elite_minimum_level = gp.getOptionalInt("enemy_elite_minimum_level", 6);
 	enemy_elite_maximum_level = gp.getOptionalInt("enemy_elite_maximum_level", 10);

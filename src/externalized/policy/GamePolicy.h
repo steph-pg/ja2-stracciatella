@@ -63,6 +63,10 @@ public:
 
 	bool avoid_ambushes;                  // AI able to recognize and avoid ambushes on seeing friendlies' corpses
 	bool stay_on_rooftop;                 // AI on guard on rooftop are disallowed to go down
+	int8_t ai_night_swat_chance;          // at night, % chance a generic enemy that would RUN instead SWATs (0 = vanilla always-run, 100 = always)
+
+	int8_t ai_cover_building_bonus;       // % bonus to cover value for tiles inside a building, biasing AI to hide indoors (0 = vanilla)
+	int8_t ai_cover_search_wisdom;        // treat AI as having at least this Wisdom when sizing the cover search radius (0 = use actual Wisdom)
 
 	int8_t enemy_elite_minimum_level;     // increase challenge: minimum experience level for enemy elite soldier
 	int8_t enemy_elite_maximum_level;     // maximum experience level for enemy elite soldier
