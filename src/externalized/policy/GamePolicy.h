@@ -63,6 +63,7 @@ public:
 
 	bool avoid_ambushes;                  // AI able to recognize and avoid ambushes on seeing friendlies' corpses
 	bool stay_on_rooftop;                 // AI on guard on rooftop are disallowed to go down
+	bool ai_avoid_lit_tiles_at_night;     // at night, generic enemy soldiers won't path across tiles that are lit AND visible to a player merc
 
 	int8_t enemy_elite_minimum_level;     // increase challenge: minimum experience level for enemy elite soldier
 	int8_t enemy_elite_maximum_level;     // maximum experience level for enemy elite soldier
