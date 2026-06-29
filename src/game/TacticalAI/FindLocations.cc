@@ -31,6 +31,7 @@
 
 #include "ContentManager.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "WeaponModels.h"
 
 #include <algorithm>
@@ -579,11 +580,13 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 		case AGGRESSIVE:	iSearchRange -= 2; break;
 	}*/
 
-
-	// maximum search range is 1 tile / 8 pts of wisdom
-	if (iSearchRange > (pSoldier->bWisdom / 8))
+	// maximum search range is 1 tile / 8 pts of wisdom; ai_cover_search_wisdom
+	// lets a sector treat the AI as having at least that much Wisdom for this
+	// purpose only (0 = use actual Wisdom, i.e. vanilla behaviour)
+	INT32 const iCoverWisdom = std::max<INT32>(pSoldier->bWisdom, gamepolicy(ai_cover_search_wisdom));
+	if (iSearchRange > (iCoverWisdom / 8))
 	{
-		iSearchRange = (pSoldier->bWisdom / 8);
+		iSearchRange = (iCoverWisdom / 8);
 	}
 
 	if (!gfTurnBasedAI)
@@ -890,6 +893,14 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 			{
 				// when negative, must add a negative to decrease the total
 				iCoverValue += (iCoverValue / 10) * NumberOfTeamMatesAdjacent( pSoldier, sGridNo );
+			}
+
+			//bias the AI towards hiding inside buildings: boost the cover value of tiles
+			//inside a building. Only applied to spots that already favour us (positive
+			//value), so we don't try to "improve" a spot that actually helps the enemy.
+			if (gamepolicy(ai_cover_building_bonus) > 0 && iCoverValue > 0 && GetRoom(sGridNo) != NO_ROOM)
+			{
+				iCoverValue += (iCoverValue * gamepolicy(ai_cover_building_bonus)) / 100;
 			}
 
 			if (fNight && GetRoom(sGridNo) == NO_ROOM) // ignore in buildings in case placed there
@@ -1879,6 +1890,61 @@ INT16 FindNearbyPointOnEdgeOfMap( SOLDIERTYPE * pSoldier, INT8 * pbDirection )
 
 	*pbDirection = bClosestDirection;
 	return( sClosestSpot );
+}
+
+
+// Used by hopeless ENEMY_TEAM soldiers that want to flee the whole sector rather
+// than just take cover. Returns the gridno to move to THIS turn (NOWHERE if no
+// route to an edge exists). When the returned gridno is an edge tile we can step
+// onto this turn, ubQuoteActionID is set so the normal movement code (see
+// AIMain.cc, "traverse off map edge") walks the soldier off the map. Otherwise we
+// just return as much progress toward the nearest edge as we can make this turn,
+// and the soldier finishes leaving over subsequent turns. Mirrors the civilian
+// SCHEDULE_ACTION_LEAVESECTOR logic in DecideAction.cc, but stateless (re-evaluated
+// each turn) and routed through AI_ACTION_RUN_AWAY like FindSpotMaxDistFromOpponents.
+INT16 FindSpotToLeaveSector( SOLDIERTYPE * pSoldier )
+{
+	INT8  bDirection;
+	INT16 sDest;
+
+	// Unlike FindSpotMaxDistFromOpponents (which only ever sets a traversal when the
+	// edge is reachable this turn), this routine can march toward a distant edge over
+	// several turns. ubQuoteActionID is NOT reset between turns, so clear any stale
+	// traversal id up front; we only re-set it on the turn we actually step off the
+	// edge. Otherwise a leftover value would make AIMain traverse us off-map from an
+	// interior tile (see AIMain.cc, HandleAITacticalTraversal).
+	pSoldier->ubQuoteActionID = 0;
+
+	// If we're close enough to a reachable map edge, head straight for it.
+	INT16 sEdgeSpot = FindNearbyPointOnEdgeOfMap( pSoldier, &bDirection );
+	if (sEdgeSpot != NOWHERE)
+	{
+		sDest = GoAsFarAsPossibleTowards( pSoldier, sEdgeSpot, AI_ACTION_RUN_AWAY );
+		if (sDest == sEdgeSpot)
+		{
+			// we can reach the edge tile this turn - set up the off-map traversal
+			pSoldier->ubQuoteActionID = GetTraversalQuoteActionID( bDirection );
+			return( sEdgeSpot );
+		}
+		else if (sDest != NOWHERE)
+		{
+			// get as close to the edge as we can this turn; traverse next turn
+			return( sDest );
+		}
+	}
+
+	// Edge is farther away - path toward the nearest edgepoint over multiple turns.
+	INT16 sEdgePoint = FindNearestEdgePoint( pSoldier->sGridNo );
+	if (sEdgePoint != NOWHERE && sEdgePoint != pSoldier->sGridNo)
+	{
+		sDest = GoAsFarAsPossibleTowards( pSoldier, sEdgePoint, AI_ACTION_RUN_AWAY );
+		if (sDest != NOWHERE)
+		{
+			return( sDest );
+		}
+	}
+
+	return( NOWHERE );
 }
 
 

@@ -27,6 +27,7 @@
 #include "StrategicMap.h"
 #include "Structure.h"
 #include "Structure_Wrap.h"
+#include "TeamTurns.h"
 #include "Timer_Control.h"
 #include "WeaponModels.h"
 #include "Weapons.h"
@@ -1454,7 +1455,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 	INT8 bInWater, bInDeepWater, bInGas;
 	INT8 bSeekPts = 0, bHelpPts = 0, bHidePts = 0, bWatchPts = 0;
 	INT8	bHighestWatchLoc;
-	ATTACKTYPE BestThrow;
+	ATTACKTYPE BestThrow, BestShot;
 #ifdef AI_TIMING_TEST
 	UINT32	uiStartTime, uiEndTime;
 #endif
@@ -1696,6 +1697,37 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 		}
 	}
 
+	// calculate our morale
+	pSoldier->bAIMorale = CalcMorale(pSoldier);
+
+	////////////////////////////////////////////////////////////////////////
+	// HOPELESS ENEMY: FLEE IMMEDIATELY, BEFORE EVEN RAISING A WEAPON
+	////////////////////////////////////////////////////////////////////////
+
+	// A broken soldier should just bolt rather than firing long-range weapons,
+	// seeking cover, or turning to face - otherwise it burns its turn raising a
+	// weapon and ends up exposed. Enemies head for the map edge and traverse out;
+	// failing that (or for non-enemies), run to the spot farthest from known threats.
+	if ((pSoldier->bAIMorale == MORALE_HOPELESS) && ubCanMove)
+	{
+		if (pSoldier->bTeam == ENEMY_TEAM)
+		{
+			pSoldier->usActionData = FindSpotToLeaveSector(pSoldier);
+			if (pSoldier->usActionData != NOWHERE)
+			{
+				return(AI_ACTION_RUN_AWAY);
+			}
+		}
+
+		// look for best place to RUN AWAY to (farthest from the closest threat)
+		pSoldier->usActionData = FindSpotMaxDistFromOpponents(pSoldier);
+
+		if (pSoldier->usActionData != NOWHERE)
+		{
+			return(AI_ACTION_RUN_AWAY);
+		}
+	}
+
 	////////////////////////////////////////////////////////////////////////
 	// IF POSSIBLE, FIRE LONG RANGE WEAPONS AT TARGETS REPORTED BY RADIO
 	////////////////////////////////////////////////////////////////////////
@@ -1764,6 +1796,63 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 				return(AI_ACTION_NONE);
 			}
 		}
+
+		BestShot.ubPossible = FALSE;
+
+		// find a usable gun and ready it before evaluating the shot;
+		// CalcBestShot does not set bWeaponIn, so it must be set here (see DecideActionBlack)
+		INT8 bGunIn = FindAIUsableObjClass(pSoldier, IC_GUN);
+		if (bGunIn != NO_SLOT)
+		{
+			BestShot.bWeaponIn = bGunIn;
+			pSoldier->bDoBurst = 0;
+
+			// if it's in another pocket, swap it into his hand temporarily
+			if (bGunIn != HANDPOS)
+				RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
+
+			// now it better be a usable gun, or the guy can't shoot
+			if (GCM->getItem(pSoldier->inv[HANDPOS].usItem)->getItemClass() == IC_GUN && pSoldier->inv[HANDPOS].bGunStatus >= USABLE)
+			{
+				CalcBestShot(pSoldier, &BestShot);
+
+				if (BestShot.ubPossible && BestShot.ubChanceToReallyHit > 0 && BestShot.opponent->bLife >= OKLIFE)
+				{
+					if (BestShot.ubChanceToReallyHit >= 15)
+					{
+
+						pSoldier->usActionData = BestShot.sTarget;
+						pSoldier->bAimTime = BestShot.ubAimTime;
+
+						// prioritize single aimed shots that has real chance to hit
+						return(AI_ACTION_FIRE_GUN);
+					}
+					else if (BestShot.ubChanceToReallyHit <= 5 && IsGunBurstCapable(pSoldier, HANDPOS) && pSoldier->inv[HANDPOS].ubGunShotsLeft > 1)
+					{
+						UINT8 const ubBurstAPs = CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[HANDPOS]); // gun is in HANDPOS after the swap, not its original pocket
+						if (pSoldier->bActionPoints >= ubBurstAPs)
+						{
+							pSoldier->bDoBurst = 1;
+							pSoldier->usActionData = BestShot.sTarget;
+							pSoldier->bAimTime = BURSTING;
+							// if at least min chance to hit is possible and weapon can burst do this instead
+							return(AI_ACTION_FIRE_GUN);
+						}
+					}
+					else
+					{
+						pSoldier->usActionData = BestShot.sTarget;
+						pSoldier->bAimTime = BestShot.ubAimTime;
+						// single shots with low chance to hit
+						return(AI_ACTION_FIRE_GUN);
+					}
+				}
+			}
+
+			// not firing - swap the gun back into its original pocket
+			if (bGunIn != HANDPOS)
+				RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
+		}
 	}
 
 
@@ -1785,26 +1874,6 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 		}
 		pSoldier->usActionData = NOWHERE;
 		return(AI_ACTION_NONE);
-	}
-
-
-	// calculate our morale
-	pSoldier->bAIMorale = CalcMorale(pSoldier);
-
-	// if a guy is feeling REALLY discouraged, he may continue to run like hell
-	if ((pSoldier->bAIMorale == MORALE_HOPELESS) && ubCanMove)
-	{
-		////////////////////////////////////////////////////////////////////////
-		// RUN AWAY TO SPOT FARTHEST FROM KNOWN THREATS (ONLY IF MORALE HOPELESS)
-		////////////////////////////////////////////////////////////////////////
-
-		// look for best place to RUN AWAY to (farthest from the closest threat)
-		pSoldier->usActionData = FindSpotMaxDistFromOpponents(pSoldier);
-
-		if (pSoldier->usActionData != NOWHERE)
-		{
-			return(AI_ACTION_RUN_AWAY);
-		}
 	}
 
 
@@ -1941,6 +2010,21 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 					case AGGRESSIVE:    bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts +=  0; break;
 					case ATTACKSLAYONLY:bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts +=  0; break;
 				}
+
+				// Low-morale enemies should try to break contact and take cover
+				// (ideally inside a building, see ai_cover_building_bonus) BEFORE
+				// standing to watch a location. WATCH is evaluated ahead of HIDE in
+				// the loop below and wins ties, and its base score
+				// (GetHighestWatchedLocPoints) can easily out-weigh the small morale/
+				// orders/attitude nudges - so a scared soldier ends up just turning to
+				// face (AI_ACTION_CHANGE_FACING) instead of hiding. Force HIDE to be
+				// strictly preferred here; if no cover is found, FindBestNearbyCover
+				// drops bHidePts to -99 and WATCH is still available as the fallback.
+				if (pSoldier->bTeam == ENEMY_TEAM && pSoldier->bAIMorale < MORALE_NORMAL &&
+					bHidePts > -90 && bWatchPts >= bHidePts)
+				{
+					bHidePts = bWatchPts + 1;
+				}
 			}
 
 			if (!gfTurnBasedAI)
@@ -2026,6 +2110,20 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 									}
 									break;
 								default:
+									if (gamepolicy(ai_go_prone_more_often))
+									{
+										// reserve enough APs to drop prone if we spot the player at the
+										// end of this advance (see ConsiderProne / the end-of-turn
+										// StanceChange in DecideActionBlack), rather than arriving spent
+										// and ending the turn standing - the easiest target to hit.
+										// AP_CHANGE_FACING covers a turn-to-face-then-prone when we're
+										// not already facing the spotted opponent.
+										const INT16 sProneReady = InternalGoAsFarAsPossibleTowards(pSoldier, sClosestDisturbance, (INT8) (AP_CROUCH + AP_PRONE + AP_CHANGE_FACING), AI_ACTION_SEEK_OPPONENT, 0);
+										if (sProneReady != NOWHERE)
+										{
+											pSoldier->usActionData = sProneReady;
+										}
+									}
 									return( AI_ACTION_SEEK_OPPONENT );
 							}
 						}
@@ -2043,8 +2141,73 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 					//sDistVisible =  DistanceVisible( pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, gsWatchedLoc[ pSoldier->ubID ][ bHighestWatchLoc ], gbWatchedLocLevel[ pSoldier->ubID ][ bHighestWatchLoc ] );
 					if ( bHighestWatchLoc != -1 )
 					{
+						const INT16 sWatchGridNo = gsWatchedLoc[pSoldier->ubID][bHighestWatchLoc];
+
+						// If the spot we want to watch sits beyond our weapon's effective range,
+						// standing here would only ever give us a long, low-odds interrupt shot.
+						// Advance toward the spot until it falls within effective range, and watch
+						// from there instead. (Honours roaming range/orders via GoAsFarAsPossible-
+						// Towards, so genuine sentries with no room to move just watch in place.)
+					
+						if (ubCanMove)
+						{
+							const INT8 bGunSlot = FindAIUsableObjClass(pSoldier, IC_GUN);
+							if (bGunSlot != NO_SLOT)
+							{
+								const INT16 sWeaponRange = GCM->getWeapon(pSoldier->inv[bGunSlot].usItem)->usRange / CELL_X_SIZE;
+
+								// Never advance further than we can actually see. A gun's nominal
+								// range far exceeds sight distance at night (and in fog/smoke), so
+								// closing all the way to weapon range would march the soldier
+								// blindly toward - and past - the watched spot for a shot it could
+								// never line up. Cap the approach at our real sight distance so we
+								// only reposition to where we could genuinely see and shoot
+								// whoever shows up.
+								const INT16 sDistVisible = DistanceVisible(pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sWatchGridNo, gbWatchedLocLevel[pSoldier->ubID][bHighestWatchLoc]);
+								const INT16 sEffRange = std::min(sWeaponRange, sDistVisible);
+								if (sEffRange > 0 && PythSpacesAway(pSoldier->sGridNo, sWatchGridNo) > sEffRange)
+								{
+									// step back from the watched spot toward us to find a tile that
+									// is within effective range, then close the gap to it
+									INT16 sApproachGoal = sWatchGridNo;
+									for (INT16 sStep = 0; sStep < sEffRange; ++sStep)
+									{
+										const UINT8 ubStepDir = GetDirectionToGridNoFromGridNo(sApproachGoal, pSoldier->sGridNo);
+										const INT16 sNextStep = NewGridNo(sApproachGoal, DirectionInc(ubStepDir));
+										if (sNextStep == sApproachGoal || sNextStep == pSoldier->sGridNo)
+											break;
+										sApproachGoal = sNextStep;
+									}
+
+									// Advance, but reserve enough APs to crouch and fire when we get
+									// there. Plain GoAsFarAsPossibleTowards reserves nothing, so the
+									// watcher would sprint up to the spot and arrive spent - ending
+									// its turn standing with weapon raised but no APs to take the
+									// interrupt/shot if the target appears (and an easy target itself).
+									// This mirrors the cautious SEEK path above. If it can't both
+									// advance and keep a shot ready, the call returns NOWHERE and we
+									// fall through to simply hold position and watch.
+									const INT8 bReserveAPs = (INT8)(MinAPsToAttack(pSoldier, sWatchGridNo, ADDTURNCOST) + AP_CROUCH);
+									const INT16 sAdvance = InternalGoAsFarAsPossibleTowards(pSoldier, sApproachGoal, bReserveAPs, AI_ACTION_GET_CLOSER, FLAG_CAUTIOUS);
+									if (sAdvance != NOWHERE && sAdvance != pSoldier->sGridNo)
+									{
+										pSoldier->fAIFlags |= AI_CAUTIOUS;
+										pSoldier->usActionData = sAdvance;
+										pSoldier->bNextAction = AI_ACTION_END_TURN;
+										return(AI_ACTION_GET_CLOSER);
+									}
+								}
+							}
+						}
+
 						// see if we need turn to face that location
-						const UINT8 ubOpponentDir = GetDirectionToGridNoFromGridNo(pSoldier->sGridNo, gsWatchedLoc[pSoldier->ubID][bHighestWatchLoc]);
+						const UINT8 ubOpponentDir = GetDirectionToGridNoFromGridNo(pSoldier->sGridNo, sWatchGridNo);
+
+						// We're standing guard to interrupt-and-shoot whoever shows up at the
+						// watched spot, so keep enough APs in reserve to actually take that shot
+						// with our current weapon - otherwise watching is pointless. Don't burn
+						// those APs dropping to a lower (safer) stance below.
+						const UINT8 ubReserveForShot = MinAPsToAttack(pSoldier, sWatchGridNo, DONTADDTURNCOST);
 
 						// if soldier is not already facing in that direction,
 						// and the opponent is close enough that he could possibly be seen
@@ -2057,8 +2220,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 						}
 						else
 						{
-							// consider at least crouching
-							if ( gAnimControl[ pSoldier->usAnimState ].ubEndHeight == ANIM_STAND && InternalIsValidStance( pSoldier, ubOpponentDir, ANIM_CROUCH ) )
+							// consider at least crouching, but only if we'll still be able to fire afterwards
+							if ( gAnimControl[ pSoldier->usAnimState ].ubEndHeight == ANIM_STAND && InternalIsValidStance( pSoldier, ubOpponentDir, ANIM_CROUCH )
+								&& (INT16)(pSoldier->bActionPoints - GetAPsToChangeStance(pSoldier, ANIM_CROUCH)) >= (INT16)ubReserveForShot )
 							{
 								pSoldier->usActionData = ANIM_CROUCH;
 								pSoldier->bNextAction = AI_ACTION_END_TURN;
@@ -2066,8 +2230,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 							}
 							else if ( gAnimControl[ pSoldier->usAnimState ].ubHeight != ANIM_PRONE )
 							{
-								// maybe go prone
-								if ((PreRandom(2) == 0 || gamepolicy(ai_go_prone_more_often)) && InternalIsValidStance(pSoldier, ubOpponentDir, ANIM_PRONE))
+								// maybe go prone - again, only if it leaves us enough APs to shoot
+								if ((PreRandom(2) == 0 || gamepolicy(ai_go_prone_more_often)) && InternalIsValidStance(pSoldier, ubOpponentDir, ANIM_PRONE)
+									&& (INT16)(pSoldier->bActionPoints - GetAPsToChangeStance(pSoldier, ANIM_PRONE)) >= (INT16)ubReserveForShot)
 								{
 									pSoldier->usActionData = ANIM_PRONE;
 									pSoldier->bNextAction = AI_ACTION_END_TURN;
@@ -2632,6 +2797,35 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 	}
 
 	////////////////////////////////////////////////////////////////////////////
+	// HOPELESS ENEMY: FLEE IMMEDIATELY, BEFORE EVEN RAISING A WEAPON
+	////////////////////////////////////////////////////////////////////////////
+
+	// A broken soldier should just bolt rather than first evaluating attacks,
+	// raising its weapon, or taking cover - otherwise it wastes its turn and ends
+	// up exposed. Enemies head for the map edge and traverse out; failing that (or
+	// for non-enemies allowed to retreat), run to the spot farthest from threats.
+	if (pSoldier->bAIMorale == MORALE_HOPELESS && ubCanMove && !(pSoldier->uiStatusFlags & SOLDIER_BOXER))
+	{
+		if (pSoldier->bTeam == ENEMY_TEAM)
+		{
+			pSoldier->usActionData = FindSpotToLeaveSector(pSoldier);
+			if (pSoldier->usActionData != NOWHERE)
+			{
+				return(AI_ACTION_RUN_AWAY);
+			}
+		}
+
+		if (pSoldier->bTeam != OUR_TEAM || pSoldier->fAIFlags & AI_RTP_OPTION_CAN_RETREAT)
+		{
+			pSoldier->usActionData = FindSpotMaxDistFromOpponents(pSoldier);
+			if (pSoldier->usActionData != NOWHERE)
+			{
+				return(AI_ACTION_RUN_AWAY);
+			}
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////
 	// SOLDIER CAN ATTACK IF NOT IN WATER/GAS AND NOT DOING SOMETHING TOO FUNKY
 	////////////////////////////////////////////////////////////////////////////
 
@@ -3035,7 +3229,8 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 	if ( pSoldier->bActionPoints == pSoldier->bInitialActionPoints && ubBestAttackAction == AI_ACTION_FIRE_GUN && (pSoldier->bShock == 0) && (pSoldier->bLife >= pSoldier->bLifeMax / 2) && BestAttack.ubChanceToReallyHit < 30 && ( PythSpacesAway( pSoldier->sGridNo, BestAttack.sTarget ) > GCM->getWeapon( pSoldier->inv[ BestAttack.bWeaponIn].usItem)->usRange / CELL_X_SIZE ) && RangeChangeDesire( pSoldier ) >= 4 )
 	{
 		// okay, really got to wonder about this... could taking cover be an option?
-		if (ubCanMove && pSoldier->bOrders != STATIONARY && !gfHiddenInterrupt &&
+		// (but not when acting on an interrupt - that shot is a rare opportunity, take it)
+		if (ubCanMove && pSoldier->bOrders != STATIONARY && !gfHiddenInterrupt && !INTERRUPT_QUEUED &&
 			!(pSoldier->uiStatusFlags & SOLDIER_BOXER) )
 		{
 			// make militia a bit more cautious
@@ -3080,8 +3275,9 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 	// IF NECESSARY, DECIDE BETWEEN ATTACKING AND DEFENDING (TAKING COVER)
 	//////////////////////////////////////////////////////////////////////////
 
-	// if both are possible
-	if ((ubBestAttackAction != AI_ACTION_NONE) && (sBestCover != NOWHERE))
+	// if both are possible (but when acting on an interrupt, a viable attack always
+	// wins - an interrupt shot is a rare opportunity and shouldn't be spent on cover)
+	if ((ubBestAttackAction != AI_ACTION_NONE) && (sBestCover != NOWHERE) && !INTERRUPT_QUEUED)
 	{
 		// gotta compare their merits and select the more desirable option
 		iOffense = BestAttack.ubChanceToReallyHit;
@@ -3233,6 +3429,10 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 				{
 					// Base chance of bursting is 25% if best shot was +0 aim, down to 8% at +4
 					if ( TANK( pSoldier ) )
+					{
+						iChance = 100;
+					}
+					else if (gamepolicy(chance_to_hit_minimum) > 1 && BestAttack.ubChanceToReallyHit <= 5)
 					{
 						iChance = 100;
 					}
@@ -3390,13 +3590,16 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 
 
 	////////////////////////////////////////////////////////////////////////////
-	// IF THINGS ARE REALLY HOPELESS, OR UNARMED, TRY TO RUN AWAY
+	// IF UNARMED, TRY TO RUN AWAY
 	////////////////////////////////////////////////////////////////////////////
+
+	// (the hopeless case is handled earlier, before attacking/cover - a broken
+	// soldier flees right away rather than first raising its weapon)
 
 	// if soldier has enough APs left to move at least 1 square's worth
 	if ( ubCanMove && (pSoldier->bTeam != OUR_TEAM || pSoldier->fAIFlags & AI_RTP_OPTION_CAN_RETREAT) )
 	{
-		if ((pSoldier->bAIMorale == MORALE_HOPELESS) || !bCanAttack)
+		if (!bCanAttack)
 		{
 			// look for best place to RUN AWAY to (farthest from the closest threat)
 			pSoldier->usActionData = FindSpotMaxDistFromOpponents(pSoldier);

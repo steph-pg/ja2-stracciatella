@@ -172,6 +172,7 @@ INT16 FindNearestEdgepointOnSpecifiedEdge( INT16 sGridNo, INT8 bEdgeCode );
 
 INT16 FindNearestUngassedLand(SOLDIERTYPE *pSoldier);
 INT16 FindSpotMaxDistFromOpponents(SOLDIERTYPE *pSoldier);
+INT16 FindSpotToLeaveSector(SOLDIERTYPE *pSoldier);
 
 void FreeUpNPCFromAttacking(SOLDIERTYPE* s);
 void FreeUpNPCFromPendingAction( SOLDIERTYPE * pSoldier );

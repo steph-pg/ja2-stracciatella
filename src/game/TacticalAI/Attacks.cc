@@ -120,8 +120,16 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		if ( CONSIDERED_NEUTRAL( pSoldier, pOpponent ) || (pSoldier->bSide == pOpponent->bSide))
 			continue;          // next merc
 
-		// if this opponent is not currently in sight (ignore known but unseen!)
-		if (pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY)
+		// if this opponent is not currently in sight - personally OR to the team
+		// (ignore merely known-but-unseen). The team/public sighting lets us fire
+		// on a target a squadmate can see (e.g. suppression); the PERSONAL sighting
+		// is the normal "I can see him myself" case and must be kept too. Checking
+		// public alone is wrong: on our own turn we often spot an opponent before
+		// the public opplist catches up (Personally 1, public 0), and a soldier
+		// that plainly sees an enemy would then refuse to shoot and take cover.
+		INT8 *pbPublOL = &(gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID]);
+
+		if (pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY && *pbPublOL != SEEN_CURRENTLY)
 			continue;  // next opponent
 
 		// Special stuff for Carmen the bounty hunter
@@ -526,10 +534,10 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 				// cheat; only allow throw if person is REALLY within 2 tiles of where last seen
 
 				// screen out some ppl who have thrown
-				if ( PreRandom( 3 ) == 0 )
-				{
-					continue;
-				}
+				//if ( PreRandom( 3 ) == 0 )
+				//{
+				//	continue;
+				//}
 
 				// Weird detail: if the opponent is in the same location then they may have closed a door on us.
 				// In which case, don't throw!
@@ -546,10 +554,10 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 				{
 					continue;
 				}
-				if ( usGrenade != BREAK_LIGHT && !pSoldier->bUnderFire && pSoldier->bShock == 0 )
-				{
-					continue;
-				}
+				//if ( usGrenade != BREAK_LIGHT && !pSoldier->bUnderFire && pSoldier->bShock == 0 )
+				//{
+				//	continue;
+				//}
 				sOpponentTile[ubOpponentCnt] = gsLastKnownOppLoc[ pSoldier->ubID ][ pOpponent->ubID ];
 				bOpponentLevel[ubOpponentCnt] = gbLastKnownOppLevel[ pSoldier->ubID ][ pOpponent->ubID ];
 			}

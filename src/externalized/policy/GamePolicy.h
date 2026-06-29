@@ -64,6 +64,10 @@ public:
 	uint8_t corpse_warning_duration;      // how long a fresh corpse keeps warning the AI of a possible ambush; 0 disables ambush avoidance entirely
 	uint8_t corpse_warning_distance;      // how far from a corpse, in tiles, the AI still heeds that warning
 	bool stay_on_rooftop;                 // AI on guard on rooftop are disallowed to go down
+	int8_t ai_night_swat_chance;          // at night, % chance a generic enemy that would RUN instead SWATs (0 = vanilla always-run, 100 = always)
+
+	int8_t ai_cover_building_bonus;       // % bonus to cover value for tiles inside a building, biasing AI to hide indoors (0 = vanilla)
+	int8_t ai_cover_search_wisdom;        // treat AI as having at least this Wisdom when sizing the cover search radius (0 = use actual Wisdom)
 
 	bool interrupt_after_being_under_fire; // only being shot at during the turn in progress blocks a soldier's interrupts; vanilla keeps them blocked through the next turn too, since the under-fire mark is only cleared once their own turn begins. Applies to mercs and AI alike
 

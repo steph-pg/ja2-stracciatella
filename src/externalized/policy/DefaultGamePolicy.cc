@@ -36,6 +36,10 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	corpse_warning_duration = ai.getOptionalUInt("corpse_warning_duration", 0);
 	corpse_warning_distance = ai.getOptionalUInt("corpse_warning_distance", 5);
 	stay_on_rooftop = ai.getOptionalBool("stay_on_rooftop");
+	ai_night_swat_chance = ai.getOptionalInt("night_swat_chance", 0);
+
+	ai_cover_building_bonus = ai.getOptionalInt("cover_building_bonus", 0);
+	ai_cover_search_wisdom = ai.getOptionalInt("cover_search_wisdom", 0);
 
 	interrupt_after_being_under_fire = gp.getOptionalBool("interrupt_after_being_under_fire", true);
 
