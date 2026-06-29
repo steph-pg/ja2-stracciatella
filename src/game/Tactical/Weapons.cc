@@ -2636,7 +2636,8 @@ static INT32 ArmourProtection(SOLDIERTYPE const& pTarget, UINT16 const usItemInd
 	else if (ubAmmoType == AMMO_MONSTER)
 	{
 		// creature spit damages armour a lot! an extra 3x for a total of 4x normal
-		*pbStatus -= 3 * (iAppliedProtection * armour->getDegradePercentage()) / 100;
+		FLOAT fMonsterStatusDecrease = (3.0f * (FLOAT)iAppliedProtection * (FLOAT)armour->getDegradePercentage()) / (FLOAT)100;
+		*pbStatus -= (INT16)ceilf(fMonsterStatusDecrease);
 
 		// reduce amount of protection from armour
 		iProtection /= 2;
@@ -2644,7 +2645,8 @@ static INT32 ArmourProtection(SOLDIERTYPE const& pTarget, UINT16 const usItemInd
 
 	if (!AM_A_ROBOT(&pTarget))
 	{
-		*pbStatus -= (iAppliedProtection * armour->getDegradePercentage()) / 100;
+		FLOAT fStatusDecrease = ((FLOAT)iAppliedProtection * (FLOAT)armour->getDegradePercentage()) / (FLOAT)100;
+		*pbStatus -= (INT16)ceil(fStatusDecrease);
 	}
 
 	// return armour protection
