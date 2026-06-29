@@ -1148,14 +1148,12 @@ INT8 CalcInterruptDuelPts(const SOLDIERTYPE* const pSoldier, const SOLDIERTYPE* 
 	else
 	{
 		bPoints = EffectiveExpLevel( pSoldier );
-		/*
 		if ( pSoldier->bTeam == ENEMY_TEAM )
 		{
 			// modify by the difficulty level setting
 			bPoints += gbDiff[ DIFF_ENEMY_INTERRUPT_MOD ][ SoldierDifficultyLevel( pSoldier ) ];
-			bPoints = std::max(bPoints, 9);
+			bPoints = std::max<INT8>(bPoints, 9);
 		}
-		*/
 
 		if ( ControllingRobot( pSoldier ) )
 		{
