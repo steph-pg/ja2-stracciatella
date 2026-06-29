@@ -105,7 +105,20 @@
     //  At night, generic enemy soldiers avoid pathing across tiles that are lit
     //  AND currently visible to a player merc, routing through darkness instead.
     //  vanilla value: false
-    "avoid_lit_tiles_at_night": false
+    "avoid_lit_tiles_at_night": false,
+
+    //  At night, % chance a generic enemy soldier that would RUN instead moves in
+    //  a low, quiet SWAT (stalk). 0 = vanilla always-run, 100 = always swat.
+    //  vanilla value: 0
+    "night_swat_chance": 0,
+
+    //  % bonus to cover value for tiles inside a building, biasing the AI to hide
+    //  indoors. 0 = vanilla.
+    "cover_building_bonus": 0,
+
+    //  Treat the AI as having at least this much Wisdom when sizing the cover
+    //  search radius (1 tile per 8 Wisdom). 0 = use actual Wisdom (vanilla).
+    "cover_search_wisdom": 0
   },
 
   //  How much variation should there be in elite soldier xp level?
