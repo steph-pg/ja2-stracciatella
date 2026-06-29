@@ -152,6 +152,11 @@
   //  vanilla_setting: false
   "pablo_wont_steal": false,
 
+  //  Capturing any SAM site makes the queen reinforce all three town SAM sites,
+  //  and their all-elite reinforcement groups sneak in at night without sleeping.
+  //  vanilla setting: false
+  "reinforce_all_sam_sites": false,
+
   //  Min/max chance to hit and headshot damage multiplier.
   //  vanilla_setting: 1, 99, 1.5, 0.5
   "chance_to_hit_minimum": 1,

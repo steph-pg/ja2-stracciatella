@@ -77,6 +77,7 @@ public:
 	bool imp_load_saved_merc_by_nickname; // IMP merc is saved and can be loaded at IMP creation if has same nickname
 	bool imp_load_keep_inventory;         // IMP merc gets inventory from last save game
 	bool pablo_wont_steal;                // Packages not stolen
+	bool reinforce_all_sam_sites;         // capturing any SAM reinforces all three town SAMs; their all-elite reinforcement groups sneak in at night without sleeping
 
 	float critical_damage_head_multiplier;//Head damage multiplier. Vanilla 1.5
 	float critical_damage_legs_multiplier;//Legs damage multiplier. Vanilla 0.5
