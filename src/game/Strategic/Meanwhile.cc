@@ -6,6 +6,7 @@
 #include "Dialogue_Control.h"
 #include "Fade_Screen.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "GameSettings.h"
 #include "Game_Clock.h"
 #include "Game_Event_Hook.h"
@@ -489,14 +490,34 @@ static void ProcessImplicationsOfMeanwhile()
 			}
 			break;
 
+		case NW_SAM:
+		case NE_SAM:
+		case CENTRAL_SAM:
 		{
-			UINT8 sector;
-		case NW_SAM:      sector = samList[SAM_SITE_ONE]->sectorId; goto send_troops_to_sam;
-		case NE_SAM:      sector = samList[SAM_SITE_TWO]->sectorId; goto send_troops_to_sam;
-		case CENTRAL_SAM: sector = samList[SAM_SITE_THREE]->sectorId; goto send_troops_to_sam;
-send_troops_to_sam:
-			SGPSector sec = SGPSector(sector);
-			ExecuteStrategicAIAction(NPC_ACTION_SEND_TROOPS_TO_SAM, &sec);
+			if (gamepolicy(reinforce_all_sam_sites))
+			{
+				// When any SAM site is captured, the queen reinforces all three
+				// town SAM sites, regardless of whether the player controls them.
+				SGPSector secOne   = SGPSector(samList[SAM_SITE_ONE]->sectorId);
+				SGPSector secTwo   = SGPSector(samList[SAM_SITE_TWO]->sectorId);
+				SGPSector secThree = SGPSector(samList[SAM_SITE_THREE]->sectorId);
+				ExecuteStrategicAIAction(NPC_ACTION_SEND_TROOPS_TO_SAM, &secOne);
+				ExecuteStrategicAIAction(NPC_ACTION_SEND_TROOPS_TO_SAM, &secTwo);
+				ExecuteStrategicAIAction(NPC_ACTION_SEND_TROOPS_TO_SAM, &secThree);
+			}
+			else
+			{
+				// vanilla: reinforce only the SAM site that was just captured
+				UINT8 sector;
+				switch (gCurrentMeanwhileDef.ubMeanwhileID)
+				{
+					case NW_SAM:  sector = samList[SAM_SITE_ONE]->sectorId; break;
+					case NE_SAM:  sector = samList[SAM_SITE_TWO]->sectorId; break;
+					default:      sector = samList[SAM_SITE_THREE]->sectorId; break; // CENTRAL_SAM
+				}
+				SGPSector sec = SGPSector(sector);
+				ExecuteStrategicAIAction(NPC_ACTION_SEND_TROOPS_TO_SAM, &sec);
+			}
 			break;
 		}
 
