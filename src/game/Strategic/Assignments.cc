@@ -5288,7 +5288,15 @@ void CreateContractBox(const SOLDIERTYPE* const s)
 	}
 
 	SetBoxTextAttrs(box);
-	if (s) SetBoxLineForeground(box, 0, FONT_YELLOW);
+	if (s)
+	{
+		SetBoxLineForeground(box, 0, FONT_YELLOW);
+
+		// Don't allow dismissing a merc who is actually bleeding - otherwise the player could
+		// fire a dying merc to dodge the consequences of him bleeding out.  A small bBleeding
+		// value is just an unbandaged scratch so, it still ok
+		ShadeStringInBox(box, CONTRACT_MENU_TERMINATE, s->bBleeding > MIN_BLEEDING_THRESHOLD);
+	}
 	ResizeBoxToText(box);
 }
 
