@@ -568,7 +568,23 @@ BOOLEAN HandleOpenableStruct( SOLDIERTYPE *pSoldier, INT16 sGridNo, STRUCTURE *p
 							if ( AttemptToPickLock( pSoldier, pDoor ) )
 							{
 								DoMercBattleSound( pSoldier, BATTLE_SOUND_COOL1 );
-								fHandleDoor = TRUE;
+
+								// If there are enemies in the sector, picking the lock only
+								// unlocks the door and leaves it closed, so the player can
+								// decide when to open it (swinging it open right away can be
+								// deadly if there are enemies waiting on the other side).
+								// This covers both turn-based combat and realtime mode. When
+								// the sector is clear, keep the original behaviour of opening
+								// it immediately.
+								if ( NumCapableEnemyInSector() > 0 )
+								{
+									ChangeSoldierState(pSoldier, GetAnimStateForInteraction(*pSoldier, fDoor, END_OPEN_LOCKED_DOOR), 0, FALSE);
+									UpdateDoorPerceivedValue( pDoor, HANDLE_DOOR_LOCKPICK );
+								}
+								else
+								{
+									fHandleDoor = TRUE;
+								}
 							}
 							ProcessImplicationsOfPCMessingWithDoor( pSoldier );
 						}
@@ -631,10 +647,24 @@ BOOLEAN HandleOpenableStruct( SOLDIERTYPE *pSoldier, INT16 sGridNo, STRUCTURE *p
 							{
 								//DoMercBattleSound( pSoldier, BATTLE_SOUND_COOL1 );
 
-								ChangeSoldierState(pSoldier, GetAnimStateForInteraction(*pSoldier, fDoor, END_OPEN_DOOR), 0, FALSE);
 								UpdateDoorPerceivedValue( pDoor, HANDLE_DOOR_UNLOCK );
 
-								fHandleDoor = TRUE;
+								// If there are enemies in the sector, unlocking the door with
+								// the key only unlocks it and leaves it closed, so the player
+								// can decide when to open it (swinging it open right away can
+								// be deadly if there are enemies waiting on the other side).
+								// This covers both turn-based combat and realtime mode. When
+								// the sector is clear, keep the original behaviour of opening
+								// it immediately.
+								if ( NumCapableEnemyInSector() > 0 )
+								{
+									ChangeSoldierState(pSoldier, GetAnimStateForInteraction(*pSoldier, fDoor, END_OPEN_LOCKED_DOOR), 0, FALSE);
+								}
+								else
+								{
+									ChangeSoldierState(pSoldier, GetAnimStateForInteraction(*pSoldier, fDoor, END_OPEN_DOOR), 0, FALSE);
+									fHandleDoor = TRUE;
+								}
 							}
 							else
 							{
