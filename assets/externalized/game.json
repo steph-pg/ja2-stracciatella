@@ -76,6 +76,12 @@
   //  vanilla value: 0
   "enemy_weapon_minimal_status": 0,
 
+  // Minimum % chance for a player merc's gun to jam even in perfect (100%) condition.
+  // Vanilla guns above status 80 never jam; this adds a floor so there is always some risk.
+  // Applied on top of the normal condition-based jam roll. 0 restores vanilla behaviour.
+  // vanilla value: 0
+  "gun_jam_chance_minimum": 0,
+
   // Maxiumum number of soldiers in one squad.
   // Larger squad sizes requires the wider screen to display all members. For a squad size of n, the screen must be at
   // least (640 + (n-6)*83) pixels wide. For example, squad size of 8 requires the screen to be at least 806px wide.

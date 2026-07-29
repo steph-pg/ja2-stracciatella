@@ -110,6 +110,23 @@ properties:
       Minimal status in % for each gun in the hand of enemy soldiers. Note that this value has no influence on enemy behaviour (CtH, jams).
 
       Vanilla setting: `0`
+  gun_jam_chance_minimum:
+    $ref: types/percentage.schema.yaml
+    title: Minimum gun jam chance
+    description: |
+      Minimum chance, in percent, for a player merc's gun to jam on a shot even when the gun is in
+      perfect condition.
+
+      Vanilla derives the jam chance from the gun's status alone, as `80 - status`, so any gun above
+      status 80 can never jam at all and a well maintained weapon is completely reliable. This adds a
+      flat floor that is rolled independently of, and on top of, the normal status based roll, so
+      there is always some residual risk.
+
+      Only applies to the player's mercs, as the vanilla jam check does.
+
+      Set to `0` for the vanilla behaviour.
+
+      Vanilla setting: `0`
   squad_size:
     $ref: types/uint16.schema.yaml
     title: Maximum Squad Size
@@ -516,6 +533,7 @@ required:
   - all_drops_visible
   - multiple_interrupts
   - enemy_weapon_minimal_status
+  - gun_jam_chance_minimum
   - squad_size
   - ai
   - enemy_elite_minimum_level

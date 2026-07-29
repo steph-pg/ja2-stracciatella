@@ -272,10 +272,23 @@ FireWeaponResult CheckForGunJam(SOLDIERTYPE * const pSoldier)
 					iChance -= PreRandom( 100 );
 				}
 
+				bool fJam = ((INT32) PreRandom( 100 ) < iChance) || gfNextFireJam;
+
+				// Even a gun in perfect condition has a small chance to jam.
+				// gun_jam_chance_minimum is a flat % floor applied regardless of gun status.
+				if (!fJam)
+				{
+					INT8 const bMinJamChance = gamepolicy(gun_jam_chance_minimum);
+					if (bMinJamChance > 0 && (INT32) PreRandom( 100 ) < bMinJamChance)
+					{
+						fJam = true;
+					}
+				}
+
 #ifdef TESTGUNJAM
 				if ( 1 )
 #else
-				if ((INT32) PreRandom( 100 ) < iChance || gfNextFireJam )
+				if ( fJam )
 #endif
 				{
 					gfNextFireJam = FALSE;
