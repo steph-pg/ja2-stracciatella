@@ -2896,6 +2896,19 @@ static void HandleModShift(UINT const key)
 			SelectAllCharactersInSquad(squad_no);
 			break;
 		}
+
+		case SDLK_SPACE:
+		{ // Compress time until the next hour, then stop again
+			if (fShowUpdateBox) EndUpdateBox(FALSE);
+
+			if (!CommonTimeCompressionChecks())
+			{
+				SetGameTimeCompressionLevel(TIME_COMPRESS_60MINS);
+				// only arm the stop if we were actually allowed to start compressing
+				gfStopTimeCompressionNextHour = IsTimeCompressionOn();
+			}
+			break;
+		}
 	}
 }
 
