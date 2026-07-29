@@ -1036,6 +1036,7 @@ void UseHandToHand(SOLDIERTYPE* const pSoldier, INT16 const sTargetGridNo, BOOLE
 	INT32          iHitChance, iDiceRoll;
 	INT16          sAPCost;
 	INT32          iImpact;
+	INT32          iImpactForCrits;
 	UINT16         usOldItem;
 
 	// Deduct points!
@@ -1214,6 +1215,17 @@ void UseHandToHand(SOLDIERTYPE* const pSoldier, INT16 const sTargetGridNo, BOOLE
 			{
 				// CALCULATE DAMAGE!
 				iImpact = HTHImpact( pSoldier, pTargetSoldier, (iHitChance - iDiceRoll), FALSE );
+
+				// modify by hit location (as knives and bullets do); for punches this
+				// scales both breath and life damage since they are split from the same
+				// value downstream in EVENT_SoldierGotHit
+				AdjustImpactByHitLocation( iImpact, pSoldier->bAimShotLocation, &iImpact, &iImpactForCrits );
+
+				// any successful hit does at LEAST 1 pt minimum damage
+				if (iImpact < 1)
+				{
+					iImpact = 1;
+				}
 
 				// Send event for getting hit
 				EV_S_WEAPONHIT SWeaponHit{};
