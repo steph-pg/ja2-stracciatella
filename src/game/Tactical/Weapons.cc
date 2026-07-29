@@ -3546,12 +3546,18 @@ INT32 CalcMaxTossRange(const SOLDIERTYPE* pSoldier, UINT16 usItem, BOOLEAN fArme
 			// start with the range based on the soldier's strength and the item's weight
 			INT32 iThrowingStrength = ( EffectiveStrength( pSoldier ) * 2 + 100 ) / 3;
 			iRange = 2 + ( iThrowingStrength / std::min(( 3 + (GCM->getItem(usItem)->getWeight()) / 3 ), 4 ));
+
+			// apply the throwing range modifier
+			iRange = iRange * gamepolicy(thrown_range_modifier) / 100;
 		}
 		else
 		{	// not as aerodynamic!
 
 			// start with the range based on the soldier's strength and the item's weight
 			iRange = 2 + ( ( EffectiveStrength( pSoldier ) / ( 5 + GCM->getItem(usItem)->getWeight()) ) );
+
+			// apply the throwing range modifier
+			iRange = iRange * gamepolicy(thrown_range_modifier) / 100;
 		}
 
 		// adjust for thrower's remaining breath (lose up to 1/2 of range)

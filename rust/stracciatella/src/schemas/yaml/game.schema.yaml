@@ -279,6 +279,22 @@ properties:
       Range bonus for having a barrel extender attached. 10 per 1 tile.
 
       Vanilla setting: `100`
+  thrown_range_modifier:
+    $ref: types/int16.schema.yaml
+    title: Thrown range modifier
+    description: |
+      Percentage modifier to the maximum range of hand-thrown items. `100` leaves the vanilla
+      range untouched, `150` extends every throw by half, `70` shortens it by 30%.
+
+      The vanilla throwing range comes out of the thrower's Strength and the item's weight, and is
+      short enough that a grenade rarely reaches as far as a merc can see. This scales the result
+      of that formula, before the penalties for spent breath and for the Throwing trait bonus.
+
+      Applies to grenades and other thrown items only. Launchers, mortars and other mechanically
+      fired weapons use their own range from the weapons table and are unaffected, as are items
+      flagged unaerodynamic, which can never be thrown further than one tile.
+
+      Vanilla setting: `100`
   always_show_cursor_in_tactical:
     type: boolean
     title: Always show cursor in tactical
@@ -533,6 +549,7 @@ required:
   - aim_bonus_laserscope
   - range_penalty_silencer
   - range_bonus_barrel_extender
+  - thrown_range_modifier
   - always_show_cursor_in_tactical
   - show_hit_chance
   - website_loading_time_scale

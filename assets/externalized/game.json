@@ -147,6 +147,12 @@
   "range_penalty_silencer": 0,
   "range_bonus_barrel_extender": 100,
 
+  //  Percentage modifier to the maximum range of hand-thrown items (grenades, throwing knives).
+  //  Launchers and unaerodynamic items are unaffected. Applied before the breath penalty and the
+  //  Throwing trait bonus.
+  //  vanilla setting: 100
+  "thrown_range_modifier": 100,
+
   //  Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
   //  vanilla setting: false
   "always_show_cursor_in_tactical": false,
