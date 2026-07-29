@@ -523,33 +523,56 @@ void MercComplainAboutEquipment(ProfileID ubProfile)
 }
 
 
+// A merc contributes to (and receives) learn-to-like / learn-to-hate progress
+// while stationary only if awake and genuinely present in the sector - i.e. not
+// asleep, travelling in, dead, unconscious, held prisoner or in hospital.
+static bool MercAvailableToBond(const SOLDIERTYPE* s)
+{
+	if (s->fMercAsleep)                    return false;
+	if (s->bAssignment == IN_TRANSIT)      return false;
+	if (s->bAssignment >= ASSIGNMENT_DEAD) return false; // dead, unconscious, POW, hospital, empty
+	return true;
+}
+
+
 void UpdateBuddyAndHatedCounters(void)
 {
 	FOR_EACH_IN_TEAM(s, OUR_TEAM)
 	{
-		// If the merc is active and on a combat assignment
-		if (s->bAssignment >= ON_DUTY) continue;
-
-		MERCPROFILESTRUCT& p = GetProfile(s->ubProfile);
-
 		// If we're moving, we only check vs other people in our squad
 		bool const same_group_only =
 			s->ubGroupID != 0 && PlayerIDGroupInMotion(s->ubGroupID);
+
+		if (same_group_only)
+		{
+			// Travelling: unchanged - only mercs in an active squad bond
+			if (s->bAssignment >= ON_DUTY) continue;
+		}
+		else
+		{
+			// Stationary: bond with anyone sharing the sector while awake,
+			// regardless of assignment (repair, training, on duty, ...)
+			if (!MercAvailableToBond(s)) continue;
+		}
+
+		MERCPROFILESTRUCT& p = GetProfile(s->ubProfile);
 
 		bool fUpdatedTimeTillNextHatedComplaint = false;
 
 		CFOR_EACH_IN_TEAM(other, OUR_TEAM)
 		{
-			// Is this guy in the same sector and on active duty (or in the same moving group)
-			if (other != s && other->bAssignment < ON_DUTY)
+			// Is this guy in the same moving group, or awake and present in the same sector?
+			if (other != s)
 			{
 				if (same_group_only)
 				{ // All we have to check is the group ID
+					if (other->bAssignment >= ON_DUTY)    continue;
 					if (s->ubGroupID != other->ubGroupID) continue;
 				}
 				else
-				{ // Check to see if the location is the same
+				{ // Same sector, awake and present, and not passing through
 					if (other->sSector != s->sSector) continue;
+					if (!MercAvailableToBond(other))  continue;
 
 					// if the OTHER soldier is in motion then we don't do anything!
 					if (other->ubGroupID != 0 && PlayerIDGroupInMotion(other->ubGroupID))
