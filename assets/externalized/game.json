@@ -67,6 +67,12 @@
   //  vanilla setting: false
   "multiple_interrupts": false,
 
+  // Lets a merc who already sees an enemy, and who that enemy does not see, get an interrupt duel the moment that enemy
+  // spots him (the merc enters the enemy's opplist as seen). Normally interrupts only fire when an enemy is newly sighted.
+  // The enemy's alert status does not matter, only that this enemy did not have this merc in sight. Player's team only.
+  // vanilla setting: false
+  "allow_overwatch_interrupt": false,
+
   // Boosting stats like agility, dexterity, exp. level and health absurdly increases the action points cost to shoot.
   // With this option on: the better the stats the fewer APs will be needed.
   // vanilla setting: false

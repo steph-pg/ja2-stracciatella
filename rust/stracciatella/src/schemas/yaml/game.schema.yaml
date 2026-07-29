@@ -103,6 +103,18 @@ properties:
       (say your buddies took care of it), you'd still get skipped for any further interrupts. Annoying in ambushes or when sneaking.
 
       Vanilla setting: `false`
+  allow_overwatch_interrupt:
+    type: boolean
+    title: Allow overwatch interrupt
+    description: |
+      Lets a merc who already has an enemy in sight, and who that enemy does not see, get an interrupt duel the moment that
+      enemy spots him (the merc enters the enemy's personal opplist as seen). Normally interrupts only trigger when an enemy is
+      newly sighted, so a merc watching an unaware enemy could not react when it turned around. Useful for overwatch/ambush
+      setups (e.g. sneaking one merc into melee range while a second covers). The enemy's alert status does not matter, only
+      that this particular enemy did not have this particular merc in sight - so an enemy that loses sight of a merc and
+      re-acquires him gives that merc a fresh interrupt chance. Only benefits the player's team; the AI does not use it.
+
+      Vanilla setting: `false`
   enemy_weapon_minimal_status:
     $ref: types/percentage.schema.yaml
     title: Minimal status of enemy weapons
@@ -515,6 +527,7 @@ required:
   - drop_everything
   - all_drops_visible
   - multiple_interrupts
+  - allow_overwatch_interrupt
   - enemy_weapon_minimal_status
   - squad_size
   - ai

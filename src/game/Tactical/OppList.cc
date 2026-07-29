@@ -102,6 +102,14 @@ UINT8 gubPublicNoiseVolume[MAXTEAMS];
 INT16 gsPublicNoiseGridno[MAXTEAMS];
 INT8	gbPublicNoiseLevel[MAXTEAMS];
 
+// For each soldier, the looker who picked him up as SEEN_CURRENTLY during the look
+// being handled right now (NOBODY if nobody did), i.e. whose opplist he only just
+// entered. Lets the overwatch interrupt tell "this enemy has only just spotted my merc"
+// apart from "this enemy has had my merc in sight for a while". Written and read within
+// a single HandleSight(), which wipes it both on entry and on exit - so it needs no room
+// in the save game, and nothing outside of a look can be influenced by it.
+static UINT8 gubJustSpottedBy[TOTAL_SOLDIERS];
+
 UINT8 gubKnowledgeValue[10][10] =
 {
 	//   P E R S O N A L   O P P L I S T  //
@@ -618,6 +626,18 @@ static void OurTeamRadiosRandomlyAbout(SOLDIERTYPE* about);
 static void OtherTeamsLookForMan(SOLDIERTYPE* pOpponent);
 
 
+bool WasJustSpottedBy(SOLDIERTYPE const& seen, SOLDIERTYPE const& looker)
+{
+	return gubJustSpottedBy[seen.ubID] == looker.ubID;
+}
+
+
+static void ForgetWhoWasJustSpotted()
+{
+	std::fill_n(gubJustSpottedBy, TOTAL_SOLDIERS, static_cast<UINT8>(NOBODY));
+}
+
+
 static bool IsSoldierValidForSightings(SOLDIERTYPE const& s)
 {
 	extern INT32 iHelicopterVehicleId; 	// I don't want to include a map screen header file for this
@@ -635,6 +655,9 @@ void HandleSight(SOLDIERTYPE& s, SightFlags const sight_flags)
 	if (!IsSoldierValidForSightings(s)) return;
 
 	gubSightFlags = sight_flags;
+
+	// the records of who was freshly spotted only describe the look we are about to do
+	ForgetWhoWasJustSpotted();
 
 	if (gubBestToMakeSightingSize != BEST_SIGHTING_ARRAY_SIZE_ALL_TEAMS_LOOK_FOR_ALL)
 	{
@@ -761,6 +784,11 @@ void HandleSight(SOLDIERTYPE& s, SightFlags const sight_flags)
 			them.bNewOppCnt = 0;
 		}
 	}
+
+	// Drop the fresh sighting records again, so that code running outside of a look -
+	// noise interrupts, NoticeUnseenAttacker() - never sees them and keeps behaving
+	// exactly as it does with the overwatch interrupt policy turned off
+	ForgetWhoWasJustSpotted();
 
 	// CJC August 13 2002: At the end of handling sight, reset sight flags to
 	// allow interrupts in case an audio cue should cause someone to see an enemy
@@ -1780,6 +1808,11 @@ static void ManSeesMan(SOLDIERTYPE& s, SOLDIERTYPE& opponent, UINT8 const caller
 		{
 			AddOneOpponent(&s);
 			SLOGD("ManSeesMan: ID {}({}) to ID {} NEW TO ME", s.ubID, s.name, opponent.ubID);
+
+			// remember that the opponent is entering our opplist as SEEN_CURRENTLY only
+			// now - he wasn't in sight a moment ago. ResolveInterruptsVs() uses this to
+			// grant the overwatch interrupt to a merc the looker didn't see until now.
+			gubJustSpottedBy[opponent.ubID] = s.ubID;
 
 			// if we also haven't seen him earlier this turn
 			if (s.bOppList[opponent.ubID] != SEEN_THIS_TURN)

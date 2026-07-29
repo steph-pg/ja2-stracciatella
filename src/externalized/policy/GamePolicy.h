@@ -44,6 +44,8 @@ public:
 
 	bool multiple_interrupts;             // can interrupt more than once per turn
 
+	bool allow_overwatch_interrupt;       // a player merc who already sees an enemy that does not see him gets an interrupt duel the moment that enemy spots him (the merc enters the enemy's opplist as SEEN_CURRENTLY). Independent of the enemy's alert status
+
 	bool fixed_cost_to_shoot;    // Changes the formula for APs to shoot
 
 	int8_t enemy_weapon_minimal_status;   /**< Minimal status of the enemy weapon (0 - 100). */

@@ -1009,6 +1009,15 @@ BOOLEAN StandardInterruptConditionsMet(const SOLDIERTYPE* const pSoldier, const 
 		return( FALSE );
 	}
 
+	// Is this the one situation the overwatch interrupt policy is about - our merc has
+	// the opponent in sight, the opponent did not have him in sight and picks him up only
+	// now? This is the exact same condition ResolveInterruptsVs() tests, so that relaxing
+	// a rule below cannot affect any of the other callers of this function (noise
+	// interrupts, NoticeUnseenAttacker, best sighting position) while the policy is on.
+	const bool fOverwatchCase = gamepolicy(allow_overwatch_interrupt) &&
+		pSoldier->bTeam == OUR_TEAM &&
+		pOpponent != NULL &&
+		WasJustSpottedBy(*pSoldier, *pOpponent);
 
 	// the bare minimum default is enough APs left to TURN
 	ubMinPtsNeeded = AP_CHANGE_FACING;
@@ -1067,7 +1076,15 @@ BOOLEAN StandardInterruptConditionsMet(const SOLDIERTYPE* const pSoldier, const 
 			// if pSoldier already saw the opponent last "look" or at least this turn
 			if ((bOldOppList == SEEN_CURRENTLY) || (bOldOppList == SEEN_THIS_TURN))
 			{
-				return(FALSE);     // no interrupt is possible
+				// This is the only vanilla rule the overwatch interrupt relaxes: a merc
+				// that already had the opponent in sight normally gets no interrupt, which
+				// is exactly what stops a merc watching an unaware enemy from reacting when
+				// that enemy turns around. Let it through in the overwatch case only, so
+				// ResolveInterruptsVs() can run a duel; all the other checks still apply.
+				if (!fOverwatchCase)
+				{
+					return(FALSE);     // no interrupt is possible
+				}
 			}
 
 			// if the soldier is behind him and not very close, forget it
@@ -1077,6 +1094,12 @@ BOOLEAN StandardInterruptConditionsMet(const SOLDIERTYPE* const pSoldier, const 
 				// directly behind; allow interrupts only within # of tiles equal to level
 				if ( PythSpacesAway( pSoldier->sGridNo, pOpponent->sGridNo ) > EffectiveExpLevel( pSoldier ) )
 				{
+					if (fOverwatchCase)
+					{
+						SLOGD("Overwatch reject: watcher {} has enemy {} directly behind it and {} tiles away > expLevel {}",
+									pSoldier->ubID, pOpponent->ubID,
+									PythSpacesAway(pSoldier->sGridNo, pOpponent->sGridNo), EffectiveExpLevel(pSoldier));
+					}
 					return( FALSE );
 				}
 			}
@@ -1107,12 +1130,22 @@ BOOLEAN StandardInterruptConditionsMet(const SOLDIERTYPE* const pSoldier, const 
 	// soldiers without sufficient APs to do something productive can't interrupt
 	if (pSoldier->bActionPoints < ubMinPtsNeeded)
 	{
+		if (fOverwatchCase)
+		{
+			SLOGD("Overwatch reject: watcher {} has {} APs < {} needed",
+						pSoldier->ubID, pSoldier->bActionPoints, ubMinPtsNeeded);
+		}
 		return(FALSE);
 	}
 
 	// soldier passed on the chance to react during previous interrupt this turn
 	if (pSoldier->bPassedLastInterrupt && !gamepolicy(multiple_interrupts))
 	{
+		if (fOverwatchCase)
+		{
+			SLOGD("Overwatch reject: watcher {} passed last interrupt this turn (multiple_interrupts off)",
+						pSoldier->ubID);
+		}
 		return(FALSE);
 	}
 
@@ -1544,6 +1577,40 @@ void ResolveInterruptsVs( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType)
 							SLOGD("Resetting int pts for {} - DOESN'T SEE ON SIGHT INTERRUPT!?",
 										pOpponent->ubID);
 							continue;
+						}
+
+						// Overwatch interrupt: normally a merc that already had this enemy in sight
+						// gets no interrupt duel points (interrupts only fire on a *new* sighting), so
+						// pOpponent->bInterruptDuelPts is NO_INTERRUPT here. When the enemy did not see
+						// that merc and only now picks him up (the merc enters the enemy's opplist as
+						// SEEN_CURRENTLY), let the merc attempt an interrupt anyway - he was watching an
+						// enemy that was unaware of him and gets his reaction the moment he is spotted.
+						// Restricted to our team; the enemy's alert status does not matter, only that
+						// this particular enemy did not have this particular merc in sight.
+						if (gamepolicy(allow_overwatch_interrupt) &&
+							ubInterruptType == SIGHTINTERRUPT &&
+							pOpponent->bTeam == OUR_TEAM &&
+							pSoldier->bTeam != OUR_TEAM)
+						{
+							// We are in the interesting case (policy on, sight interrupt, our merc
+							// watching an enemy). Log each remaining sub-condition so it is obvious
+							// from the debug log which one is blocking the overwatch interrupt.
+							const bool fNoDuelPtsYet       = (pOpponent->bInterruptDuelPts == NO_INTERRUPT);
+							const bool fJustSpottedTheMerc = WasJustSpottedBy(*pOpponent, *pSoldier);
+							const bool fStdConditions      = StandardInterruptConditionsMet(pOpponent, pSoldier, pOpponent->bOppList[pSoldier->ubID]);
+
+							SLOGD("Overwatch check: watcher {} vs enemy {} - noDuelPtsYet={} enemyJustSpottedWatcher={} stdCond={}",
+										pOpponent->ubID, pSoldier->ubID, fNoDuelPtsYet, fJustSpottedTheMerc, fStdConditions);
+
+							if (fNoDuelPtsYet && fJustSpottedTheMerc && fStdConditions)
+							{
+								// Scored by the vanilla rules, exactly like the sighting interrupt the
+								// merc would have got had he only just spotted this enemy himself -
+								// watched location bonus included, passive range penalty and all
+								pOpponent->bInterruptDuelPts = CalcInterruptDuelPts(pOpponent, pSoldier, TRUE);
+								SLOGD("Overwatch interrupt: {} gets {} pts vs {} who just spotted him",
+											pOpponent->ubID, pOpponent->bInterruptDuelPts, pSoldier->ubID);
+							}
 						}
 
 						switch (pOpponent->bInterruptDuelPts)
