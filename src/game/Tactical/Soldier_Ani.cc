@@ -43,6 +43,7 @@
 #include "NPC.h"
 #include "Meanwhile.h"
 #include "Explosion_Control.h"
+#include "FOV.h"
 #include "LOS.h"
 #include "GameSettings.h"
 #include "Boxing.h"
@@ -82,6 +83,15 @@ static const float  gClimbUpRoofDist[NUMSOLDIERBODYTYPES]           = { 2.0f, 0.
 static const DOUBLE gClimbUpRoofLATDist[NUMSOLDIERBODYTYPES]        = { 0.7, 0.5, 0.7, 0.5 };
 static const DOUBLE gClimbDownRoofStartDist[NUMSOLDIERBODYTYPES]    = { 5.0, 1.0, 1, 1 };
 static const DOUBLE gClimbUpRoofDistGoingLower[NUMSOLDIERBODYTYPES] = { 0.9, 0.1, 1, 1 };
+
+
+// A fence occupies a tile of its own, so hopping one covers two tiles. A window sits on
+// the edge between two tiles, so climbing through it only covers one - move at half pace.
+static FLOAT HopFenceMoveDist(const SOLDIERTYPE* const pSoldier, const DOUBLE (&dists)[NUMSOLDIERBODYTYPES])
+{
+	const DOUBLE dDist = dists[pSoldier->ubBodyType];
+	return (FLOAT)(pSoldier->fClimbingWindow ? dDist / 2 : dDist);
+}
 
 
 static void CheckForAndHandleSoldierIncompacitated(SOLDIERTYPE* pSoldier);
@@ -496,12 +506,12 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						case SOUTH:
 						case EAST:
 
-							MoveMercFacingDirection( pSoldier, FALSE, (FLOAT)gHopFenceForwardSEDist[ pSoldier->ubBodyType ] );
+							MoveMercFacingDirection( pSoldier, FALSE, HopFenceMoveDist( pSoldier, gHopFenceForwardSEDist ) );
 							break;
 
 						case NORTH:
 						case WEST:
-							MoveMercFacingDirection( pSoldier, FALSE, (FLOAT)gHopFenceForwardNWDist[ pSoldier->ubBodyType ] );
+							MoveMercFacingDirection( pSoldier, FALSE, HopFenceMoveDist( pSoldier, gHopFenceForwardNWDist ) );
 							break;
 					}
 					break;
@@ -510,6 +520,37 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					// CODE: End Hop Fence
 					// MOVE TO FORCASTED GRIDNO
 					EVENT_SetSoldierPosition(pSoldier, pSoldier->sForcastGridno, SSP_NO_DEST | SSP_NO_FINAL_DEST);
+
+					if ( pSoldier->fClimbingWindow )
+					{
+						// We are through the window - stay put, keep facing the way we jumped
+						// and settle into the crouch this animation ends in
+						pSoldier->fClimbingWindow = FALSE;
+						pSoldier->sZLevelOverride = -1;
+						EVENT_SetSoldierDesiredDirection( pSoldier, pSoldier->bDirection );
+
+						pSoldier->sDestination      = pSoldier->sGridNo;
+						pSoldier->sFinalDestination = pSoldier->sGridNo;
+						pSoldier->sDestXPos         = (INT16)pSoldier->dXPos;
+						pSoldier->sDestYPos         = (INT16)pSoldier->dYPos;
+
+						pSoldier->ubDesiredHeight   = ANIM_CROUCH;
+						pSoldier->usUIMovementMode  = GetMoveStateBasedOnStance( pSoldier, ANIM_CROUCH );
+
+						pSoldier->fInNonintAnim = FALSE;
+						SoldierGotoStationaryStance( pSoldier );
+
+						if (pSoldier->bTeam == OUR_TEAM)
+						{
+							UnSetUIBusy(pSoldier);
+							fInterfacePanelDirty = DIRTYLEVEL2;
+						}
+
+						RevealRoofsAndItems( pSoldier, TRUE );
+						HandleSight(*pSoldier, SIGHT_LOOK | SIGHT_RADIO | SIGHT_INTERRUPT);
+						return( TRUE );
+					}
+
 					EVENT_SetSoldierDirection(pSoldier, TwoCDirection(pSoldier->bDirection));
 					pSoldier->sZLevelOverride = -1;
 					EVENT_SetSoldierDesiredDirection( pSoldier, pSoldier->bDirection );
@@ -558,13 +599,13 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						case SOUTH:
 						case EAST:
 
-							MoveMercFacingDirection( pSoldier, FALSE, (FLOAT)gHopFenceForwardFullSEDist[ pSoldier->ubBodyType ] );
+							MoveMercFacingDirection( pSoldier, FALSE, HopFenceMoveDist( pSoldier, gHopFenceForwardFullSEDist ) );
 							break;
 
 						case NORTH:
 						case WEST:
 
-							MoveMercFacingDirection( pSoldier, FALSE, (FLOAT)gHopFenceForwardFullNWDist[ pSoldier->ubBodyType ] );
+							MoveMercFacingDirection( pSoldier, FALSE, HopFenceMoveDist( pSoldier, gHopFenceForwardFullNWDist ) );
 							break;
 
 					}
@@ -739,10 +780,21 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				case 450:
 
 					//CODE: BEGINHOPFENCE
-					// MOVE TWO FACGIN GRIDNOS
-					sNewGridNo = NewGridNo( (UINT16)pSoldier->sGridNo, DirectionInc( pSoldier->bDirection ) );
-					sNewGridNo = NewGridNo( (UINT16)sNewGridNo, DirectionInc( pSoldier->bDirection ) );
-					pSoldier->sForcastGridno = sNewGridNo;
+					if ( pSoldier->fClimbingWindow )
+					{
+						// The window is on the tile edge, so we land on the very next tile
+						pSoldier->sForcastGridno = pSoldier->sTempNewGridNo;
+					}
+					else
+					{
+						// MOVE TWO FACGIN GRIDNOS
+						// Worked out here rather than read from sTempNewGridNo: that one is
+						// saved with the game, so a save from an older build would carry a
+						// landing tile in the old meaning
+						sNewGridNo = NewGridNo( (UINT16)pSoldier->sGridNo, DirectionInc( pSoldier->bDirection ) );
+						sNewGridNo = NewGridNo( (UINT16)sNewGridNo, DirectionInc( pSoldier->bDirection ) );
+						pSoldier->sForcastGridno = sNewGridNo;
+					}
 					break;
 
 

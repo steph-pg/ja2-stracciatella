@@ -582,6 +582,9 @@ BOOLEAN IsFacingClimableWindow( SOLDIERTYPE const* const pSoldier )
 	GridNo const sGridNo = pSoldier->sGridNo;
 	INT8 const bStartingDir=pSoldier->bDirection;
 
+	// Only from the ground floor
+	if (pSoldier->bLevel != 0) return false;
+
 	// WANNE: No need to check on SOUTH and EAST tile, because it is the tile that has the fence we are standing on!
 	if (bStartingDir == NORTH || bStartingDir == WEST)
 	{
