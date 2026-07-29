@@ -358,6 +358,16 @@ static void BtnTimeCompressMoreMapScreenCallback(GUI_BUTTON *btn, UINT32 reason)
 	{
 		CommonTimeCompressionChecks();
 	}
+	// right click compresses time until the next hour, then stops again
+	else if (reason & MSYS_CALLBACK_REASON_RBUTTON_UP)
+	{
+		if (CommonTimeCompressionChecks()) return;
+
+		fMapScreenBottomDirty = TRUE;
+		SetGameTimeCompressionLevel(TIME_COMPRESS_60MINS);
+		// only arm the stop if we were actually allowed to start compressing
+		gfStopTimeCompressionNextHour = IsTimeCompressionOn();
+	}
 }
 
 
