@@ -427,6 +427,16 @@ BOOLEAN AttemptToPickLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	{
 		// NOTE: failures are not rewarded, since you can keep trying indefinitely...
 
+		// a botched attempt bends the picks, so wear the kit down - tougher locks
+		// chew through it faster
+		INT8 const bSlot = FindObj( pSoldier, LOCKSMITHKIT );
+		if ( bSlot != NO_SLOT )
+		{
+			int const bStress = std::min(100, pLock->ubPickDifficulty + 30);
+			// reduce kit status by a random % between 0 and 5%
+			DamageObj( &(pSoldier->inv[ bSlot ]), (INT8) PreRandom( bStress / 20 ) );
+		}
+
 		// check for traps
 		return( FALSE );
 	}
