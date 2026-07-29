@@ -1222,7 +1222,6 @@ void UseHandToHand(SOLDIERTYPE* const pSoldier, INT16 const sTargetGridNo, BOOLE
 				// modify by hit location (as knives and bullets do); for punches this
 				// scales both breath and life damage since they are split from the same
 				// value downstream in EVENT_SoldierGotHit
-				// (the crit impact is unused here, but the helper requires it)
 				INT32 iImpactForCrits;
 				AdjustImpactByHitLocation( iImpact, pSoldier->bAimShotLocation, &iImpact, &iImpactForCrits );
 
