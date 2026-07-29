@@ -3548,6 +3548,10 @@ void MoveBullet(BULLET* const pBullet)
 		// assemble list of structures we might hit!
 		iNumLocalStructures = 0;
 		pStructure = pMapElement->pStructureHead;
+
+		// reset roof structure pointer each tile
+		pRoofStructure = NULL;
+
 		// calculate chance of hitting each structure
 		uiChanceOfHit = ChanceOfBulletHittingStructure( pBullet->iLoop, pBullet->iDistanceLimit, pBullet->sHitBy );
 		if (iGridNo == (INT32) pBullet->sTargetGridNo)
