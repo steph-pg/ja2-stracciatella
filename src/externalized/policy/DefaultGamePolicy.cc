@@ -21,6 +21,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	multiple_interrupts = gp.getOptionalBool("multiple_interrupts");
 
+	allow_overwatch_interrupt = gp.getOptionalBool("allow_overwatch_interrupt");
+
 	fixed_cost_to_shoot = gp.getOptionalBool("fixed_cost_to_shoot");
 
 	enemy_weapon_minimal_status = gp.getOptionalInt("enemy_weapon_minimal_status", 0);

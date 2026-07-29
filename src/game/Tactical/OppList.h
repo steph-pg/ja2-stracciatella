@@ -110,6 +110,10 @@ void OurNoise(SOLDIERTYPE* noise_maker, INT16 sGridNo, INT8 bLevel, UINT8 ubVolu
 
 void ResolveInterruptsVs( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType);
 
+// TRUE if 'looker' has picked up 'seen' as SEEN_CURRENTLY during the look currently
+// being handled, i.e. 'seen' was NOT in 'looker's sight immediately before it
+bool WasJustSpottedBy(const SOLDIERTYPE& seen, const SOLDIERTYPE& looker);
+
 void VerifyAndDecayOpplist(SOLDIERTYPE *pSoldier);
 void DecayIndividualOpplist(SOLDIERTYPE *pSoldier);
 void VerifyPublicOpplistDueToDeath( SOLDIERTYPE * pSoldier );
