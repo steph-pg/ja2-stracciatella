@@ -388,6 +388,7 @@ struct SOLDIERTYPE
 	INT16 sHeightAdjustment;
 	INT16 sDesiredHeight;
 	INT16 sTempNewGridNo; // New grid no for advanced animations
+	BOOLEAN fClimbingWindow; // Hop fence animation is being used to climb through a window
 	INT8 bOverTerrainType;
 
 	INT8 bCollapsed; // collapsed due to being out of APs
