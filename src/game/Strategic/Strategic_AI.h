@@ -49,6 +49,10 @@ size_t FindPatrolGroupIndexForGroupID( UINT8 ubGroupID );
 
 void RepollSAIGroup( GROUP *pGroup );
 
+//Hands soldiers back to the queen's pool of reinforcements in noman's land, so she can
+//redeploy them later.  Used for soldiers that got away from a battle alive.
+void ReturnSoldiersToQueensPool( UINT8 ubNumSoldiers );
+
 
 extern BOOLEAN gfDisplayStrategicAILogs;
 extern BOOLEAN gfFirstBattleMeanwhileScenePending;
