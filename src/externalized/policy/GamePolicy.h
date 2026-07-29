@@ -117,6 +117,8 @@ public:
 
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
 
+	uint8_t enemy_autoresolve_retreat_health_percent; // Health (in percent of maximum) below which enemy soldiers flee an autoresolve battle; 0 disables enemy retreating
+
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
 

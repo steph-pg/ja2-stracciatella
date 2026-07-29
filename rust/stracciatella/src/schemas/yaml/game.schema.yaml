@@ -484,6 +484,21 @@ properties:
 
       Vanilla setting: `false`
 
+  enemy_autoresolve_retreat_health_percent:
+    $ref: types/percentage.schema.yaml
+    title: Enemy autoresolve retreat health threshold
+    description: |
+      Health, in percent of their maximum, below which enemy soldiers break off
+      an autoresolve battle and run for it. Soldiers that make it out are handed
+      back to the queen's pool of reinforcements instead of being killed.
+
+      Militia and creatures never retreat.
+
+      Set to `0` for the vanilla behaviour, where enemies always fight to the
+      death.
+
+      Vanilla setting: `0`
+
   campaign:
     type: object
     properties:
@@ -544,4 +559,5 @@ required:
   - unhired_merc_deaths_medium
   - unhired_merc_deaths_hard
   - enable_stat_healing
+  - enemy_autoresolve_retreat_health_percent
   - campaign

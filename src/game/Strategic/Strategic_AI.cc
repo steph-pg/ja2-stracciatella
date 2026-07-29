@@ -3372,6 +3372,12 @@ size_t FindPatrolGroupIndexForGroupID( UINT8 ubGroupID )
 }
 
 
+void ReturnSoldiersToQueensPool( UINT8 const ubNumSoldiers )
+{
+	giReinforcementPool += ubNumSoldiers;
+}
+
+
 static void TransferGroupToPool(GROUP** pGroup)
 {
 	giReinforcementPool += (*pGroup)->ubGroupSize;

@@ -12,6 +12,7 @@
 #include "Game_Event_Hook.h"
 #include "GameInstance.h"
 #include "GameLoop.h"
+#include "GamePolicy.h"
 #include "GameScreen.h"
 #include "HImage.h"
 #include "Input.h"
@@ -19,6 +20,7 @@
 #include "Isometric_Utils.h"
 #include "Items.h"
 #include "Local.h"
+#include "Logger.h"
 #include "Map_Information.h"
 #include "MapScreen.h"
 #include "Meanwhile.h"
@@ -1767,6 +1769,14 @@ static void RemoveAutoResolveInterface()
 	{
 		if (!gpEnemies[i].pSoldier) continue;
 		SOLDIERTYPE& s = *gpEnemies[i].pSoldier;
+		if (gpEnemies[i].uiFlags & CELL_RETREATED)
+		{	/* He got away.  Take him out of the sector garrison or mobile group he
+			 * belonged to -- same bookkeeping as a death, minus the corpse and the
+			 * kill -- and hand him back to the queen as a reinforcement. */
+			ProcessQueenCmdImplicationsOfDeath(&s);
+			ReturnSoldiersToQueensPool(1);
+			continue;
+		}
 		if (s.bLife >= OKLIFE) continue;
 		TrackEnemiesKilled(ENEMY_KILLED_IN_AUTO_RESOLVE, s.ubSoldierClass);
 		HandleGlobalLoyaltyEvent(GLOBAL_LOYALTY_ENEMY_KILLED, arSector);
@@ -2367,8 +2377,10 @@ static void RenderSoldierCellHealth(SOLDIERCELL* pCell)
 		usColor = FONT_BLACK;
 	}
 
-	//Draw the retreating text, if applicable
-	if( pCell->uiFlags & CELL_RETREATED && gpAR->ubBattleStatus != BATTLE_VICTORY )
+	//Draw the retreating text, if applicable.  Enemies that ran away keep the label
+	//even after the player wins the battle, as they are no longer part of it.
+	if( pCell->uiFlags & CELL_RETREATED &&
+		( pCell->uiFlags & CELL_ENEMY || gpAR->ubBattleStatus != BATTLE_VICTORY ) )
 	{
 		usColor = FONT_LTGREEN;
 		pStr = gpStrategicString[STR_AR_MERC_RETREATED];
@@ -2732,7 +2744,7 @@ static SOLDIERCELL* ChooseTarget(SOLDIERCELL* pAttacker)
 		while( iAvailableTargets )
 		{
 			pTarget = &gpEnemies[ index ];
-			if( !pTarget->pSoldier->bLife )
+			if( !pTarget->pSoldier->bLife || pTarget->uiFlags & CELL_RETREATED )
 			{
 				index++;
 				iAvailableTargets--;
@@ -2823,6 +2835,33 @@ static BOOLEAN TargetHasLoadedGun(SOLDIERTYPE* pSoldier)
 		}
 	}
 	return FALSE;
+}
+
+
+/* Badly wounded enemy soldiers break off the fight and run for it.  Militia don't
+ * get the option (the player has no way to order them around), and creatures
+ * never retreat.  It works the same way it does for a retreating merc:  the
+ * soldier stops shooting and has to survive about two more attack cycles before
+ * he is out of the battle -- see the CELL_RETREATING handling in
+ * ProcessBattleFrame(). */
+static void CheckForEnemyRetreat(SOLDIERCELL* const pCell)
+{
+	UINT8 const ubHealthPercent = gamepolicy(enemy_autoresolve_retreat_health_percent);
+	if (!ubHealthPercent)                                    return;
+	if (!(pCell->uiFlags & CELL_ENEMY))                      return;
+	if (pCell->uiFlags & (CELL_RETREATING | CELL_RETREATED)) return;
+
+	SOLDIERTYPE const& s = *pCell->pSoldier;
+	//Anybody who went down stays down.
+	if (s.bLife < OKLIFE)                                 return;
+	if (s.bLife * 100 >= s.bLifeMax * ubHealthPercent)    return;
+
+	pCell->uiFlags      |= CELL_RETREATING | CELL_DIRTY;
+	//Gets to retreat after a total of 2 attacks.
+	pCell->usNextAttack  = (UINT16)((1000 + pCell->usNextAttack * 2 + PreRandom(2000 - pCell->usAttack)) * 2);
+	gpAR->usEnemyAttack -= pCell->usAttack;
+	pCell->usAttack      = 0;
+	SLOGD("Autoresolve: enemy {} is retreating with {} of {} health", s.ubID, s.bLife, s.bLifeMax);
 }
 
 
@@ -3057,6 +3096,7 @@ static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
 			}
 		}
 		pTarget->uiFlags |= CELL_HITBYATTACKER | CELL_DIRTY;
+		CheckForEnemyRetreat( pTarget );
 	}
 }
 
@@ -3240,6 +3280,7 @@ static void TargetHitCallback(SOLDIERCELL* pTarget, INT32 index)
 		}
 	}
 	pTarget->uiFlags |= CELL_HITBYATTACKER | CELL_DIRTY;
+	CheckForEnemyRetreat( pTarget );
 }
 
 
@@ -3374,6 +3415,8 @@ static BOOLEAN AttemptPlayerCapture(void)
 	FOR_EACH_AR_ENEMY(i)
 	{
 		if (i->pSoldier->bLife < OKLIFE) continue;
+		//Soldiers on their way out of the battle aren't going to take prisoners.
+		if (i->uiFlags & (CELL_RETREATING | CELL_RETREATED)) continue;
 		++iConciousEnemies;
 	}
 	if( iConciousEnemies < gpAR->ubAliveMercs * 2 )
@@ -3665,7 +3708,7 @@ static void ProcessBattleFrame(void)
 			else
 			{
 				if( pAttacker->uiFlags & CELL_RETREATING )
-				{ //The merc has successfully retreated.  Remove the stats, and continue on.
+				{ //The soldier has successfully retreated.  Remove the stats, and continue on.
 					if( pAttacker == gpAR->pRobotCell )
 					{
 						if (gpAR->pRobotCell->pSoldier->robot_remote_holder == NULL)
@@ -3676,9 +3719,18 @@ static void ProcessBattleFrame(void)
 							continue;
 						}
 					}
-					gpAR->usPlayerDefence -= pAttacker->usDefence;
+					if( pAttacker->uiFlags & CELL_ENEMY )
+					{ //One less enemy to deal with -- he is handed back to the queen when we leave.
+						gpAR->usEnemyDefence -= pAttacker->usDefence;
+						gpAR->ubAliveEnemies--;
+						gpAR->fRenderAutoResolve = TRUE;
+					}
+					else
+					{
+						gpAR->usPlayerDefence -= pAttacker->usDefence;
+					}
 					pAttacker->usDefence = 0;
-					pAttacker->uiFlags |= CELL_RETREATED;
+					pAttacker->uiFlags |= CELL_RETREATED | CELL_DIRTY;
 					continue;
 				}
 				if( pAttacker->usAttack )

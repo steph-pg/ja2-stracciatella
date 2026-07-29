@@ -226,6 +226,12 @@
 
   "enable_stat_healing": false,
 
+  //  Health (in percent of their maximum) below which enemy soldiers break off
+  //  an autoresolve battle and run for it. Survivors are handed back to the
+  //  queen's pool of reinforcements. Militia and creatures never retreat.
+  //  vanilla setting: 0 (enemies always fight to the death)
+  "enemy_autoresolve_retreat_health_percent": 0,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {
