@@ -3605,19 +3605,19 @@ action_punch_pc:
 				break;
 
 			case NPC_ACTION_GRANT_EXPERIENCE_1:
-				AwardExperienceBonusToActiveSquad( EXP_BONUS_MINIMUM );
+				AwardExperienceBonus( EXP_BONUS_MINIMUM );
 				break;
 			case NPC_ACTION_GRANT_EXPERIENCE_2:
-				AwardExperienceBonusToActiveSquad( EXP_BONUS_SMALL );
+				AwardExperienceBonus( EXP_BONUS_SMALL );
 				break;
 			case NPC_ACTION_GRANT_EXPERIENCE_3:
-				AwardExperienceBonusToActiveSquad( EXP_BONUS_AVERAGE );
+				AwardExperienceBonus( EXP_BONUS_AVERAGE );
 				break;
 			case NPC_ACTION_GRANT_EXPERIENCE_4:
-				AwardExperienceBonusToActiveSquad( EXP_BONUS_LARGE );
+				AwardExperienceBonus( EXP_BONUS_LARGE );
 				break;
 			case NPC_ACTION_GRANT_EXPERIENCE_5:
-				AwardExperienceBonusToActiveSquad( EXP_BONUS_MAXIMUM );
+				AwardExperienceBonus( EXP_BONUS_MAXIMUM );
 				break;
 			case NPC_ACTION_TRIGGER_YANNI:
 				if ( CheckFact( FACT_CHALICE_STOLEN, 0 ) == TRUE )
