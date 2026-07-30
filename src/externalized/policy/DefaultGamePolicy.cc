@@ -122,6 +122,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	progressive_weight_penalties = gp.getOptionalBool("progressive_weight_penalties", true);
 
+	quest_experience_all_mercs = gp.getOptionalBool("quest_experience_all_mercs", true);
+
 	auto_sleep_breath_threshold = gp.getOptionalInt("auto_sleep_breath_threshold", 50);
 
 	enemy_autoresolve_retreat_health_percent = gp.getOptionalUInt("enemy_autoresolve_retreat_health_percent", 40);

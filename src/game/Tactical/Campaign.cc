@@ -1324,7 +1324,7 @@ void HourlyProgressUpdate(void)
 	}
 }
 
-void AwardExperienceBonusToActiveSquad( UINT8 ubExpBonusType )
+void AwardExperienceBonus( UINT8 ubExpBonusType )
 {
 	UINT16 usXPs = 0;
 
@@ -1349,16 +1349,25 @@ void AwardExperienceBonusToActiveSquad( UINT8 ubExpBonusType )
 			break;
 	}
 
-	// to do: find guys in sector on the currently active squad, those that are conscious get this amount in XPs
+	// conscious guys in sector on the currently active squad get this amount in XPs,
+	// or every conscious merc on the team wherever he is, if the policy says so
+	bool const fEveryone = gamepolicy(quest_experience_all_mercs);
+
 	FOR_EACH_IN_TEAM(s, OUR_TEAM)
 	{
-		if (s->bInSector &&
-			IsMercOnCurrentSquad(s) &&
-			s->bLife >= CONSCIOUSNESS &&
-			!IsMechanical(*s))
+		if (s->bLife < CONSCIOUSNESS || IsMechanical(*s)) continue;
+
+		if (fEveryone)
 		{
-			StatChange(*s, EXPERAMT, usXPs, FROM_SUCCESS);
+			// guys who haven't landed yet, or are sitting in a cell, are out of the loop
+			if (s->bAssignment == IN_TRANSIT || s->bAssignment == ASSIGNMENT_POW) continue;
 		}
+		else if (!s->bInSector || !IsMercOnCurrentSquad(s))
+		{
+			continue;
+		}
+
+		StatChange(*s, EXPERAMT, usXPs, FROM_SUCCESS);
 	}
 }
 
