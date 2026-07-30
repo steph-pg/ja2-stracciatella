@@ -86,7 +86,9 @@ void HourlyProgressUpdate(void);
 
 void HandleAnyStatChangesAfterAttack( void );
 
-void AwardExperienceBonusToActiveSquad( UINT8 ubExpBonusType );
+// Grants a quest reward's worth of XPs to the mercs on the currently active squad,
+// or to every merc on the team, depending on the quest_experience_all_mercs policy
+void AwardExperienceBonus( UINT8 ubExpBonusType );
 
 ST::string BuildStatChangeString(const ST::string& name, BOOLEAN fIncrease, INT16 sPtsChanged, StatKind ubStat);
 

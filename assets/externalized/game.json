@@ -308,6 +308,12 @@
   //    false - vanilla behaviour: no penalties until above 100% of capacity.
   "progressive_weight_penalties": false,
 
+  //  Who collects the experience a quest hands out when it is closed.
+  //    true  - every merc on the team, in whatever sector he happens to be.
+  //    false - vanilla behaviour: only the squad standing there at the time.
+  //  Mercs who are unconscious, still in transit or held prisoner never collect.
+  "quest_experience_all_mercs": true,
+
   //  Max breath below which a merc who is not on a squad and not in a vehicle
   //  goes to sleep on his own during the hourly update, interrupting whatever
   //  assignment he is on. Mercs on a squad or in a vehicle are unaffected: they

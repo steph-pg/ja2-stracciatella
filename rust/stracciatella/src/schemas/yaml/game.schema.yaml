@@ -593,6 +593,23 @@ properties:
 
       Vanilla setting: `false`
 
+  quest_experience_all_mercs:
+    type: boolean
+    title: Quest experience for all mercs
+    description: |
+      Selects who collects the experience a quest hands out when it is closed.
+
+      When `true`, every merc on the team collects it, in whatever sector he
+      happens to be.
+
+      When `false`, the vanilla behaviour is used: only the mercs of the squad
+      standing in the sector where the quest was closed collect it.
+
+      Either way, mercs who are unconscious, still in transit or held prisoner
+      collect nothing.
+
+      Vanilla setting: `false`
+
   auto_sleep_breath_threshold:
     $ref: types/int8.schema.yaml
     title: Automatic sleep breath threshold

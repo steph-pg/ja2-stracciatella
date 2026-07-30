@@ -146,6 +146,8 @@ public:
 
 	bool progressive_weight_penalties;	// true: carried weight penalizes APs/agility/breath/strategic movement from any load, scaling non-linearly. false: vanilla penalties (only above 100% capacity).
 
+	bool quest_experience_all_mercs;      // true: quest experience rewards go to every merc on the team. false: vanilla, only the squad present when the quest is closed
+
 	int8_t auto_sleep_breath_threshold;   // max breath below which a merc who is not on a squad or in a vehicle turns in on his own during the hourly update (vanilla 50)
 
 	uint8_t enemy_autoresolve_retreat_health_percent; // Health (in percent of maximum) below which enemy soldiers flee an autoresolve battle; 0 disables enemy retreating
