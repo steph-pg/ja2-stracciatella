@@ -13,6 +13,7 @@
   //  Press 'alt+r' to reload
   //  Press 'ctrl+q' to swap hand items
   //  Press 'shift+j' to climb through open window
+  //  Press 's' in strategic view to send the selected mercs to sleep, or wake them up again.
   "extra_hotkeys": true,
 
   //  Press d in realtime mode to manually start turn based mode.
