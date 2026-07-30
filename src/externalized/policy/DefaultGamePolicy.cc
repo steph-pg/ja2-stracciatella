@@ -196,6 +196,13 @@ bool DefaultGamePolicy::isHotkeyEnabled(UIMode mode, HotkeyModifier modifier, ui
 				case 'i':         return extra_hotkeys;
 			}
 		}
+		else if(modifier == HKMOD_SHIFT)
+		{
+			switch(key)
+			{
+				case ' ':         return extra_hotkeys; // SDLK_SPACE
+			}
+		}
 		else if(modifier == HKMOD_ALT)
 		{
 			switch(key)

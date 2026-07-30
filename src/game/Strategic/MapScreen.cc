@@ -2909,6 +2909,8 @@ static void HandleModShift(UINT const key)
 
 		case SDLK_SPACE:
 		{ // Compress time until the next hour, then stop again
+			if (!gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_SHIFT, SDLK_SPACE))) break;
+
 			if (fShowUpdateBox) EndUpdateBox(FALSE);
 
 			if (!CommonTimeCompressionChecks())
