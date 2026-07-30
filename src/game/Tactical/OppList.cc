@@ -1052,15 +1052,17 @@ void EndMuzzleFlash( SOLDIERTYPE * pSoldier )
 		{
 			if ( pOtherSoldier->sGridNo != NOWHERE )
 			{
-				// Any soldier on any team who spotted this firer (e.g. by his muzzle
-				// flash) keeps him in sight for the rest of the turn, even though the
-				// flash that let him see this far in the dark is now gone. We do NOT
-				// downgrade the sighting via HandleManNoLongerSeen for anyone; it decays
-				// normally next turn. (bVisible is the player's on-screen view of the
-				// firer, so only a player/militia looker may drive it.)
-				if (IsOnOurOrMilitiaTeam(*pOtherSoldier))
+				if ( PythSpacesAway( pOtherSoldier->sGridNo, pSoldier->sGridNo ) > DistanceVisible( pOtherSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, pSoldier->sGridNo, pSoldier->bLevel ) )
 				{
-					pSoldier->bVisible = TRUE; // stay seen on the player's screen
+					// if this guy can no longer see us, change to seen this turn
+					HandleManNoLongerSeen(pOtherSoldier, pSoldier,
+								&(pOtherSoldier->bOppList[pSoldier->ubID]),
+								&(gbPublicOpplist[pOtherSoldier->bTeam][pSoldier->ubID]));
+				}
+				// else this person is still seen, if the looker is on our side or the militia the person should stay visible
+				else if (IsOnOurOrMilitiaTeam(*pOtherSoldier))
+				{
+					pSoldier->bVisible = TRUE; // yes, still seen
 				}
 			}
 		}
