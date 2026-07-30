@@ -2738,6 +2738,9 @@ static void Teleport()
 static void ChangeCharacterListSortMethod(INT32 iValue);
 static void RequestContractMenu(void);
 static void RequestToggleMercInventoryPanel(void);
+static void RequestToggleSelectedMercsSleep(void);
+static void RequestAssignSelectedMercsToSquad(INT8 bSquadNumber);
+static void RequestAssignSelectedMercsToFirstJoinableSquad(void);
 static void SelectAllCharactersInSquad(INT8 bSquadNumber);
 
 
@@ -2855,6 +2858,13 @@ static void HandleModNone(UINT32 const key)
 
 		case 'r':
 			if (gfPreBattleInterfaceActive) ActivatePreBattleRetreatAction();
+			break;
+
+		case 's':
+			if (gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_None, 's')))
+			{
+				RequestToggleSelectedMercsSleep();
+			}
 			break;
 
 		case 't':
@@ -2991,6 +3001,30 @@ static void HandleModAlt(UINT32 const key)
 				bSelectedAssignChar = bSelectedInfoChar;
 				RebuildAssignmentsBox();
 				fShowAssignmentMenu = TRUE;
+			}
+			break;
+
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+			// Put the selected mercs on squad 1-10, the same squads the unmodified digits select
+			if (gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_ALT, key)))
+			{
+				RequestAssignSelectedMercsToSquad((INT8)((key - SDLK_0 + 9) % 10U));
+			}
+			break;
+
+		case SDLK_BACKQUOTE:
+			if (gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_ALT, SDLK_BACKQUOTE)))
+			{
+				RequestAssignSelectedMercsToFirstJoinableSquad();
 			}
 			break;
 
@@ -7956,6 +7990,84 @@ static void RequestContractMenu(void)
 		// reset selected characters
 		ResetAllSelectedCharacterModes( );
 	}
+}
+
+
+/* Keyboard equivalent of clicking the sleep column in the team panel. Unlike the
+ * contract menu this keeps the current multi-selection, so the whole selection is
+ * toggled together, exactly like a click does. */
+static void RequestToggleSelectedMercsSleep(void)
+{
+	if (fLockOutMapScreenInterface || gfPreBattleInterfaceActive) return;
+
+	SOLDIERTYPE* const s = GetSelectedInfoChar();
+	// vehicles, robots, POWs, mercs in transit and the dead have no sleep status
+	if (s == NULL || !CanChangeSleepStatusForSoldier(s)) return;
+
+	/* The remaining reasons a merc can't turn in or get up - walking between sectors,
+	 * driving a vehicle nobody else can drive, unconscious, an unsecured sector,
+	 * already fully rested, or collapsed from exhaustion - are checked by
+	 * SetMercAsleep()/SetMercAwake(), which also tell the player which one applies.
+	 * Only warn about the rest of the selection if the merc we led with went through,
+	 * otherwise the player gets two message boxes for one keypress. */
+	if (s->fMercAsleep)
+	{
+		BOOLEAN const woke_up = SetMercAwake(s, TRUE, FALSE);
+		HandleSelectedMercsBeingPutAsleep(TRUE, woke_up);
+	}
+	else
+	{
+		bool const fell_asleep = SetMercAsleep(*s, true);
+		HandleSelectedMercsBeingPutAsleep(FALSE, fell_asleep);
+	}
+}
+
+
+/* Keyboard equivalent of picking a squad out of the assignment menu, applied to the
+ * whole current selection. */
+static void RequestAssignSelectedMercsToSquad(INT8 const bSquadNumber)
+{
+	if (fLockOutMapScreenInterface || gfPreBattleInterfaceActive) return;
+
+	Assert(SQUAD_1 <= bSquadNumber && bSquadNumber < ON_DUTY);
+
+	SOLDIERTYPE* const s = GetSelectedInfoChar();
+	if (s == NULL) return;
+
+	/* SetAssignmentForList() works out which merc we led with from
+	 * bSelectedAssignChar and asserts that it names an active one, so point it at the
+	 * selected merc the way opening the assignment menu does. */
+	bSelectedAssignChar = bSelectedInfoChar;
+
+	/* Whether the merc we led with made it or not, still offer the squad to the rest
+	 * of the selection - one merc being too far away or on a moving squad says nothing
+	 * about the others. SetAssignmentForList() skips him and reports its own failures
+	 * only once for the whole list. */
+	SetSoldierAssignmentSquad(*s, bSquadNumber);
+	SetAssignmentForList(bSquadNumber, 0);
+
+	fTeamPanelDirty          = TRUE;
+	fMapScreenBottomDirty    = TRUE;
+	fCharacterInfoPanelDirty = TRUE;
+}
+
+
+static void RequestAssignSelectedMercsToFirstJoinableSquad(void)
+{
+	if (fLockOutMapScreenInterface || gfPreBattleInterfaceActive) return;
+
+	SOLDIERTYPE* const s = GetSelectedInfoChar();
+	if (s == NULL) return;
+
+	/* Resolve one squad from the merc we led with and send the whole selection there,
+	 * so they end up together - resolving per merc would scatter them over several
+	 * squads. */
+	INT8 const bSquadNumber = FindFirstJoinableSquad(*s);
+
+	/* Nothing in range will have him - a POW, in transit, below OKLIFE. Go through the
+	 * normal path anyway so he gets the usual explanation instead of the key looking
+	 * like it did nothing. */
+	RequestAssignSelectedMercsToSquad(bSquadNumber != -1 ? bSquadNumber : SQUAD_1);
 }
 
 

@@ -180,11 +180,35 @@ bool DefaultGamePolicy::isHotkeyEnabled(UIMode mode, HotkeyModifier modifier, ui
 
 	if(mode == UI_Map)
 	{
-		if(modifier == HKMOD_CTRL)
+		if(modifier == HKMOD_None)
+		{
+			switch(key)
+			{
+				case 's':         return extra_hotkeys;
+			}
+		}
+		else if(modifier == HKMOD_CTRL)
 		{
 			switch(key)
 			{
 				case 'i':         return extra_hotkeys;
+			}
+		}
+		else if(modifier == HKMOD_ALT)
+		{
+			switch(key)
+			{
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+				case '`':         return extra_hotkeys;
 			}
 		}
 	}

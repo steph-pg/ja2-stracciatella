@@ -4549,6 +4549,47 @@ static void AttributeMenuMvtCallBack(MOUSE_REGION* pRegion, UINT32 iReason)
 }
 
 
+bool SetSoldierAssignmentSquad(SOLDIERTYPE& s, INT8 const squad)
+{
+	ST::string buf;
+	switch (CanCharacterSquad(s, squad))
+	{
+		case CHARACTER_CAN_JOIN_SQUAD: // able to add, do it
+		{
+			bool const exiting_helicopter = InHelicopter(s);
+			PreChangeAssignment(s);
+			AddCharacterToSquad(&s, squad);
+			if (exiting_helicopter) SetSoldierExitHelicopterInsertionData(&s); // XXX TODO001D
+			MakeSoldiersTacticalAnimationReflectAssignment(&s);
+			return true;
+		}
+
+		// if already in it, don't report that as an error
+		case CHARACTER_CANT_JOIN_SQUAD_ALREADY_IN_IT:
+			return true;
+
+		case CHARACTER_CANT_JOIN_SQUAD_SQUAD_MOVING:
+			buf = st_format_printf(pMapErrorString[36], s.name, pLongAssignmentStrings[squad]);
+			break;
+		case CHARACTER_CANT_JOIN_SQUAD_VEHICLE:
+			buf = st_format_printf(pMapErrorString[37], s.name);
+			break;
+		case CHARACTER_CANT_JOIN_SQUAD_TOO_FAR:
+			buf = st_format_printf(pMapErrorString[20], s.name, pLongAssignmentStrings[squad]);
+			break;
+		case CHARACTER_CANT_JOIN_SQUAD_FULL:
+			buf = st_format_printf(pMapErrorString[19], s.name, pLongAssignmentStrings[squad]);
+			break;
+		default: // generic "you can't join this squad" msg
+			buf = st_format_printf(pMapErrorString[38], s.name, pLongAssignmentStrings[squad]);
+			break;
+	}
+
+	DoScreenIndependantMessageBox(buf, MSG_BOX_FLAG_OK, NULL);
+	return false;
+}
+
+
 static void SquadMenuBtnCallback(MOUSE_REGION* const pRegion, UINT32 const reason)
 {
 	// btn callback handler for assignment region
@@ -4569,48 +4610,15 @@ static void SquadMenuBtnCallback(MOUSE_REGION* const pRegion, UINT32 const reaso
 
 		/* Can the character join this squad?  If already in it, accept that as a
 			* legal choice and exit menu */
-		SOLDIERTYPE& s = *gAssignmentTargetSoldier;
-		ST::string buf;
-		switch (CanCharacterSquad(s, value))
+		if (SetSoldierAssignmentSquad(*gAssignmentTargetSoldier, value))
 		{
-			case CHARACTER_CAN_JOIN_SQUAD: // able to add, do it
-			{
-				bool const exiting_helicopter = InHelicopter(s);
-				PreChangeAssignment(s);
-				AddCharacterToSquad(&s, value);
-				if (exiting_helicopter) SetSoldierExitHelicopterInsertionData(&s); // XXX TODO001D
-				MakeSoldiersTacticalAnimationReflectAssignment(&s);
-			}
-				// fallthrough
-			case CHARACTER_CANT_JOIN_SQUAD_ALREADY_IN_IT:
-				// Stop displaying, leave
-				fShowAssignmentMenu      = FALSE;
-				giAssignHighLine         = -1;
-				fTeamPanelDirty          = TRUE;
-				fMapScreenBottomDirty    = TRUE;
-				fCharacterInfoPanelDirty = TRUE;
-				gfRenderPBInterface      = TRUE;
-				break;
-
-			case CHARACTER_CANT_JOIN_SQUAD_SQUAD_MOVING:
-				buf = st_format_printf(pMapErrorString[36], s.name, pLongAssignmentStrings[value]);
-				break;
-			case CHARACTER_CANT_JOIN_SQUAD_VEHICLE:
-				buf = st_format_printf(pMapErrorString[37], s.name);
-				break;
-			case CHARACTER_CANT_JOIN_SQUAD_TOO_FAR:
-				buf = st_format_printf(pMapErrorString[20], s.name, pLongAssignmentStrings[value]);
-				break;
-			case CHARACTER_CANT_JOIN_SQUAD_FULL:
-				buf = st_format_printf(pMapErrorString[19], s.name, pLongAssignmentStrings[value]);
-				break;
-			default: // generic "you can't join this squad" msg
-				buf = st_format_printf(pMapErrorString[38], s.name, pLongAssignmentStrings[value]);
-				break;
-		}
-		if (!buf.empty())
-		{
-			DoScreenIndependantMessageBox(buf, MSG_BOX_FLAG_OK, NULL);
+			// Stop displaying, leave
+			fShowAssignmentMenu      = FALSE;
+			giAssignHighLine         = -1;
+			fTeamPanelDirty          = TRUE;
+			fMapScreenBottomDirty    = TRUE;
+			fCharacterInfoPanelDirty = TRUE;
+			gfRenderPBInterface      = TRUE;
 		}
 
 		SetAssignmentForList(value, 0);
@@ -5206,6 +5214,30 @@ static void HandleShadingOfLinesForSquadMenu(void)
 					POPUP_SHADE_SECONDARY;
 		ShadeStringInBox(box, i, shade);
 	}
+}
+
+
+INT8 FindFirstJoinableSquad(SOLDIERTYPE const& s)
+{
+	/* Same range the squad menu lists, so this can never pick a squad the player
+	 * couldn't have picked by hand. It ends one past the last squad in use, so an
+	 * empty squad is still reachable once every existing one refuses him. */
+	UINT32 const max_squad = GetLastSquadListedInSquadMenu();
+	for (UINT32 i = 0; i <= max_squad; ++i)
+	{
+		switch (CanCharacterSquad(s, (INT8)i))
+		{
+			case CHARACTER_CAN_JOIN_SQUAD:
+			/* He is already sitting in the squad he would have been sent to, so name
+			 * that one instead of walking past it and moving him to the next. */
+			case CHARACTER_CANT_JOIN_SQUAD_ALREADY_IN_IT:
+				return (INT8)i;
+
+			default:
+				break;
+		}
+	}
+	return -1;
 }
 
 
