@@ -5858,8 +5858,8 @@ static SOLDIERTYPE* InternalReduceAttackBusyCount(SOLDIERTYPE* const pSoldier, c
 
 	// While the firer is still lit by his muzzle flash (turn-based combat; in realtime
 	// it is cleared just below), let the other teams look for him so they can spot him
-	// at the flash's extended sighting range. EndMuzzleFlash() (called later from the AI)
-	// keeps any sighting made here for the rest of the turn.
+	// at the flash's extended sighting range. The sighting lasts as long as the flash
+	// does: EndMuzzleFlash() drops it again for anyone who cannot see that far unlit.
 	if ( (gTacticalStatus.uiFlags & INCOMBAT) && pSoldier && pSoldier->fMuzzleFlash )
 	{
 		HandleSight( *pSoldier, SIGHT_LOOK | SIGHT_RADIO );
