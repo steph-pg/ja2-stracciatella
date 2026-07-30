@@ -149,7 +149,14 @@ bool DefaultGamePolicy::isHotkeyEnabled(UIMode mode, HotkeyModifier modifier, ui
 
 	if(mode == UI_Map)
 	{
-		if(modifier == HKMOD_CTRL)
+		if(modifier == HKMOD_None)
+		{
+			switch(key)
+			{
+				case 's':         return extra_hotkeys;
+			}
+		}
+		else if(modifier == HKMOD_CTRL)
 		{
 			switch(key)
 			{

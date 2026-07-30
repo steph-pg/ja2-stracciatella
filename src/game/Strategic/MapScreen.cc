@@ -2738,6 +2738,7 @@ static void Teleport()
 static void ChangeCharacterListSortMethod(INT32 iValue);
 static void RequestContractMenu(void);
 static void RequestToggleMercInventoryPanel(void);
+static void RequestToggleSelectedMercsSleep(void);
 static void SelectAllCharactersInSquad(INT8 bSquadNumber);
 
 
@@ -2855,6 +2856,13 @@ static void HandleModNone(UINT32 const key)
 
 		case 'r':
 			if (gfPreBattleInterfaceActive) ActivatePreBattleRetreatAction();
+			break;
+
+		case 's':
+			if (gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_None, 's')))
+			{
+				RequestToggleSelectedMercsSleep();
+			}
 			break;
 
 		case 't':
@@ -7942,6 +7950,36 @@ static void RequestContractMenu(void)
 	{
 		// reset selected characters
 		ResetAllSelectedCharacterModes( );
+	}
+}
+
+
+/* Keyboard equivalent of clicking the sleep column in the team panel. Unlike the
+ * contract menu this keeps the current multi-selection, so the whole selection is
+ * toggled together, exactly like a click does. */
+static void RequestToggleSelectedMercsSleep(void)
+{
+	if (fLockOutMapScreenInterface || gfPreBattleInterfaceActive) return;
+
+	SOLDIERTYPE* const s = GetSelectedInfoChar();
+	// vehicles, robots, POWs, mercs in transit and the dead have no sleep status
+	if (s == NULL || !CanChangeSleepStatusForSoldier(s)) return;
+
+	/* The remaining reasons a merc can't turn in or get up - walking between sectors,
+	 * driving a vehicle nobody else can drive, unconscious, an unsecured sector,
+	 * already fully rested, or collapsed from exhaustion - are checked by
+	 * SetMercAsleep()/SetMercAwake(), which also tell the player which one applies.
+	 * Only warn about the rest of the selection if the merc we led with went through,
+	 * otherwise the player gets two message boxes for one keypress. */
+	if (s->fMercAsleep)
+	{
+		BOOLEAN const woke_up = SetMercAwake(s, TRUE, FALSE);
+		HandleSelectedMercsBeingPutAsleep(TRUE, woke_up);
+	}
+	else
+	{
+		bool const fell_asleep = SetMercAsleep(*s, true);
+		HandleSelectedMercsBeingPutAsleep(FALSE, fell_asleep);
 	}
 }
 
