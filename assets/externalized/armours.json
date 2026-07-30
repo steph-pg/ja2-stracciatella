@@ -3,8 +3,8 @@
         "itemIndex": 161,
         "internalName": "FLAK_JACKET",
         "armourClass": "VEST",
-        "protection": 10,
-        "explosivesProtection": 30,
+        "protection": 7,
+        "explosivesProtection": 21,
         "degradePercentage": 25,
         "inventoryGraphics": {
             "small": {
@@ -34,8 +34,8 @@
         "itemIndex": 162,
         "internalName": "FLAK_JACKET_18",
         "armourClass": "VEST",
-        "protection": 13,
-        "explosivesProtection": 39,
+        "protection": 9,
+        "explosivesProtection": 27,
         "degradePercentage": 20,
         "inventoryGraphics": {
             "small": {
@@ -66,8 +66,8 @@
         "itemIndex": 163,
         "internalName": "FLAK_JACKET_Y",
         "armourClass": "VEST",
-        "protection": 16,
-        "explosivesProtection": 48,
+        "protection": 11,
+        "explosivesProtection": 34,
         "degradePercentage": 15,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {
@@ -99,7 +99,7 @@
         "itemIndex": 164,
         "internalName": "KEVLAR_VEST",
         "armourClass": "VEST",
-        "protection": 15,
+        "protection": 11,
         "degradePercentage": 20,
         "inventoryGraphics": {
             "small": {
@@ -129,7 +129,7 @@
         "itemIndex": 165,
         "internalName": "KEVLAR_VEST_18",
         "armourClass": "VEST",
-        "protection": 19,
+        "protection": 13,
         "degradePercentage": 25,
         "inventoryGraphics": {
             "small": {
@@ -160,7 +160,7 @@
         "itemIndex": 166,
         "internalName": "KEVLAR_VEST_Y",
         "armourClass": "VEST",
-        "protection": 24,
+        "protection": 17,
         "degradePercentage": 10,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {
@@ -192,7 +192,7 @@
         "itemIndex": 167,
         "internalName": "SPECTRA_VEST",
         "armourClass": "VEST",
-        "protection": 30,
+        "protection": 21,
         "degradePercentage": 15,
         "inventoryGraphics": {
             "small": {
@@ -203,7 +203,7 @@
                 "path": "bigitems/p1item65.sti"
             }
         },
-        "ubWeight": 32,
+        "ubWeight": 36,
         "ubPerPocket": 0,
         "usPrice": 1000,
         "ubCoolness": 8,
@@ -222,7 +222,7 @@
         "itemIndex": 168,
         "internalName": "SPECTRA_VEST_18",
         "armourClass": "VEST",
-        "protection": 36,
+        "protection": 25,
         "degradePercentage": 10,
         "inventoryGraphics": {
             "small": {
@@ -253,7 +253,7 @@
         "itemIndex": 169,
         "internalName": "SPECTRA_VEST_Y",
         "armourClass": "VEST",
-        "protection": 42,
+        "protection": 29,
         "degradePercentage": 5,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {
@@ -285,7 +285,7 @@
         "itemIndex": 170,
         "internalName": "KEVLAR_LEGGINGS",
         "armourClass": "LEGGINGS",
-        "protection": 15,
+        "protection": 11,
         "degradePercentage": 20,
         "inventoryGraphics": {
             "small": {
@@ -315,7 +315,7 @@
         "itemIndex": 171,
         "internalName": "KEVLAR_LEGGINGS_18",
         "armourClass": "LEGGINGS",
-        "protection": 19,
+        "protection": 13,
         "degradePercentage": 15,
         "inventoryGraphics": {
             "small": {
@@ -346,7 +346,7 @@
         "itemIndex": 172,
         "internalName": "KEVLAR_LEGGINGS_Y",
         "armourClass": "LEGGINGS",
-        "protection": 24,
+        "protection": 17,
         "degradePercentage": 10,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {
@@ -378,7 +378,7 @@
         "itemIndex": 173,
         "internalName": "SPECTRA_LEGGINGS",
         "armourClass": "LEGGINGS",
-        "protection": 30,
+        "protection": 21,
         "degradePercentage": 15,
         "inventoryGraphics": {
             "small": {
@@ -389,7 +389,7 @@
                 "path": "bigitems/p1item68.sti"
             }
         },
-        "ubWeight": 39,
+        "ubWeight": 41,
         "ubPerPocket": 0,
         "usPrice": 900,
         "ubCoolness": 8,
@@ -408,7 +408,7 @@
         "itemIndex": 174,
         "internalName": "SPECTRA_LEGGINGS_18",
         "armourClass": "LEGGINGS",
-        "protection": 36,
+        "protection": 25,
         "degradePercentage": 10,
         "inventoryGraphics": {
             "small": {
@@ -439,7 +439,7 @@
         "itemIndex": 175,
         "internalName": "SPECTRA_LEGGINGS_Y",
         "armourClass": "LEGGINGS",
-        "protection": 42,
+        "protection": 29,
         "degradePercentage": 5,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {
@@ -471,7 +471,7 @@
         "itemIndex": 176,
         "internalName": "STEEL_HELMET",
         "armourClass": "HELMET",
-        "protection": 10,
+        "protection": 7,
         "degradePercentage": 5,
         "inventoryGraphics": {
             "small": {
@@ -502,7 +502,7 @@
         "itemIndex": 177,
         "internalName": "KEVLAR_HELMET",
         "armourClass": "HELMET",
-        "protection": 15,
+        "protection": 11,
         "degradePercentage": 20,
         "inventoryGraphics": {
             "small": {
@@ -513,7 +513,7 @@
                 "path": "bigitems/p1item63.sti"
             }
         },
-        "ubWeight": 14,
+        "ubWeight": 16,
         "ubPerPocket": 0,
         "usPrice": 200,
         "ubCoolness": 4,
@@ -532,7 +532,7 @@
         "itemIndex": 178,
         "internalName": "KEVLAR_HELMET_18",
         "armourClass": "HELMET",
-        "protection": 19,
+        "protection": 13,
         "degradePercentage": 15,
         "inventoryGraphics": {
             "small": {
@@ -563,7 +563,7 @@
         "itemIndex": 179,
         "internalName": "KEVLAR_HELMET_Y",
         "armourClass": "HELMET",
-        "protection": 24,
+        "protection": 17,
         "degradePercentage": 10,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {
@@ -595,7 +595,7 @@
         "itemIndex": 180,
         "internalName": "SPECTRA_HELMET",
         "armourClass": "HELMET",
-        "protection": 30,
+        "protection": 21,
         "degradePercentage": 15,
         "inventoryGraphics": {
             "small": {
@@ -606,7 +606,7 @@
                 "path": "bigitems/p1item62.sti"
             }
         },
-        "ubWeight": 14,
+        "ubWeight": 18,
         "ubPerPocket": 0,
         "usPrice": 450,
         "ubCoolness": 7,
@@ -625,7 +625,7 @@
         "itemIndex": 181,
         "internalName": "SPECTRA_HELMET_18",
         "armourClass": "HELMET",
-        "protection": 36,
+        "protection": 25,
         "degradePercentage": 10,
         "inventoryGraphics": {
             "small": {
@@ -656,7 +656,7 @@
         "itemIndex": 182,
         "internalName": "SPECTRA_HELMET_Y",
         "armourClass": "HELMET",
-        "protection": 42,
+        "protection": 29,
         "degradePercentage": 5,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {
@@ -688,7 +688,7 @@
         "itemIndex": 183,
         "internalName": "CERAMIC_PLATES",
         "armourClass": "PLATE",
-        "protection": 15,
+        "protection": 11,
         "degradePercentage": 200,
         "inventoryGraphics": {
             "small": {
@@ -718,7 +718,7 @@
         "itemIndex": 184,
         "internalName": "CREATURE_INFANT_HIDE",
         "armourClass": "CREATURE",
-        "protection": 3,
+        "protection": 2,
         "degradePercentage": 0,
         "inventoryGraphics": {
             "small": {
@@ -751,7 +751,7 @@
         "itemIndex": 185,
         "internalName": "CREATURE_YOUNG_MALE_HIDE",
         "armourClass": "CREATURE",
-        "protection": 5,
+        "protection": 4,
         "degradePercentage": 0,
         "inventoryGraphics": {
             "small": {
@@ -784,7 +784,7 @@
         "itemIndex": 186,
         "internalName": "CREATURE_OLD_MALE_HIDE",
         "armourClass": "CREATURE",
-        "protection": 6,
+        "protection": 4,
         "degradePercentage": 0,
         "inventoryGraphics": {
             "small": {
@@ -817,7 +817,7 @@
         "itemIndex": 187,
         "internalName": "CREATURE_QUEEN_HIDE",
         "armourClass": "CREATURE",
-        "protection": 20,
+        "protection": 14,
         "degradePercentage": 0,
         "inventoryGraphics": {
             "small": {
@@ -850,7 +850,7 @@
         "itemIndex": 188,
         "internalName": "LEATHER_JACKET",
         "armourClass": "VEST",
-        "protection": 2,
+        "protection": 1,
         "degradePercentage": 25,
         "inventoryGraphics": {
             "small": {
@@ -880,7 +880,7 @@
         "itemIndex": 189,
         "internalName": "LEATHER_JACKET_W_KEVLAR",
         "armourClass": "VEST",
-        "protection": 12,
+        "protection": 8,
         "degradePercentage": 30,
         "inventoryGraphics": {
             "small": {
@@ -911,7 +911,7 @@
         "itemIndex": 190,
         "internalName": "LEATHER_JACKET_W_KEVLAR_18",
         "armourClass": "VEST",
-        "protection": 16,
+        "protection": 11,
         "degradePercentage": 25,
         "inventoryGraphics": {
             "small": {
@@ -942,7 +942,7 @@
         "itemIndex": 191,
         "internalName": "LEATHER_JACKET_W_KEVLAR_Y",
         "armourClass": "VEST",
-        "protection": 19,
+        "protection": 13,
         "degradePercentage": 20,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {
@@ -974,7 +974,7 @@
         "itemIndex": 192,
         "internalName": "CREATURE_YOUNG_FEMALE_HIDE",
         "armourClass": "CREATURE",
-        "protection": 7,
+        "protection": 5,
         "degradePercentage": 0,
         "inventoryGraphics": {
             "small": {"armourClass": "CREATURE",
@@ -1007,7 +1007,7 @@
         "itemIndex": 193,
         "internalName": "CREATURE_OLD_FEMALE_HIDE",
         "armourClass": "CREATURE",
-        "protection": 8,
+        "protection": 6,
         "degradePercentage": 0,
         "inventoryGraphics": {
             "small": {
@@ -1098,7 +1098,7 @@
         "itemIndex": 196,
         "internalName": "KEVLAR2_VEST",
         "armourClass": "VEST",
-        "protection": 22,
+        "protection": 15,
         "degradePercentage": 20,
         "inventoryGraphics": {
             "small": {
@@ -1109,7 +1109,7 @@
                 "path": "bigitems/p1item137.sti"
             }
         },
-        "ubWeight": 32,
+        "ubWeight": 34,
         "ubPerPocket": 0,
         "usPrice": 700,
         "ubCoolness": 6,
@@ -1128,7 +1128,7 @@
         "itemIndex": 197,
         "internalName": "KEVLAR2_VEST_18",
         "armourClass": "VEST",
-        "protection": 27,
+        "protection": 19,
         "degradePercentage": 15,
         "inventoryGraphics": {
             "small": {
@@ -1159,7 +1159,7 @@
         "itemIndex": 198,
         "internalName": "KEVLAR2_VEST_Y",
         "armourClass": "VEST",
-        "protection": 32,
+        "protection": 22,
         "degradePercentage": 10,
         "ignoreForMaxProtection": true,
         "inventoryGraphics": {

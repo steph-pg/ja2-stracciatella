@@ -54,6 +54,7 @@ static UICursorID HandleTinCanCursor(            SOLDIERTYPE*, GridNo map_pos, M
 static BOOLEAN gfCannotGetThrough = FALSE;
 static BOOLEAN gfDisplayFullCountRing = FALSE;
 static int giHitChance = 0; // If value is -1 then we skip showing hit chance
+static int giChanceToGetThrough = 100; // Line-of-fire chance shown in brackets next to the hit chance
 static int giLastBodyLocationTargeted = 0;
 static int giLastAimTime = 0;
 
@@ -259,20 +260,16 @@ static UICursorID HandleActivatedTargetCursor(SOLDIERTYPE* const s, GridNo const
 			}
 			giHitChance = is_throwing_knife ? CalcThrownChanceToHit(s, targetTile, s->bShownAimTime / 2, s->bAimShotLocation) :
 				CalcChanceToHitGun(s, targetTile, s->bShownAimTime / 2, s->bAimShotLocation, false);
-			if (gUIFullTarget)
-			{
-				giHitChance *= SoldierToSoldierBodyPartChanceToGetThrough(s, gUIFullTarget, s->bAimShotLocation) / 100.0f;
-			}
-			else
-			{
-				giHitChance *= SoldierToLocationChanceToGetThrough(s, targetTile, gsInterfaceLevel, s->bTargetCubeLevel, 0) / 100.0f;
-			}
+			giChanceToGetThrough = gUIFullTarget ?
+				SoldierToSoldierBodyPartChanceToGetThrough(s, gUIFullTarget, s->bAimShotLocation) :
+				SoldierToLocationChanceToGetThrough(s, targetTile, gsInterfaceLevel, s->bTargetCubeLevel, 0);
+			//giHitChance *= giChanceToGetThrough / 100.0f;
 		}
 
 		// Attach chance-to-hit to mouse cursor
 		if(giHitChance != -1)
 		{
-			SetChanceToHitText(st_format_printf("%d%%", giHitChance));
+			SetChanceToHitText(st_format_printf("%d %d", giHitChance, giChanceToGetThrough));
 			giLastBodyLocationTargeted = s->bAimShotLocation;
 			giLastAimTime = s->bShownAimTime;
 		}

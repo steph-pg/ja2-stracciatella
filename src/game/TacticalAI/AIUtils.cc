@@ -259,7 +259,7 @@ UINT8 ShootingStanceChange( SOLDIERTYPE * pSoldier, ATTACKTYPE * pAttack, INT8 b
 				break;
 		}
 
-		uiChanceOfDamage = SoldierToLocationChanceToGetThrough(pSoldier, pAttack->sTarget, pSoldier->bTargetLevel, pSoldier->bTargetCubeLevel, pAttack->opponent) * CalcChanceToHitGun(pSoldier, pAttack->sTarget, pAttack->ubAimTime, AIM_SHOT_TORSO, false) / 100;
+		uiChanceOfDamage = SoldierToLocationChanceToGetThrough(pSoldier, pAttack->sTarget, pSoldier->bTargetLevel, pSoldier->bTargetCubeLevel, pAttack->opponent) * CalcChanceToHitGun(pSoldier, pAttack->sTarget, pAttack->ubAimTime, pAttack->ubAimLocation, false) / 100;
 		if (uiChanceOfDamage > 0)
 		{
 			uiStanceBonus = 0;
@@ -311,8 +311,18 @@ UINT8 ShootingStanceChange( SOLDIERTYPE * pSoldier, ATTACKTYPE * pAttack, INT8 b
 
 	pSoldier->usAnimState = usRealAnimState;
 
+	// A stance the bullet cannot leave at all is never worth keeping. The shot was rated
+	// as if we were standing (CalcBestShot uses AICalcChanceToHitGun and
+	// AISoldierToLocationChanceToGetThrough, both of which fake standing), so a crouched or
+	// prone shooter can pick a target its real stance has no line to - it then fires into
+	// its own cover. Whenever the stance we are in scores nothing and another one does,
+	// change regardless of whether the gain repays the APs.
+	BOOLEAN const fNoShotFromCurrentStance = (uiCurrChanceOfDamage == 0 && uiBestChanceOfDamage > 0);
+
 	// return 0 or the best height value to be at
-	if (bBestStanceDiff == 0 || ((uiBestChanceOfDamage - uiCurrChanceOfDamage) / bBestStanceDiff) < uiMinimumStanceBonusPerChange)
+	// (bBestStanceDiff < 0 means no stance scored at all, 0 means the one we're already in)
+	if (bBestStanceDiff <= 0 ||
+		(!fNoShotFromCurrentStance && ((uiBestChanceOfDamage - uiCurrChanceOfDamage) / bBestStanceDiff) < uiMinimumStanceBonusPerChange))
 	{
 		// better off not changing our stance!
 		return( 0 );
@@ -1639,12 +1649,15 @@ INT8 CalcMorale(SOLDIERTYPE *pSoldier)
 	// if army guy has NO weapons left then panic!
 	if ( pSoldier->bTeam == ENEMY_TEAM )
 	{
-		if ( (FindAIUsableObjClass( pSoldier, IC_WEAPON ) == NO_SLOT) || pSoldier->bLife <= 45 )
+		if ( (FindAIUsableObjClass( pSoldier, IC_WEAPON ) == NO_SLOT) ) // || pSoldier->bLife <= 30)
 		{
 			return( MORALE_HOPELESS );
 		}
 	}
-
+	INT8 bOpponentLevel;
+	INT16 sOpponentGridNo;
+	ClosestKnownOpponent(pSoldier, &sOpponentGridNo, &bOpponentLevel);
+	INT16 sDistanceToClosestEnemy = PythSpacesAway(pSoldier->sGridNo, sOpponentGridNo);
 	// hang pointers to my personal opplist, my team's public opplist, and my
 	// list of previously seen opponents
 	const INT8* pSeenOpp = &gbSeenOpponents[pSoldier->ubID][0];
@@ -1784,7 +1797,7 @@ INT8 CalcMorale(SOLDIERTYPE *pSoldier)
 			// Whole sector engages: even passive guards leave their posts and converge.
 			pSoldier->bOrders = SEEKENEMY;
 
-			if (pSoldier->bOppCnt > 0)
+			if (sDistanceToClosestEnemy <= 30)
 			{
 				// We can actually see the player right now. Fight smart: CUNNING reserves
 				// APs for crouch+shot, favours cover in DecideActionBlack, and (with the

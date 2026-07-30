@@ -353,10 +353,8 @@ INT8 CalcActionPoints(const SOLDIERTYPE* const pSold)
 	if (pSold->bBreath < 100)
 		ubPoints -= (ubPoints * (100 - pSold->bBreath)) / 200;
 
-	if (pSold->sWeightCarriedAtTurnStart > 100)
-	{
-		ubPoints = (UINT8) ( ((UINT32)ubPoints) * 100 / pSold->sWeightCarriedAtTurnStart );
-	}
+	// Carried weight reduces APs (see CarriedWeightAdjustedAP for the model).
+	ubPoints = CarriedWeightAdjustedAP(ubPoints, pSold->sWeightCarriedAtTurnStart);
 
 	// If resulting APs are below our permitted minimum, raise them to it!
 	if (ubPoints < AP_MINIMUM)
@@ -1385,6 +1383,13 @@ void EVENT_InitNewSoldierAnim(SOLDIERTYPE* const pSoldier, UINT16 usNewState, UI
 		    usNewState != END_RIFLE_STAND && usNewState != END_DUAL_STAND )
 	{
 		pSoldier->bReverse = FALSE;
+	}
+
+	// If we are leaving the hop animation by any other route than its own end code
+	// ( collapse, interrupt, ... ) make sure the window flag does not stick around
+	if ( pSoldier->usAnimState == HOPFENCE && usNewState != HOPFENCE )
+	{
+		pSoldier->fClimbingWindow = FALSE;
 	}
 
 	// Do special things based on new state
@@ -2672,7 +2677,8 @@ void EVENT_SoldierGotHit(SOLDIERTYPE* pSoldier, const UINT16 usWeaponIndex, INT1
 	pSoldier->ubHitLocation = ubHitLocation;
 
 	// handle morale for heavy damage attacks
-	if ( sDamage > 25 )
+	// let's do it like take any damage
+	if ( sDamage > 15 )
 	{
 		if (att != NULL)
 		{
@@ -2744,7 +2750,7 @@ void EVENT_SoldierGotHit(SOLDIERTYPE* pSoldier, const UINT16 usWeaponIndex, INT1
 	{
 		// damage from hand-to-hand is 1/4 normal, 3/4 breath.. the sDamage value
 		// is actually how much breath we'll take away
-		sBreathLoss = sDamage * 100;
+		sBreathLoss = sDamage * 85;
 		sDamage = sDamage / PUNCH_REAL_DAMAGE_PORTION;
 		if ( AreInMeanwhile() && gCurrentMeanwhileDef.ubMeanwhileID == INTERROGATION )
 		{
@@ -5200,15 +5206,35 @@ void BeginSoldierClimbWindow(SOLDIERTYPE* const s)
 {
 	if(!IsFacingClimableWindow(s)) return;
 
+	// Unlike a fence, which sits on a tile of its own, the window sits on the edge
+	// between two tiles - so we land on the very next one
 	s->sTempNewGridNo            = NewGridNo(s->sGridNo, DirectionInc(s->bDirection));
 	s->fDontChargeTurningAPs     = TRUE;
-	//EVENT_SetSoldierDesiredDirectionForward(s, direction);
-	s->fTurningUntilDone         = TRUE;
 	// ATE: Reset flag to go back to prone
 	s->fTurningFromPronePosition = TURNING_FROM_PRONE_OFF;
-	//s->usPendingAnimation        = HOPFENCE;
-	DeductPoints( s, AP_JUMPFENCE, BP_JUMPFENCE );
-	TeleportSoldier( *s, s->sTempNewGridNo, TRUE );
+
+	// Bodytypes without the hop animation have nothing to play - just move them over
+	if (!IsAnimationValidForBodyType(*s, HOPFENCE))
+	{
+		DeductPoints(s, AP_JUMPFENCE, BP_JUMPFENCE);
+		TeleportSoldier(*s, s->sTempNewGridNo, TRUE);
+		return;
+	}
+
+	// We are already facing the window, so no turning is needed - just play the hop.
+	// APs are deducted when the animation starts.
+	s->fClimbingWindow = TRUE;
+	EVENT_InitNewSoldierAnim(s, HOPFENCE, 0, FALSE);
+
+	// The hop may have been refused, for instance because we are locked into another
+	// animation - do not lock the interface on an animation that will never play
+	if (s->usAnimState != HOPFENCE && s->usPendingAnimation != HOPFENCE)
+	{
+		s->fClimbingWindow = FALSE;
+		return;
+	}
+
+	if (s->bTeam == OUR_TEAM) SetUIBusy(s);
 }
 
 void BeginSoldierClimbFence(SOLDIERTYPE* const s)
@@ -5222,6 +5248,7 @@ void BeginSoldierClimbFence(SOLDIERTYPE* const s)
 	s->fTurningUntilDone         = TRUE;
 	// ATE: Reset flag to go back to prone
 	s->fTurningFromPronePosition = TURNING_FROM_PRONE_OFF;
+	s->fClimbingWindow           = FALSE;
 	s->usPendingAnimation        = HOPFENCE;
 }
 

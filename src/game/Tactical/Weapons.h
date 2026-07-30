@@ -88,7 +88,7 @@ enum
 // hollow point bullets do lots of damage to people
 #define AMMO_DAMAGE_ADJUSTMENT_HP( x )		( (x * 17) / 10 )
 // but they SUCK at penetrating armour
-#define AMMO_ARMOUR_ADJUSTMENT_HP( x )		( (x * 3) / 2 )
+#define AMMO_ARMOUR_ADJUSTMENT_HP( x )		( (x * 15) / 7 )
 // armour piercing bullets are good at penetrating armour
 #define AMMO_ARMOUR_ADJUSTMENT_AP( x )		((x * 3) / 4)
 // "super" AP bullets are great at penetrating armour
@@ -154,11 +154,21 @@ void ReloadWeapon(SOLDIERTYPE*, UINT8 inv_pos);
 bool IsGunBurstCapable(SOLDIERTYPE const*, UINT8 inv_pos);
 void EnsureConsistentWeaponMode(SOLDIERTYPE*);
 bool HasLauncher(SOLDIERTYPE const*);
+// Is a silencer attached to the weapon the soldier is attacking with?
+bool IsSilenced(SOLDIERTYPE const&);
 extern INT32 CalcBodyImpactReduction( UINT8 ubAmmoType, UINT8 ubHitLocation );
 INT32 TotalArmourProtection(SOLDIERTYPE&, UINT8 ubHitLocation, INT32 iImpact, UINT8 ubAmmoType);
 INT8 ArmourPercent(const SOLDIERTYPE* pSoldier);
 
 extern void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT *pdXPos, FLOAT *pdYPos, FLOAT *pdZPos );
+
+// Pick which body part to aim at, weighing each part's chance of getting past cover
+// against how hard that part is to hit. Shared by the code that fires the shot and by the
+// AI's shot evaluation, so both rate the shot against the same body part. If
+// pubChanceToGetThrough is given, it receives the chosen part's chance to get through.
+UINT8 DecideAimShotLocation( SOLDIERTYPE *pSoldier, const SOLDIERTYPE *pTargetSoldier, INT16 sTargetGridNo, UINT8 ubAimTime, UINT8 *pubChanceToGetThrough = NULL );
+// as above, but fakes the attacker standing like the AI's other estimates do
+UINT8 AIDecideAimShotLocation( SOLDIERTYPE *pSoldier, const SOLDIERTYPE *pTargetSoldier, INT16 sTargetGridNo, UINT8 ubAimTime, UINT8 *pubChanceToGetThrough = NULL );
 
 FireWeaponResult OKFireWeapon(SOLDIERTYPE *);
 FireWeaponResult CheckForGunJam(SOLDIERTYPE *);

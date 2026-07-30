@@ -103,6 +103,20 @@ properties:
       (say your buddies took care of it), you'd still get skipped for any further interrupts. Annoying in ambushes or when sneaking.
 
       Vanilla setting: `false`
+  allow_overwatch_interrupt:
+    type: boolean
+    title: Allow overwatch interrupt
+    description: |
+      Lets a merc who already has an enemy in sight, and who that enemy does not see, get an interrupt duel the moment that
+      enemy spots him (the merc enters the enemy's personal opplist as seen). Normally interrupts only trigger when an enemy is
+      newly sighted, so a merc watching an unaware enemy could not react when it turned around. Useful for overwatch/ambush
+      setups (e.g. sneaking one merc into melee range while a second covers). The enemy's alert status does not matter, only
+      that this particular enemy did not have this particular merc in sight - so an enemy that loses sight of a merc and
+      re-acquires him gives that merc a fresh interrupt chance. Only benefits the player's team; the AI does not use it.
+
+      Vanilla setting: `false`
+
+      Vanilla setting: `false`
   enemy_weapon_minimal_status:
     $ref: types/percentage.schema.yaml
     title: Minimal status of enemy weapons
@@ -230,6 +244,85 @@ properties:
       Value above which chance-to-hit can never go
 
       Vanilla setting: `99`
+  burst_penalty_after_cth_cap:
+    type: boolean
+    title: Apply burst penalty after the chance-to-hit clamp
+    description: |
+      Controls when a weapon's `ubBurstPenalty` (the accuracy loss per burst round after the first)
+      is deducted.
+
+      Vanilla deducts it from the raw chance-to-hit, before that value is clamped to
+      `chance_to_hit_minimum` / `chance_to_hit_maximum`. This means the penalty is invisible for any
+      shooter whose raw chance sits far enough outside that band. A merc prone with a bipod, a
+      laserscope and a target at close range can be 40 points above the cap, so all rounds of the
+      burst clamp back to the same displayed number and bursts are no less accurate than single
+      shots. The same happens at the bottom of the band, where hopeless shots are all pinned to
+      the minimum. Range penalties, which halve the chance-to-hit for shots beyond the gun's range
+      or beyond the shooter's own vision, dilute the burst penalty further.
+
+      When `true`, the penalty is deducted after clamping instead (then floored at
+      `chance_to_hit_minimum`), so each successive round of a burst is genuinely less accurate
+      regardless of how much headroom the shooter has.
+
+      Vanilla setting: `false`
+  nonlinear_range_modifier:
+    type: boolean
+    title: Non-linear chance-to-hit range modifier
+    description: |
+      Changes the shape of the range modifier applied to chance-to-hit.
+
+      Vanilla uses a single straight line of 3% per tile in both directions, pivoting on 9 tiles:
+      +3% for each tile closer, -3% for each tile further. The two halves mirror each other, so
+      close range is never especially rewarding and long range degrades only gradually.
+
+      When `true`, both halves curve instead. Closer than 9 tiles the bonus follows a concave curve
+      that reaches `range_bonus_point_blank` at range 0, so most of it is earned within the first
+      few tiles. Beyond 9 tiles the penalty is `range_penalty_far_linear` per tile plus an
+      accelerating `range_penalty_far_quadratic` term, so each extra tile costs more than the last.
+
+      Vanilla setting: `false`
+  range_bonus_point_blank:
+    type: integer
+    title: Point blank range bonus
+    description: |
+      Chance-to-hit bonus at range 0, tapering along a concave curve to nothing at 9 tiles.
+      Only used when `nonlinear_range_modifier` is `true`.
+
+      Vanilla equivalent: `27` (the flat 3%/tile line reaches +27 at range 0)
+  range_penalty_far_linear:
+    type: integer
+    title: Long range penalty, linear term
+    description: |
+      Chance-to-hit penalty per tile beyond 9 tiles, in tenths of a percent, so `30` means 3% per
+      tile. Only used when `nonlinear_range_modifier` is `true`.
+
+      Vanilla equivalent: `30`
+  range_penalty_far_quadratic:
+    type: integer
+    title: Long range penalty, accelerating term
+    description: |
+      Additional chance-to-hit penalty beyond 9 tiles, in tenths of a percent, scaled by
+      (tiles beyond 9) squared divided by 9. This is what makes distant shots fall apart rather
+      than degrade evenly. Set to `0` to keep the long-range penalty a straight line while still
+      curving the close-range bonus. Only used when `nonlinear_range_modifier` is `true`.
+
+      Vanilla equivalent: `0`
+  thrown_range_modifier:
+    $ref: types/int16.schema.yaml
+    title: Thrown range modifier
+    description: |
+      Percentage modifier to the maximum range of hand-thrown items. `100` leaves the vanilla
+      range untouched, `150` extends every throw by half, `70` shortens it by 30%.
+
+      The vanilla throwing range comes out of the thrower's Strength and the item's weight, and is
+      short enough that a grenade rarely reaches as far as a merc can see. This scales the result
+      of that formula, before the penalties for spent breath and for the Throwing trait bonus.
+
+      Applies to grenades and other thrown items only. Launchers, mortars and other mechanically
+      fired weapons use their own range from the weapons table and are unaffected, as are items
+      flagged unaerodynamic, which can never be thrown further than one tile.
+
+      Vanilla setting: `100`
   tactical_head_damage_multiplier:
     type: number
     title: Damage multiplier head
@@ -484,6 +577,50 @@ properties:
 
       Vanilla setting: `false`
 
+  progressive_weight_penalties:
+    type: boolean
+    title: Progressive carried weight penalties
+    description: |
+      Selects the model used for carried-weight penalties, which affect a merc's
+      action points, agility, breath cost per move, and strategic movement speed
+      and fatigue.
+
+      When `true`, penalties apply from any load and scale non-linearly, so they
+      ramp up gently while light and bite harder the more overloaded a merc gets.
+
+      When `false`, the vanilla behaviour is used: no penalties apply until the
+      merc carries more than 100% of their capacity.
+
+      Vanilla setting: `false`
+
+  auto_sleep_breath_threshold:
+    $ref: types/int8.schema.yaml
+    title: Automatic sleep breath threshold
+    description: |
+      Max breath below which a merc who is not on a squad and not in a vehicle
+      goes to sleep on his own during the hourly update, interrupting whatever
+      assignment he is on.
+
+      Mercs on a squad or in a vehicle are not affected: they only complain
+      about being tired, and still collapse once max breath drops to 10.
+
+      Vanilla setting: `50`
+
+  enemy_autoresolve_retreat_health_percent:
+    $ref: types/uint8.schema.yaml
+    title: Enemy autoresolve retreat health threshold
+    description: |
+      Health, in percent of their maximum, below which enemy soldiers break off
+      an autoresolve battle and run for it. Soldiers that make it out are handed
+      back to the queen's pool of reinforcements instead of being killed.
+
+      Militia and creatures never retreat.
+
+      Set to `0` for the vanilla behaviour, where enemies always fight to the
+      death.
+
+      Vanilla setting: `0`
+
   campaign:
     type: object
     properties:
@@ -515,6 +652,7 @@ required:
   - drop_everything
   - all_drops_visible
   - multiple_interrupts
+  - allow_overwatch_interrupt
   - enemy_weapon_minimal_status
   - squad_size
   - ai
@@ -533,6 +671,7 @@ required:
   - aim_bonus_laserscope
   - range_penalty_silencer
   - range_bonus_barrel_extender
+  - thrown_range_modifier
   - always_show_cursor_in_tactical
   - show_hit_chance
   - website_loading_time_scale
@@ -544,4 +683,5 @@ required:
   - unhired_merc_deaths_medium
   - unhired_merc_deaths_hard
   - enable_stat_healing
+  - progressive_weight_penalties
   - campaign

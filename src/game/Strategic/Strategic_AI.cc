@@ -146,6 +146,24 @@ BOOLEAN gfDisplayStrategicAILogs = FALSE;
 extern INT16 sWorldSectorLocationOfFirstBattle;
 static const SGPSector meduna(3, 16);
 
+//Banks denial credit for a garrison that couldn't be reinforced right now.  Saturates instead of
+//wrapping: the counter is a UINT8 and grows by up to half the garrison's priority per denial, so a
+//long series of denials against a well defended sector could otherwise roll it back to near zero
+//and throw away the accumulated escalation.
+static void BankGarrisonReinforcementsDenied(INT32 iGarrisonID)
+{
+	INT32 const iCredit = gubGarrisonReinforcementsDenied[ iGarrisonID ] +
+			gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bPriority / 2;
+	gubGarrisonReinforcementsDenied[ iGarrisonID ] = (UINT8)std::min(iCredit, 255);
+}
+
+//How many extra troops the banked denial credit is worth, before the force size is capped.  The
+//harder the difficulty, the more of the credit is converted.
+static UINT8 ExtraReinforcementsFromDenials(INT32 iGarrisonID)
+{
+	return (UINT8)(gubGarrisonReinforcementsDenied[ iGarrisonID ] / (6 - gGameOptions.ubDifficultyLevel));
+}
+
 //returns the number of reinforcements permitted to be sent.  Will increased if the denied counter is non-zero.
 static INT32 GarrisonReinforcementsRequested(INT32 iGarrisonID, UINT8* pubExtraReinforcements)
 {
@@ -159,7 +177,7 @@ static INT32 GarrisonReinforcementsRequested(INT32 iGarrisonID, UINT8* pubExtraR
 
 	//Record how many of the reinforcements are additionally provided due to being denied in the past.  This will grow
 	//until it is finally excepted or an absolute max is made.
-	*pubExtraReinforcements = (UINT8)(gubGarrisonReinforcementsDenied[ iGarrisonID ] / (6 - gGameOptions.ubDifficultyLevel));
+	*pubExtraReinforcements = ExtraReinforcementsFromDenials( iGarrisonID );
 	//Make sure the number of extra reinforcements don't bump the force size past the max of MAX_STRATEGIC_TEAM_SIZE.
 	*pubExtraReinforcements = (UINT8) std::min((INT32)*pubExtraReinforcements, std::min((INT32) (*pubExtraReinforcements), MAX_STRATEGIC_TEAM_SIZE - iReinforcementsRequested));
 
@@ -211,10 +229,13 @@ static BOOLEAN PlayerForceTooStrong(UINT8 ubSectorID, UINT16 usOffensePoints, UI
 	SGPSector sSector(ubSectorID);
 	pSector = &SectorInfo[ ubSectorID ];
 
-	*pusDefencePoints = pSector->ubNumberOfCivsAtLevel[ GREEN_MILITIA ]		* 1 +
-											pSector->ubNumberOfCivsAtLevel[ REGULAR_MILITIA ] * 2 +
-											pSector->ubNumberOfCivsAtLevel[ ELITE_MILITIA ]		* 3 +
-											PlayerMercsInSector(sSector) * 5;
+	// Defenders are weighted with the same per-head multipliers as the queen's own
+	// troops (admin/troop/elite = 2/4/6), since each militia tier is stat-equivalent
+	// to the matching enemy class. Mercs are weighted as elites.
+	*pusDefencePoints = pSector->ubNumberOfCivsAtLevel[ GREEN_MILITIA ]		* 2 +
+											pSector->ubNumberOfCivsAtLevel[ REGULAR_MILITIA ] * 4 +
+											pSector->ubNumberOfCivsAtLevel[ ELITE_MILITIA ]		* 6 +
+											PlayerMercsInSector(sSector) * 6;
 	if( *pusDefencePoints > usOffensePoints )
 	{
 		return TRUE;
@@ -223,7 +244,8 @@ static BOOLEAN PlayerForceTooStrong(UINT8 ubSectorID, UINT16 usOffensePoints, UI
 }
 
 
-static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefencePoints, GROUP** pOptionalGroup);
+//Returns TRUE only if a group was actually put in motion towards the garrison.
+static BOOLEAN SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefencePoints, GROUP** pOptionalGroup);
 
 
 static void RequestAttackOnSector(UINT8 ubSectorID, UINT16 usDefencePoints)
@@ -239,6 +261,8 @@ static void RequestAttackOnSector(UINT8 ubSectorID, UINT16 usDefencePoints)
 			return;
 		}
 	}
+
+	SLOGD("An attack was requested in sector {} but no garrison can stage one: the sector has no garrison assignment, or its reinforcements are already en route.", sMap);
 }
 
 
@@ -612,6 +636,9 @@ static BOOLEAN EnemyPermittedToAttackSector(GROUP** pGroup, UINT8 ubSectorID)
 	}
 	if( !fPermittedToAttack )
 	{
+		UINT32 const uiGraceEnds = pSector->uiTimeLastPlayerLiberated + gubHoursGracePeriod * 3600;
+		SLOGD("Enemy is not permitted to enter {}: the player liberated it recently, grace period runs for another {} minutes.",
+				SGPSector(ubSectorID), (uiGraceEnds - GetWorldTotalSeconds()) / 60);
 		return FALSE;
 	}
 	//If Hill-billies are alive, then enemy won't attack the sector.
@@ -684,6 +711,9 @@ static BOOLEAN HandlePlayerGroupNoticedByPatrolGroup(const GROUP* const pPlayerG
 	if(PlayerForceTooStrong(ubSectorID, usOffensePoints, &usDefencePoints)
 	   || SectorInfo[playerSector].ubGarrisonID != NO_GARRISON)
 	{
+		SLOGD("Enemy group at {} spotted the player group at {} but will not attack on its own (offense {} vs defence {}, target sector {} a garrison); requesting a garrison attack instead.",
+				pEnemyGroup->ubSector, pPlayerGroup->ubSector, usOffensePoints, usDefencePoints,
+				SectorInfo[playerSector].ubGarrisonID != NO_GARRISON ? "has" : "has no");
 		RequestAttackOnSector(ubSectorID, usDefencePoints);
 		return FALSE;
 	}
@@ -721,9 +751,12 @@ static void HandlePlayerGroupNoticedByGarrison(const GROUP* const pPlayerGroup, 
 	UINT16 usOffensePoints, usDefencePoints;
 	UINT8 ubEnemies;
 	pSector = &SectorInfo[ ubSectorID ];
+	SGPSector const sGarrison(ubSectorID);
 	//First check to see if the player is at his final destination.
 	if( !GroupAtFinalDestination( pPlayerGroup ) )
 	{
+		SLOGD("Enemy garrison at {} spotted the player group heading for {} but will wait until it stops moving.",
+				sGarrison, pPlayerGroup->ubNext);
 		return;
 	}
 	usOffensePoints = pSector->ubNumAdmins * 2 +
@@ -731,16 +764,29 @@ static void HandlePlayerGroupNoticedByGarrison(const GROUP* const pPlayerGroup, 
 										pSector->ubNumElites * 6;
 	if( PlayerForceTooStrong( ubSectorID, usOffensePoints, &usDefencePoints ) )
 	{
+		SLOGD("Enemy garrison at {} spotted the stopped player group at {} but its offense {} does not beat defence {}; requesting a garrison attack instead.",
+				sGarrison, pPlayerGroup->ubSector, usOffensePoints, usDefencePoints);
 		RequestAttackOnSector( ubSectorID, usDefencePoints );
 		return;
 	}
 
-	if( pSector->ubGarrisonID != NO_GARRISON )
+	if( pSector->ubGarrisonID == NO_GARRISON )
+	{
+		SLOGD("Enemy troops at {} spotted the stopped player group at {} but the sector has no garrison assignment, so nobody sorties.",
+				sGarrison, pPlayerGroup->ubSector);
+	}
+	else
 	{
 		//Decide whether or not they will attack them with some of the troops.
 		ubEnemies = (UINT8)(pSector->ubNumAdmins + pSector->ubNumTroops + pSector->ubNumElites);
 		iReinforcementsApproved = (ubEnemies - gArmyComp[ gGarrisonGroup[ pSector->ubGarrisonID ].ubComposition ].bDesiredPopulation / 2);
-		if( iReinforcementsApproved*2 > pPlayerGroup->ubGroupSize*3 && iReinforcementsApproved > gubMinEnemyGroupSize )
+		if( iReinforcementsApproved*2 <= pPlayerGroup->ubGroupSize*3 || iReinforcementsApproved <= gubMinEnemyGroupSize )
+		{
+			SLOGD("Enemy garrison at {} spotted the stopped player group at {} but will not sortie: {} of its {} troops are spare, which does not outnumber the {} player mercs 3:2 or beat the minimum group size of {}.",
+					sGarrison, pPlayerGroup->ubSector, iReinforcementsApproved, (int)ubEnemies,
+					(int)pPlayerGroup->ubGroupSize, (int)gubMinEnemyGroupSize);
+		}
+		else
 		{ //Then enemy's available outnumber the player by at least 3:2, so attack them.
 			pGroup = CreateNewEnemyGroupDepartingFromSector( ubSectorID, 0, (UINT8)iReinforcementsApproved, 0 );
 
@@ -777,6 +823,8 @@ static BOOLEAN HandleMilitiaNoticedByPatrolGroup(UINT8 ubSectorID, GROUP* pEnemy
 										pEnemyGroup->pEnemyGroup->ubNumElites * 6;
 	if( PlayerForceTooStrong( ubSectorID, usOffensePoints, &usDefencePoints ) )
 	{
+		SLOGD("Enemy group at {} spotted militia at {} but will not attack (offense {} vs defence {}); requesting a garrison attack instead.",
+				pEnemyGroup->ubSector, sSector, usOffensePoints, usDefencePoints);
 		RequestAttackOnSector( ubSectorID, usDefencePoints );
 		return FALSE;
 	}
@@ -787,74 +835,43 @@ static BOOLEAN HandleMilitiaNoticedByPatrolGroup(UINT8 ubSectorID, GROUP* pEnemy
 }
 
 
-static BOOLEAN AttemptToNoticeEmptySectorSucceeds(void)
-{
-	if( gubNumAwareBattles || gfAutoAIAware )
-	{ //The queen is in high-alert and is searching for players.  All adjacent checks will automatically succeed.
-		return TRUE;
-	}
-	if( DayTime() )
-	{ //Day time chances are normal
-		if( Chance( giArmyAlertness ) )
-		{
-			giArmyAlertness -= giArmyAlertnessDecay;
-			//Minimum alertness should always be at least 0.
-			giArmyAlertness = std::max(0, giArmyAlertness);
-			return TRUE;
-		}
-		giArmyAlertness++;
-		return FALSE;
-	}
-	//Night time chances are one third of normal.
-	if( Chance( giArmyAlertness/3 ) )
-	{
-		giArmyAlertness -= giArmyAlertnessDecay;
-		//Minimum alertness should always be at least 0.
-		giArmyAlertness = std::max(0, giArmyAlertness);
-		return TRUE;
-	}
-	if( Chance( 33 ) )
-	{
-		giArmyAlertness++;
-	}
-	return FALSE;
-}
-
-
-//Calling the function assumes that a player group is found to be adjacent to an enemy group.
+//Calling the function assumes that something worth noticing (a player group, militia, or an
+//important undefended sector) is adjacent to an enemy group or garrison.
 //This uses the alertness rating to emulate the chance that the group will notice.  If it does
 //notice, then the alertness drops accordingly to simulate a period of time where the enemy would
 //not notice as much.  If it fails, the alertness gradually increases until it succeeds.
-static BOOLEAN AttemptToNoticeAdjacentGroupSucceeds(void)
+//sSrc/sDst and szWhat only describe the check for the log; a failed roll is otherwise
+//indistinguishable from having had nothing to notice at all.
+static BOOLEAN AttemptToNoticeSucceeds(const SGPSector& sSrc, const SGPSector& sDst, const char* szWhat)
 {
 	if( gubNumAwareBattles || gfAutoAIAware )
 	{ //The queen is in high-alert and is searching for players.  All adjacent checks will automatically succeed.
+		SLOGD("Enemy at {} automatically notices {} at {}: the queen is on high alert ({} aware battles remaining{}).",
+				sSrc, szWhat, sDst, (int)gubNumAwareBattles,
+				gfAutoAIAware ? ", awareness cheat enabled" : "");
 		return TRUE;
 	}
-	if( DayTime() )
-	{ //Day time chances are normal
-		if( Chance( giArmyAlertness ) )
-		{
-			giArmyAlertness -= giArmyAlertnessDecay;
-			//Minimum alertness should always be at least 0.
-			giArmyAlertness = std::max(0, giArmyAlertness);
-			return TRUE;
-		}
-		giArmyAlertness++;
-		return FALSE;
-	}
-	//Night time chances are one third of normal.
-	if( Chance( giArmyAlertness/3 ) )
+
+	//Day time chances are normal, night time chances are one third of normal.
+	BOOLEAN const fDayTime = DayTime();
+	INT32 const iChance = fDayTime ? giArmyAlertness : giArmyAlertness / 3;
+
+	if( Chance( iChance ) )
 	{
 		giArmyAlertness -= giArmyAlertnessDecay;
 		//Minimum alertness should always be at least 0.
 		giArmyAlertness = std::max(0, giArmyAlertness);
+		SLOGD("Enemy at {} notices {} at {}: {}% {} alertness roll passed, alertness decays to {}.",
+				sSrc, szWhat, sDst, iChance, fDayTime ? "daytime" : "nighttime", giArmyAlertness);
 		return TRUE;
 	}
-	if( Chance( 33 ) )
+
+	if( fDayTime || Chance( 33 ) )
 	{
 		giArmyAlertness++;
 	}
+	SLOGD("Enemy at {} fails to notice {} at {}: {}% {} alertness roll failed, alertness now {}.",
+			sSrc, szWhat, sDst, iChance, fDayTime ? "daytime" : "nighttime", giArmyAlertness);
 	return FALSE;
 }
 
@@ -867,11 +884,15 @@ static BOOLEAN HandleEmptySectorNoticedByPatrolGroup(GROUP* pGroup, UINT8 ubEmpt
 	{
 		if( gGarrisonGroup[ ubGarrisonID ].ubPendingGroupID )
 		{
+			SLOGD("Enemy group at {} noticed the undefended sector {} but group #{} is already on its way there.",
+					pGroup->ubSector, sSector, (int)gGarrisonGroup[ubGarrisonID].ubPendingGroupID);
 			return FALSE;
 		}
 	}
 	else
 	{
+		SLOGD("Enemy group at {} noticed the undefended sector {} but it has no garrison assignment, so it will not be retaken.",
+				pGroup->ubSector, sSector);
 		return FALSE;
 	}
 
@@ -899,13 +920,22 @@ static void HandleEmptySectorNoticedByGarrison(UINT8 ubGarrisonSectorID, UINT8 u
 	ubSrcGarrisonID = SectorInfo[ ubGarrisonSectorID ].ubGarrisonID;
 	ubDstGarrisonID = SectorInfo[ ubEmptySectorID ].ubGarrisonID;
 
+	SGPSector const sGarrison(ubGarrisonSectorID);
+	SGPSector const sEmpty(ubEmptySectorID);
+
 	if( ubSrcGarrisonID == NO_GARRISON || ubDstGarrisonID == NO_GARRISON )
 	{ //Bad logic
+		SLOGD("Enemy garrison at {} noticed the undefended sector {} but one of them has no garrison assignment ({} source, {} destination).",
+				sGarrison, sEmpty,
+				ubSrcGarrisonID == NO_GARRISON ? "no" : "valid",
+				ubDstGarrisonID == NO_GARRISON ? "no" : "valid");
 		return;
 	}
 
 	if( gGarrisonGroup[ ubDstGarrisonID ].ubPendingGroupID )
 	{ //A group is already on-route, so don't send anybody from here.
+		SLOGD("Enemy garrison at {} noticed the undefended sector {} but group #{} is already on its way there.",
+				sGarrison, sEmpty, (int)gGarrisonGroup[ubDstGarrisonID].ubPendingGroupID);
 		return;
 	}
 
@@ -919,7 +949,14 @@ static void HandleEmptySectorNoticedByGarrison(UINT8 ubGarrisonSectorID, UINT8 u
 		ConvertGroupTroopsToComposition( pGroup, gGarrisonGroup[ ubDstGarrisonID ].ubComposition );
 		RemoveSoldiersFromGarrisonBasedOnComposition( ubSrcGarrisonID, pGroup->ubGroupSize );
 		gGarrisonGroup[ ubDstGarrisonID ].ubPendingGroupID = pGroup->ubGroupID;
+		SLOGD("Enemy garrison at {} noticed the undefended sector {} and is splitting off {} of its {} troops to retake it.",
+				sGarrison, sEmpty, (int)pGroup->ubGroupSize, (int)ubAvailableTroops);
 		MoveSAIGroupToSector( &pGroup, ubEmptySectorID, DIRECT, REINFORCEMENTS );
+	}
+	else
+	{
+		SLOGD("Enemy garrison at {} noticed the undefended sector {} but only has {} troops, below the {} needed to split off a group.",
+				sGarrison, sEmpty, (int)ubAvailableTroops, gubMinEnemyGroupSize * 2);
 	}
 }
 
@@ -931,15 +968,25 @@ static BOOLEAN ReinforcementsApproved(INT32 iGarrisonID, UINT16* pusDefencePoint
 	SGPSector sSector(gGarrisonGroup[iGarrisonID].ubSectorID);
 	pSector = &SectorInfo[ gGarrisonGroup[ iGarrisonID ].ubSectorID ];
 
-	*pusDefencePoints = pSector->ubNumberOfCivsAtLevel[ GREEN_MILITIA ]		* 1 +
-										pSector->ubNumberOfCivsAtLevel[ REGULAR_MILITIA ] * 2 +
-										pSector->ubNumberOfCivsAtLevel[ ELITE_MILITIA ]		* 3 +
-										PlayerMercsInSector(sSector) * 4;
+	// Same per-head defender multipliers as PlayerForceTooStrong(), matching the
+	// queen's own troop weights (admin/troop/elite = 2/4/6). Mercs weighted as elites.
+	*pusDefencePoints = pSector->ubNumberOfCivsAtLevel[ GREEN_MILITIA ]		* 2 +
+										pSector->ubNumberOfCivsAtLevel[ REGULAR_MILITIA ] * 4 +
+										pSector->ubNumberOfCivsAtLevel[ ELITE_MILITIA ]		* 6 +
+										PlayerMercsInSector(sSector) * 6;
 	usOffensePoints = gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bAdminPercentage * 2 +
 										gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bTroopPercentage * 3 +
 										gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bElitePercentage * 4 +
 										gubGarrisonReinforcementsDenied[ iGarrisonID ];
 	usOffensePoints = usOffensePoints * gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bDesiredPopulation / 100;
+
+	SLOGD("Reinforcement check for {}: offense {} vs defence {} (militia {}/{}/{} green/regular/elite, {} mercs), denial credit {}.",
+			sSector, usOffensePoints, *pusDefencePoints,
+			(int)pSector->ubNumberOfCivsAtLevel[ GREEN_MILITIA ],
+			(int)pSector->ubNumberOfCivsAtLevel[ REGULAR_MILITIA ],
+			(int)pSector->ubNumberOfCivsAtLevel[ ELITE_MILITIA ],
+			(int)PlayerMercsInSector(sSector),
+			(int)gubGarrisonReinforcementsDenied[ iGarrisonID ]);
 
 	if( usOffensePoints > *pusDefencePoints )
 	{
@@ -949,13 +996,18 @@ static BOOLEAN ReinforcementsApproved(INT32 iGarrisonID, UINT16* pusDefencePoint
 	//we might send an augmented force to take it back.
 	if( gubGarrisonReinforcementsDenied[ iGarrisonID ] + usOffensePoints > *pusDefencePoints )
 	{
-		SLOGD("Sector {} will now recieve an {} extra troops due to multiple denials for reinforcements in the past for strong player presence.",
-				sSector, gubGarrisonReinforcementsDenied[iGarrisonID] / 3);
+		SLOGD("Sector {} is approved on denial credit {}: offense {} alone loses to defence {}.  Worth up to {} extra troops (before the force size is capped).",
+				sSector, (int)gubGarrisonReinforcementsDenied[iGarrisonID], usOffensePoints, *pusDefencePoints,
+				(int)ExtraReinforcementsFromDenials( iGarrisonID ));
 		return TRUE;
 	}
 	//Reinforcements will have to wait.  For now, increase the reinforcements denied.  The amount increase is 20 percent
 	//of the garrison's priority.
-	gubGarrisonReinforcementsDenied[ iGarrisonID ] += (UINT8)(gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bPriority / 2);
+	BankGarrisonReinforcementsDenied( iGarrisonID );
+
+	SLOGD("Reinforcements for {} not approved: offense {} plus denial credit does not exceed defence {}.  Denial credit raised to {}.",
+			sSector, usOffensePoints, *pusDefencePoints,
+			(int)gubGarrisonReinforcementsDenied[ iGarrisonID ]);
 
 	return FALSE;
 }
@@ -1143,7 +1195,7 @@ static bool EnemyNoticesPlayerArrival(GROUP const& pg, UINT8 const x, UINT8 cons
 {
 	SGPSector sMap(x, y);
 	GROUP* const eg = FindEnemyMovementGroupInSector(sMap);
-	if (eg && AttemptToNoticeAdjacentGroupSucceeds())
+	if (eg && AttemptToNoticeSucceeds(sMap, pg.ubSector, "an arriving player group"))
 	{
 		HandlePlayerGroupNoticedByPatrolGroup(&pg, eg);
 		return true;
@@ -1151,7 +1203,7 @@ static bool EnemyNoticesPlayerArrival(GROUP const& pg, UINT8 const x, UINT8 cons
 
 	SECTORINFO const& s         = SectorInfo[sMap.AsByte()];
 	UINT8      const  n_enemies = s.ubNumAdmins + s.ubNumTroops + s.ubNumElites;
-	if (n_enemies && s.ubGarrisonID != NO_GARRISON && AttemptToNoticeAdjacentGroupSucceeds())
+	if (n_enemies && s.ubGarrisonID != NO_GARRISON && AttemptToNoticeSucceeds(sMap, pg.ubSector, "an arriving player group"))
 	{
 		HandlePlayerGroupNoticedByGarrison(&pg, sMap.AsByte());
 		return true;
@@ -1212,16 +1264,16 @@ BOOLEAN StrategicAILookForAdjacentGroups( GROUP *pGroup )
 		{
 			SGPSector up(pEnemyGroup->ubSector.x, pEnemyGroup->ubSector.y - 1);
 			GROUP* const pPlayerGroup = FindPlayerMovementGroupInSector(up);
-			if( pPlayerGroup && AttemptToNoticeAdjacentGroupSucceeds() )
+			if( pPlayerGroup && AttemptToNoticeSucceeds(pEnemyGroup->ubSector, up, "a player group") )
 			{
 				return HandlePlayerGroupNoticedByPatrolGroup( pPlayerGroup, pEnemyGroup );
 			}
 			else if (CountAllMilitiaInSector(up) &&
-							AttemptToNoticeAdjacentGroupSucceeds() )
+							AttemptToNoticeSucceeds(pEnemyGroup->ubSector, up, "militia") )
 			{
 				return HandleMilitiaNoticedByPatrolGroup(up.AsByte(), pEnemyGroup);
 			}
-			else if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID-16) ) && AttemptToNoticeEmptySectorSucceeds() )
+			else if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID-16) ) && AttemptToNoticeSucceeds(pEnemyGroup->ubSector, up, "an important undefended sector") )
 			{
 				return HandleEmptySectorNoticedByPatrolGroup( pEnemyGroup, (UINT8)(ubSectorID-16) );
 			}
@@ -1230,16 +1282,16 @@ BOOLEAN StrategicAILookForAdjacentGroups( GROUP *pGroup )
 		{
 			SGPSector left(pEnemyGroup->ubSector.x - 1, pEnemyGroup->ubSector.y);
 			GROUP* const pPlayerGroup = FindPlayerMovementGroupInSector(left);
-			if( pPlayerGroup && AttemptToNoticeAdjacentGroupSucceeds() )
+			if( pPlayerGroup && AttemptToNoticeSucceeds(pEnemyGroup->ubSector, left, "a player group") )
 			{
 				return HandlePlayerGroupNoticedByPatrolGroup( pPlayerGroup, pEnemyGroup );
 			}
 			else if (CountAllMilitiaInSector(left) &&
-							AttemptToNoticeAdjacentGroupSucceeds() )
+							AttemptToNoticeSucceeds(pEnemyGroup->ubSector, left, "militia") )
 			{
 				return HandleMilitiaNoticedByPatrolGroup(left.AsByte(), pEnemyGroup);
 			}
-			else if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID-1) ) && AttemptToNoticeEmptySectorSucceeds() )
+			else if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID-1) ) && AttemptToNoticeSucceeds(pEnemyGroup->ubSector, left, "an important undefended sector") )
 			{
 				return HandleEmptySectorNoticedByPatrolGroup( pEnemyGroup, (UINT8)(ubSectorID-1) );
 			}
@@ -1248,16 +1300,16 @@ BOOLEAN StrategicAILookForAdjacentGroups( GROUP *pGroup )
 		{
 			SGPSector down(pEnemyGroup->ubSector.x, pEnemyGroup->ubSector.y + 1);
 			GROUP* const pPlayerGroup = FindPlayerMovementGroupInSector(down);
-			if( pPlayerGroup && AttemptToNoticeAdjacentGroupSucceeds() )
+			if( pPlayerGroup && AttemptToNoticeSucceeds(pEnemyGroup->ubSector, down, "a player group") )
 			{
 				return HandlePlayerGroupNoticedByPatrolGroup( pPlayerGroup, pEnemyGroup );
 			}
 			else if (CountAllMilitiaInSector(down) &&
-							AttemptToNoticeAdjacentGroupSucceeds() )
+							AttemptToNoticeSucceeds(pEnemyGroup->ubSector, down, "militia") )
 			{
 				return HandleMilitiaNoticedByPatrolGroup(down.AsByte(), pEnemyGroup);
 			}
-			else if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID+16) ) && AttemptToNoticeEmptySectorSucceeds() )
+			else if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID+16) ) && AttemptToNoticeSucceeds(pEnemyGroup->ubSector, down, "an important undefended sector") )
 			{
 				return HandleEmptySectorNoticedByPatrolGroup( pEnemyGroup, (UINT8)(ubSectorID+16) );
 			}
@@ -1266,16 +1318,16 @@ BOOLEAN StrategicAILookForAdjacentGroups( GROUP *pGroup )
 		{
 			SGPSector right(pEnemyGroup->ubSector.x + 1, pEnemyGroup->ubSector.y);
 			GROUP* const pPlayerGroup = FindPlayerMovementGroupInSector(right);
-			if( pPlayerGroup && AttemptToNoticeAdjacentGroupSucceeds() )
+			if( pPlayerGroup && AttemptToNoticeSucceeds(pEnemyGroup->ubSector, right, "a player group") )
 			{
 				return HandlePlayerGroupNoticedByPatrolGroup( pPlayerGroup, pEnemyGroup );
 			}
 			else if (CountAllMilitiaInSector(right) &&
-							AttemptToNoticeAdjacentGroupSucceeds() )
+							AttemptToNoticeSucceeds(pEnemyGroup->ubSector, right, "militia") )
 			{
 				return HandleMilitiaNoticedByPatrolGroup(right.AsByte(), pEnemyGroup);
 			}
-			else if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID+1) ) && AttemptToNoticeEmptySectorSucceeds() )
+			else if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID+1) ) && AttemptToNoticeSucceeds(pEnemyGroup->ubSector, right, "an important undefended sector") )
 			{
 				return HandleEmptySectorNoticedByPatrolGroup( pEnemyGroup, (UINT8)(ubSectorID+1) );
 			}
@@ -1362,7 +1414,8 @@ void CheckEnemyControlledSector( UINT8 ubSectorID )
 		SGPSector sSector(ubSectorID);
 		if (sSector.y > 1 && EnemyPermittedToAttackSector(NULL, (UINT8)(ubSectorID - 16)))
 		{
-			if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID-16) ) && AttemptToNoticeEmptySectorSucceeds() )
+			if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID-16) ) &&
+					AttemptToNoticeSucceeds(sSector, SGPSector((UINT8)(ubSectorID - 16)), "an important undefended sector") )
 			{
 				HandleEmptySectorNoticedByGarrison( ubSectorID, (UINT8)(ubSectorID-16) );
 				return;
@@ -1370,7 +1423,8 @@ void CheckEnemyControlledSector( UINT8 ubSectorID )
 		}
 		if( sSector.x < 16 && EnemyPermittedToAttackSector( NULL, (UINT8)(ubSectorID + 1) ) )
 		{
-			if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID+1) ) && AttemptToNoticeEmptySectorSucceeds() )
+			if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID+1) ) &&
+					AttemptToNoticeSucceeds(sSector, SGPSector((UINT8)(ubSectorID + 1)), "an important undefended sector") )
 			{
 				HandleEmptySectorNoticedByGarrison( ubSectorID, (UINT8)(ubSectorID+1) );
 				return;
@@ -1378,7 +1432,8 @@ void CheckEnemyControlledSector( UINT8 ubSectorID )
 		}
 		if( sSector.y < 16 && EnemyPermittedToAttackSector( NULL, (UINT8)(ubSectorID + 16) ) )
 		{
-			if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID+16) ) && AttemptToNoticeEmptySectorSucceeds() )
+			if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID+16) ) &&
+					AttemptToNoticeSucceeds(sSector, SGPSector((UINT8)(ubSectorID + 16)), "an important undefended sector") )
 			{
 				HandleEmptySectorNoticedByGarrison( ubSectorID, (UINT8)(ubSectorID+16) );
 				return;
@@ -1386,7 +1441,8 @@ void CheckEnemyControlledSector( UINT8 ubSectorID )
 		}
 		if( sSector.x > 1 && EnemyPermittedToAttackSector( NULL, (UINT8)(ubSectorID - 1) ) )
 		{
-			if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID-1) ) && AttemptToNoticeEmptySectorSucceeds() )
+			if( AdjacentSectorIsImportantAndUndefended( (UINT8)(ubSectorID-1) ) &&
+					AttemptToNoticeSucceeds(sSector, SGPSector((UINT8)(ubSectorID - 1)), "an important undefended sector") )
 			{
 				HandleEmptySectorNoticedByGarrison( ubSectorID, (UINT8)(ubSectorID-1) );
 				return;
@@ -1430,18 +1486,34 @@ void RemoveGroupFromStrategicAILists(GROUP const& g)
  * @@@Alex, this is possibly missing in some areas. It is hard to ensure it is
  * everywhere with all the changes I've made. I'm sure you could probably find
  * some missing calls. */
+static BOOLEAN PermittedToFillPatrolGroup(const PATROL_GROUP&);
+
+
 static void RecalculatePatrolWeight(PATROL_GROUP& p)
 {
 	// First, remove the previous weight from the applicable field
 	INT32 const prev_weight = p.bWeight;
 	if (prev_weight > 0) giRequestPoints -= prev_weight;
 
-	INT32 need_population;
-	if (p.ubGroupID != 0)
+	/* A group the queen cannot serve must not hold any request points.  She picks a weighted
+	 * slot first and only then checks whether the winner is eligible, so weight on an
+	 * ineligible group does nothing but dilute the lottery for the groups that can use it.
+	 * The conditions below mirror PatrolRequestingMinimumReinforcements(). */
+	GROUP const* const g = p.ubGroupID != 0 ? GetGroup(p.ubGroupID) : NULL;
+	if (p.ubPendingGroupID ||                                  // reinforcements already on the way
+		!PermittedToFillPatrolGroup(p) ||                      // still inside the post-defeat cooldown
+		(!g && !saipolicy(refill_defeated_patrol_groups)))     // wiped out, and refilling those is off
 	{
-		need_population = p.bSize - GetGroup(p.ubGroupID)->ubGroupSize;
-		if (need_population < 0)
-		{
+		p.bWeight = 0;
+		return;
+	}
+
+	INT32 need_population;
+	if (g)
+	{
+		need_population = p.bSize - g->ubGroupSize;
+		if (need_population < gubMinEnemyGroupSize)
+		{ // Too small a shortfall to be worth sending a group for; she would refuse it anyway.
 			p.bWeight = 0;
 			return;
 		}
@@ -1450,8 +1522,17 @@ static void RecalculatePatrolWeight(PATROL_GROUP& p)
 	{
 		need_population = p.bSize;
 	}
-	INT32 weight = need_population * 3 * p.bPriority / 96;
-	weight = std::min(weight, 2);
+	// Same shape as the positive branch of RecalculateGarrisonWeight(): scale the shortfall
+	// by the group's priority, then apply a floor of 2 so that a small shortfall at low
+	// priority doesn't truncate away to nothing.  The floor only applies to groups that are
+	// actually short of troops; a full strength patrol must stay at 0, or it would sit in
+	// the request point total forever and take lottery bands from groups that need them.
+	INT32 weight = need_population * 3;
+	if (weight > 0)
+	{
+		weight = weight * p.bPriority / 96;
+		weight = std::max(weight, 2);
+	}
 	p.bWeight        = weight;
 	giRequestPoints += weight;
 }
@@ -1484,11 +1565,27 @@ static void RecalculateGarrisonWeight(INT32 iGarrisonID)
 	//converted based on the priority.
 	iWeight = (iDesiredPop - iCurrentPop) * 3;
 	if( iWeight > 0 )
-	{ //modify it by it's priority.
-		//generates a value between 2 and 100
-		iWeight = iWeight * iPriority / 96;
-		iWeight = std::max(iWeight, 2);
-		giRequestPoints += iWeight;
+	{
+		/* As in RecalculatePatrolWeight(): a garrison that cannot be served right now must not
+		 * hold request points, or it only dilutes the lottery.  Mirrors
+		 * GarrisonRequestingMinimumReinforcements() plus the liberation grace period that the
+		 * lottery checks through EnemyPermittedToAttackSector().  Only the plain grace period is
+		 * tested here, deliberately: this runs on every weight recalculation, so it has to stay
+		 * cheap and must not emit the grace period log line on each call.  The scripted story
+		 * gates in EnemyPermittedToAttackSector() are therefore still able to dilute. */
+		if( gGarrisonGroup[ iGarrisonID ].ubPendingGroupID ||
+				iDesiredPop - iCurrentPop < gubMinEnemyGroupSize ||
+				!OkayForEnemyToMoveThroughSector( gGarrisonGroup[ iGarrisonID ].ubSectorID ) )
+		{
+			iWeight = 0;
+		}
+		else
+		{ //modify it by it's priority.
+			//generates a value between 2 and 100
+			iWeight = iWeight * iPriority / 96;
+			iWeight = std::max(iWeight, 2);
+			giRequestPoints += iWeight;
+		}
 	}
 	else if( iWeight < 0 )
 	{ //modify it by it's reverse priority
@@ -1644,7 +1741,7 @@ static INT32 ChooseSuitableGarrisonToProvideReinforcements(INT32 iDstGarrisonID,
 }
 
 
-static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefencePoints, GROUP** pOptionalGroup)
+static BOOLEAN SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefencePoints, GROUP** pOptionalGroup)
 {
 	INT32 iChance, iRandom, iSrcGarrisonID;
 	INT32 iMaxReinforcementsAllowed, iReinforcementsAvailable, iReinforcementsRequested, iReinforcementsApproved;
@@ -1663,6 +1760,24 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 		gArmyComp[ gGarrisonGroup[ iDstGarrisonID ].ubComposition ].bDesiredPopulation *
 		gArmyComp[ gGarrisonGroup[ iDstGarrisonID ].ubComposition ].bPriority / 50;
 
+	// Size the assault to the sector's actual defenders rather than only to the desired
+	// garrison size. Vanilla sends roughly desiredPopulation regardless of how much
+	// militia is present, so a well-defended town gets attacked by too small a force.
+	// Aim instead for the head count the decimation check below treats as viable
+	// (approved*3 >= usDefencePoints). Only ever grows the force, and stays bounded by
+	// MAX_STRATEGIC_TEAM_SIZE (and, further down, by the available reinforcement pool).
+	{
+		INT32 const iDefenceDrivenForce = std::min<INT32>(MAX_STRATEGIC_TEAM_SIZE, (usDefencePoints + 2) / 3);
+		if( iDefenceDrivenForce > iMaxReinforcementsAllowed )
+		{
+			iMaxReinforcementsAllowed = iDefenceDrivenForce;
+		}
+		if( iDefenceDrivenForce > iReinforcementsRequested + ubNumExtraReinforcements )
+		{
+			ubNumExtraReinforcements = (UINT8)(iDefenceDrivenForce - iReinforcementsRequested);
+		}
+	}
+
 	if( iReinforcementsRequested + ubNumExtraReinforcements > iMaxReinforcementsAllowed )
 	{ //adjust the extra reinforcements so that it doesn't exceed the maximum allowed.
 		fLimitMaxTroopsAllowable = TRUE;
@@ -1671,12 +1786,17 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 
 	iReinforcementsRequested += ubNumExtraReinforcements;
 
+	SGPSector dstSector(gGarrisonGroup[iDstGarrisonID].ubSectorID);
+
+	SLOGD("Sizing reinforcements for {}: {} troops requested (incl. {} extra), max allowed {}, defence points {}.  Queen has pool {} and garrison surplus points {}.",
+			dstSector, iReinforcementsRequested, (int)ubNumExtraReinforcements,
+			iMaxReinforcementsAllowed, usDefencePoints, giReinforcementPool, giReinforcementPoints);
+
 	if( iReinforcementsRequested <= 0 )
 	{
-		return;
+		SLOGD("No reinforcements sent to {}: the garrison is already at or above its desired population.", dstSector);
+		return FALSE;
 	}
-
-	SGPSector dstSector(gGarrisonGroup[iDstGarrisonID].ubSectorID);
 
 	if( pOptionalGroup && *pOptionalGroup )
 	{ //This group will provide the reinforcements
@@ -1690,7 +1810,7 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 		gGarrisonGroup[ iDstGarrisonID ].ubPendingGroupID = pGroup->ubGroupID;
 		ConvertGroupTroopsToComposition( pGroup, gGarrisonGroup[ iDstGarrisonID ].ubComposition );
 		MoveSAIGroupToSector( pOptionalGroup, gGarrisonGroup[ iDstGarrisonID ].ubSectorID, STAGE, REINFORCEMENTS );
-		return;
+		return TRUE;
 	}
 	iRandom = Random( giReinforcementPoints + giReinforcementPool );
 	if( iRandom < giReinforcementPool )
@@ -1702,20 +1822,25 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 		//were not performed!
 		if( !StrategicMap[ SGPSector( 3, 16 ).AsStrategicIndex() ].fEnemyControlled )
 		{ //Queen can no longer send reinforcements from the palace if she doesn't control it!
-			return;
+			SLOGD("No reinforcements sent to {}: the queen no longer controls the palace (P3), so her pool is unreachable.", dstSector);
+			return FALSE;
 		}
 
 
 		if( !giReinforcementPool )
 		{
-			return;
+			SLOGD("No reinforcements sent to {}: the queen's pool is empty.", dstSector);
+			return FALSE;
 		}
 		iReinforcementsApproved = std::min(iReinforcementsRequested, giReinforcementPool);
 
 		if( iReinforcementsApproved * 3 < usDefencePoints )
 		{ //The enemy force that would be sent would likely be decimated by the player forces.
-			gubGarrisonReinforcementsDenied[ iDstGarrisonID ] += (UINT8)(gArmyComp[ gGarrisonGroup[ iDstGarrisonID ].ubComposition ].bPriority / 2);
-			return;
+			BankGarrisonReinforcementsDenied( iDstGarrisonID );
+			SLOGD("No reinforcements sent from palace to {}: the {} troops the pool can spare would be decimated by {} defence points.  Denial credit raised to {}.",
+					dstSector, iReinforcementsApproved, usDefencePoints,
+					(int)gubGarrisonReinforcementsDenied[ iDstGarrisonID ]);
+			return FALSE;
 		}
 		else
 		{
@@ -1730,7 +1855,9 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 			iChance = (iReinforcementsApproved + ubNumExtraReinforcements) * 100 / usDefencePoints;
 			if( !Chance( iChance ) )
 			{
-				return;
+				SLOGD("No reinforcements sent from palace to {}: force is capped at the max allowable {} and the {}% willingness roll failed.",
+						dstSector, iMaxReinforcementsAllowed, iChance);
+				return FALSE;
 			}
 		}
 
@@ -1756,13 +1883,14 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 					ubGroupSize, dstSector);
 			MoveSAIGroupToSector( &pGroup, gGarrisonGroup[ iDstGarrisonID ].ubSectorID, STAGE, REINFORCEMENTS );
 		}
-		return;
+		return TRUE;
 	}
 	else
 	{
 		iSrcGarrisonID = ChooseSuitableGarrisonToProvideReinforcements( iDstGarrisonID, iReinforcementsRequested );
 		if( iSrcGarrisonID == -1 )
 		{
+			SLOGD("No garrison can spare troops for {}; falling back to the queen's pool.", dstSector);
 			goto QUEEN_POOL;
 		}
 
@@ -1773,19 +1901,25 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 			if( iReinforcementsAvailable <= 0)
 			{
 				SLOGE("Attempting to send reinforcements from a garrison that doesn't have any! -- KM:0 (with prior saved game and Debug Log)");
-				return;
+				return FALSE;
 			}
 			//Send the lowest of the two:  number requested or number available
 
 			iReinforcementsApproved = std::min(iReinforcementsRequested, iReinforcementsAvailable);
 			if( iReinforcementsApproved > iMaxReinforcementsAllowed - ubNumExtraReinforcements )
 			{ //The force isn't strong enough, but the queen isn't willing to apply extra resources
+				SLOGD("Reinforcements for {} trimmed from {} to {} troops: the queen is unwilling to commit extra resources beyond the max allowable {}.",
+						dstSector, iReinforcementsApproved,
+						iMaxReinforcementsAllowed - ubNumExtraReinforcements, iMaxReinforcementsAllowed);
 				iReinforcementsApproved = iMaxReinforcementsAllowed - ubNumExtraReinforcements;
 			}
 			else if( (iReinforcementsApproved + ubNumExtraReinforcements) * 3 < usDefencePoints )
 			{ //The enemy force that would be sent would likely be decimated by the player forces.
-				gubGarrisonReinforcementsDenied[ iDstGarrisonID ] += (UINT8)(gArmyComp[ gGarrisonGroup[ iDstGarrisonID ].ubComposition ].bPriority / 2);
-				return;
+				BankGarrisonReinforcementsDenied( iDstGarrisonID );
+				SLOGD("No reinforcements sent from {} to {}: the {} troops available (plus {} extra) would be decimated by {} defence points.  Denial credit raised to {}.",
+						srcSector, dstSector, iReinforcementsApproved, (int)ubNumExtraReinforcements,
+						usDefencePoints, (int)gubGarrisonReinforcementsDenied[ iDstGarrisonID ]);
+				return FALSE;
 			}
 			else
 			{
@@ -1800,7 +1934,9 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 				iChance = (iReinforcementsApproved + ubNumExtraReinforcements) * 100 / usDefencePoints;
 				if( !Chance( iChance ) )
 				{
-					return;
+					SLOGD("No reinforcements sent from {} to {}: force is capped at the max allowable {} and the {}% willingness roll failed.",
+							srcSector, dstSector, iMaxReinforcementsAllowed, iChance);
+					return FALSE;
 				}
 			}
 
@@ -1827,12 +1963,17 @@ static void SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefence
 
 				MoveSAIGroupToSector( &pGroup, gGarrisonGroup[ iDstGarrisonID ].ubSectorID, STAGE, REINFORCEMENTS );
 			}
-			SLOGD("{} troops have been sent from garrison sector {} to patrol area near sector {}",
-					ubGroupSize, srcSector, dstSector);
 
-			return;
+			return TRUE;
+		}
+		else
+		{
+			SLOGD("No reinforcements sent to {}: the chosen source garrison {} is the sector currently loaded in tactical.",
+					dstSector, srcSector);
 		}
 	}
+
+	return FALSE;
 }
 
 
@@ -1914,10 +2055,15 @@ static void SendReinforcementsForPatrol(INT32 iPatrolID, GROUP** pOptionalGroup)
 						MoveSAIGroupToSector(&pGroup, pg->ubSectorID[1], EVASIVE, REINFORCEMENTS);
 						return;
 					}
+					SLOGD("No reinforcements sent to the patrol group covering {}: the chosen source garrison {} is the sector currently loaded in tactical.",
+							dstSector, srcSector);
 				}
 				iRandom -= iWeight;
 			}
 		}
+
+		SLOGD("No reinforcements sent to the patrol group covering {}: no garrison with surplus troops was picked (garrison surplus points {}).",
+				dstSector, giReinforcementPoints);
 	}
 }
 
@@ -1935,6 +2081,7 @@ void EvaluateQueenSituation()
 	INT32 iRandom, iWeight;
 	UINT32 uiOffset;
 	UINT16 usDefencePoints;
+	BOOLEAN fNothingDispatched = FALSE;
 
 	// figure out how long it shall be before we call this again
 
@@ -1944,20 +2091,27 @@ void EvaluateQueenSituation()
 	uiOffset = uiOffset + Random( uiOffset * 4 );
 	uiOffset += saipolicy_by_diff(time_evaluate_in_minutes) + Random(saipolicy_by_diff(time_evaluate_variance));
 
+	SLOGD("Queen is evaluating the situation: request points {}, garrison surplus points {}, pool {}, priority phase {}0%, awake {}.",
+			giRequestPoints, giReinforcementPoints, giReinforcementPool,
+			(int)gubQueenPriorityPhase, gfQueenAIAwake ? "yes" : "no");
+
 	if( !giReinforcementPool )
 	{ //Queen has run out of reinforcements.  Simulate recruiting and training new troops
 		uiOffset *= 10;
 		giReinforcementPool += 30;
+		SLOGD("Queen has run out of reinforcements: recruiting 30 new troops and delaying the next decision by {} minutes.", uiOffset);
 		AddStrategicEvent( EVENT_EVALUATE_QUEEN_SITUATION, GetWorldTotalMin() + uiOffset, 0 );
 		return;
 	}
 
 	//Re-post the event
 	AddStrategicEvent( EVENT_EVALUATE_QUEEN_SITUATION, GetWorldTotalMin() + uiOffset, 0 );
+	SLOGD("Queen's next decision is due in {} minutes.", uiOffset);
 
 	// if the queen hasn't been alerted to player's presence yet
 	if( !gfQueenAIAwake )
 	{ //no decisions can be made yet.
+		SLOGD("Queen makes no decision: she is not yet aware of the player.");
 		return;
 	}
 
@@ -1969,12 +2123,42 @@ void EvaluateQueenSituation()
 
 	if( ( giRequestPoints <= 0 ) || ( ( giReinforcementPoints <= 0 ) && ( giReinforcementPool <= 0 ) ) )
 	{ //we either have no reinforcements or request for reinforcements.
+		if( giRequestPoints <= 0 )
+		{
+			SLOGD("Queen makes no decision: nobody is requesting reinforcements (request points {}).", giRequestPoints);
+		}
+		else
+		{
+			SLOGD("Queen makes no decision: she has nothing to send (garrison surplus points {}, pool {}).",
+					giReinforcementPoints, giReinforcementPool);
+		}
 		return;
 	}
 
 	//now randomly choose who gets the reinforcements.
 	// giRequestPoints is the combined sum of all the individual weights of all garrisons and patrols requesting reinforcements
 	iRandom = Random( giRequestPoints );
+
+	SLOGD("Queen's reinforcement lottery: rolled {} out of {} request points.  Requesting groups, as of the last weight recalculation:",
+			iRandom, giRequestPoints);
+	for (size_t i = 0; i < gGarrisonGroup.size(); i++)
+	{
+		if( gGarrisonGroup[ i ].bWeight > 0 )
+		{
+			SLOGD("  garrison {}: weight {}, pending group #{}, denial credit {}",
+					SGPSector(gGarrisonGroup[i].ubSectorID), (int)gGarrisonGroup[i].bWeight,
+					(int)gGarrisonGroup[i].ubPendingGroupID, (int)gubGarrisonReinforcementsDenied[i]);
+		}
+	}
+	for (size_t i = 0; i < gPatrolGroup.size(); i++)
+	{
+		if( gPatrolGroup[ i ].bWeight > 0 )
+		{
+			SLOGD("  patrol covering {}: weight {}, pending group #{}",
+					SGPSector(gPatrolGroup[i].ubSectorID[1]), (int)gPatrolGroup[i].bWeight,
+					(int)gPatrolGroup[i].ubPendingGroupID);
+		}
+	}
 
 	//go through garrisons first
 	for (size_t i = 0; i < gGarrisonGroup.size(); i++)
@@ -1983,20 +2167,47 @@ void EvaluateQueenSituation()
 		iWeight = gGarrisonGroup[ i ].bWeight;
 		if( iWeight > 0 )
 		{	//if group is requesting reinforcements.
-			if( iRandom < iWeight && !gGarrisonGroup[ i ].ubPendingGroupID &&
-					EnemyPermittedToAttackSector( NULL, gGarrisonGroup[ i ].ubSectorID ) &&
-					GarrisonRequestingMinimumReinforcements( i ) )
-			{ //This is the group that gets the reinforcements!
-				if( ReinforcementsApproved( i, &usDefencePoints ) )
+			if( iRandom < iWeight )
+			{ //This garrison won the lottery, but it still has to pass every check below to keep it.
+				SGPSector sMap(gGarrisonGroup[i].ubSectorID);
+				if( gGarrisonGroup[ i ].ubPendingGroupID )
 				{
-					SendReinforcementsForGarrison( i, usDefencePoints, NULL );
+					SLOGD("Garrison {} won the lottery (weight {}) but group #{} is already en route.  Passing to the next requesting group.",
+							sMap, iWeight, (int)gGarrisonGroup[i].ubPendingGroupID);
+				}
+				else if( !EnemyPermittedToAttackSector( NULL, gGarrisonGroup[ i ].ubSectorID ) )
+				{
+					SLOGD("Garrison {} won the lottery (weight {}) but the enemy is not permitted there yet (grace period).  Passing to the next requesting group.",
+							sMap, iWeight);
+				}
+				else if( !GarrisonRequestingMinimumReinforcements( i ) )
+				{
+					SLOGD("Garrison {} won the lottery (weight {}) but its shortfall is below the minimum group size of {}.  Passing to the next requesting group.",
+							sMap, iWeight, (int)gubMinEnemyGroupSize);
 				}
 				else
-				{
-					SGPSector sMap(gGarrisonGroup[i].ubSectorID);
-					SLOGD("Reinforcements were denied to go to {} because player forces too strong.", sMap);
+				{ /* This is the group that gets the reinforcements -- provided the queen is actually
+					 * willing and able to send them.  If she isn't, the only thing that happened is that
+					 * the garrison banked some denial credit for a later attempt, so let the lottery keep
+					 * looking for a target that can be served now instead of idling until the next
+					 * evaluation (which can be several hours of game time away). */
+					if( ReinforcementsApproved( i, &usDefencePoints ) )
+					{
+						SLOGD("Garrison {} won the lottery (weight {}) and reinforcements were approved.", sMap, iWeight);
+						if( SendReinforcementsForGarrison( i, usDefencePoints, NULL ) )
+						{
+							return;
+						}
+						fNothingDispatched = TRUE;
+						SLOGD("Nothing could be dispatched to {} after all.  Passing to the next requesting group.", sMap);
+					}
+					else
+					{
+						fNothingDispatched = TRUE;
+						SLOGD("Reinforcements were denied to go to {} because player forces too strong ({} defence points).  Passing to the next requesting group.",
+								sMap, usDefencePoints);
+					}
 				}
-				return;
 			}
 			iRandom -= iWeight;
 		}
@@ -2009,13 +2220,38 @@ void EvaluateQueenSituation()
 		iWeight = gPatrolGroup[ i ].bWeight;
 		if( iWeight > 0 )
 		{
-			if( iRandom < iWeight && !gPatrolGroup[ i ].ubPendingGroupID && PatrolRequestingMinimumReinforcements( i ) )
-			{ //This is the group that gets the reinforcements!
-				SendReinforcementsForPatrol( i, NULL );
-				return;
+			if( iRandom < iWeight )
+			{ //This patrol group won the lottery, but it still has to pass the checks below to keep it.
+				SGPSector sMap(gPatrolGroup[i].ubSectorID[1]);
+				if( gPatrolGroup[ i ].ubPendingGroupID )
+				{
+					SLOGD("Patrol group covering {} won the lottery (weight {}) but group #{} is already en route.  Passing to the next requesting group.",
+							sMap, iWeight, (int)gPatrolGroup[i].ubPendingGroupID);
+				}
+				else if( !PatrolRequestingMinimumReinforcements( i ) )
+				{
+					SLOGD("Patrol group covering {} won the lottery (weight {}) but is not short enough to justify reinforcements.  Passing to the next requesting group.",
+							sMap, iWeight);
+				}
+				else
+				{ //This is the group that gets the reinforcements!
+					SLOGD("Patrol group covering {} won the lottery (weight {}).", sMap, iWeight);
+					SendReinforcementsForPatrol( i, NULL );
+					return;
+				}
 			}
 			iRandom -= iWeight;
 		}
+	}
+
+	if( fNothingDispatched )
+	{
+		SLOGD("Queen made no reinforcement decision: every group the lottery reached either was denied or had nothing that could be dispatched.");
+	}
+	else
+	{
+		SLOGD("Queen made no reinforcement decision: the roll fell through every requesting group ({} left over).  Weights have changed since the request point total was last summed.",
+				iRandom);
 	}
 }
 
@@ -3150,9 +3386,6 @@ static BOOLEAN GarrisonRequestingMinimumReinforcements(INT32 iGarrisonID)
 }
 
 
-static BOOLEAN PermittedToFillPatrolGroup(INT32 iPatrolID);
-
-
 static BOOLEAN PatrolRequestingMinimumReinforcements(INT32 iPatrolID)
 {
 	GROUP *pGroup;
@@ -3161,7 +3394,7 @@ static BOOLEAN PatrolRequestingMinimumReinforcements(INT32 iPatrolID)
 	{
 		return FALSE;
 	}
-	if( !PermittedToFillPatrolGroup( iPatrolID ) )
+	if( !PermittedToFillPatrolGroup( gPatrolGroup[ iPatrolID ] ) )
 	{ //if the group was defeated, it won't be considered for reinforcements again for several days
 		return FALSE;
 	}
@@ -3372,6 +3605,12 @@ size_t FindPatrolGroupIndexForGroupID( UINT8 ubGroupID )
 }
 
 
+void ReturnSoldiersToQueensPool( UINT8 const ubNumSoldiers )
+{
+	giReinforcementPool += ubNumSoldiers;
+}
+
+
 static void TransferGroupToPool(GROUP** pGroup)
 {
 	giReinforcementPool += (*pGroup)->ubGroupSize;
@@ -3439,9 +3678,9 @@ static void ReassignAIGroup(GROUP** pGroup)
 						EnemyPermittedToAttackSector( NULL, gGarrisonGroup[ i ].ubSectorID ) &&
 						GarrisonRequestingMinimumReinforcements( i ) )
 				{ //This is the group that gets the reinforcements!
-					if( ReinforcementsApproved( i, &usDefencePoints ) )
+					if( ReinforcementsApproved( i, &usDefencePoints ) &&
+							SendReinforcementsForGarrison( i, usDefencePoints, pGroup ) )
 					{
-						SendReinforcementsForGarrison( i, usDefencePoints, pGroup );
 						return;
 					}
 				}
@@ -3469,9 +3708,9 @@ static void ReassignAIGroup(GROUP** pGroup)
 						EnemyPermittedToAttackSector( NULL, gGarrisonGroup[ i ].ubSectorID ) &&
 						GarrisonRequestingMinimumReinforcements( i ) )
 				{ //This is the group that gets the reinforcements!
-					if( ReinforcementsApproved( i, &usDefencePoints ) )
+					if( ReinforcementsApproved( i, &usDefencePoints ) &&
+							SendReinforcementsForGarrison( i, usDefencePoints, pGroup ) )
 					{
-						SendReinforcementsForGarrison( i, usDefencePoints, pGroup );
 						return;
 					}
 				}
@@ -3538,12 +3777,12 @@ static void TagSAIGroupWithGracePeriod(GROUP const& g)
 }
 
 
-static BOOLEAN PermittedToFillPatrolGroup(INT32 iPatrolID)
+static BOOLEAN PermittedToFillPatrolGroup(const PATROL_GROUP& p)
 {
 	INT32 iDay;
 	INT32 iDayAllowed;
 	iDay = GetWorldDay();
-	iDayAllowed = gPatrolGroup[ iPatrolID ].bFillPermittedAfterDayMod100 + (iDay / 100) * 100;
+	iDayAllowed = p.bFillPermittedAfterDayMod100 + (iDay / 100) * 100;
 	return iDay >= iDayAllowed;
 }
 

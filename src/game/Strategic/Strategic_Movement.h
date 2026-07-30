@@ -206,8 +206,10 @@ INT32 CalculateTravelTimeOfGroup(GROUP const*);
 
 static UINT32 const TRAVERSE_TIME_IMPOSSIBLE = 0xFFFFFFFF;
 
-// Get travel time for this group
-INT32 GetSectorMvtTimeForGroup(UINT8 ubSector, UINT8 ubDirection, GROUP const*);
+// Get travel time for this group. Pass fIncludeEncumbrance = false to get the
+// estimated arrival time (ignores carried weight); leave the default TRUE for
+// the real travel time.
+INT32 GetSectorMvtTimeForGroup(UINT8 ubSector, UINT8 ubDirection, GROUP const*, bool fIncludeEncumbrance = true);
 
 UINT8 PlayerMercsInSector(const SGPSector& sector);
 UINT8 PlayerGroupsInSector(const SGPSector& sector);

@@ -29,11 +29,27 @@
 #include "Soldier_Macros.h"
 #include "Debug.h"
 #include "GameRes.h"
+#include "ContentManager.h"
+#include "GameInstance.h"
+#include "policy/GamePolicy.h"
 
 #include <string_theory/string>
 
 
 static BOOLEAN HandleDoorsOpenClose(SOLDIERTYPE* pSoldier, INT16 sGridNo, STRUCTURE* pStructure, BOOLEAN fNoAnimations);
+
+
+bool AIHasKeyToEveryDoor(const SOLDIERTYPE* pSoldier)
+{
+	// Locks are the reason AI soldiers never made it indoors: the path code treats a
+	// locked door as an obstacle unless the soldier was placed with fHasKeys, so the
+	// whole interior of most buildings is simply unreachable to them. Pretend they all
+	// carry keys instead. Only for soldiers not on our team, which is the same test
+	// HandleOpenableStruct() uses to open a door regardless of its lock - player mercs (including
+	// auto-bandage and AI-controlled PCs) still have to pick or unlock locks themselves,
+	// so letting them path through a locked door would only get them stuck at it.
+	return gamepolicy(ai_always_has_keys) && pSoldier != NULL && !IsOnOurTeam(*pSoldier);
+}
 
 
 void HandleDoorChangeFromGridNo(SOLDIERTYPE* const s, INT16 const grid_no, BOOLEAN const no_animation)
@@ -780,7 +796,10 @@ BOOLEAN HandleOpenableStruct( SOLDIERTYPE *pSoldier, INT16 sGridNo, STRUCTURE *p
 			sAPCost = doorAPs[HANDLE_DOOR_OPEN];
 			sBPCost = BP_OPEN_DOOR;
 
-			// Open if it's not locked....
+			// The AI walks through the lock without touching it: no trap check (the trap
+			// is the player's and shouldn't be wasted on an enemy) and no bookkeeping,
+			// so fLocked, ubTrapID and bPerceivedTrapped all survive. Once the door is
+			// shut again the player still meets a locked, trapped, undiscovered door.
 			ChangeSoldierState(pSoldier, GetAnimStateForInteraction(*pSoldier, fDoor, END_OPEN_DOOR), 0, FALSE);
 			fHandleDoor = TRUE;
 		}

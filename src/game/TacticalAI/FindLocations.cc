@@ -46,7 +46,7 @@
 	#endif
 #endif
 
-INT8 gubAIPathCosts[19][19];
+INT8 gubAIPathCosts[2 * AI_PATHCOST_RADIUS + 1][2 * AI_PATHCOST_RADIUS + 1];
 
 
 static INT32 CalcPercentBetter(INT32 iOldValue, INT32 iNewValue, INT32 iOldScale, INT32 iNewScale)
@@ -288,6 +288,17 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 	}
 
 
+	// Evaluate the threat's ability to hit us as if HE were standing, regardless of
+	// the stance he happens to be in right now.  This mirrors the treatment of our
+	// own shot below (see the pMe->usAnimState = STANDING block).  Without it, an
+	// opponent who is currently prone/crouched behind vision-blocking cover scores
+	// bHisCTGT ~ 0 against every candidate tile, so cover offers no defensive
+	// differentiation and we pick an exposed spot that merely favours our own
+	// offense.  Assuming he'll stand (his most dangerous stance) next turn makes us
+	// choose a spot that actually protects us when he stands up and shoots.
+	const UINT16 usHisRealAnimState = pHim->usAnimState;
+	pHim->usAnimState = STANDING;
+
 	if (InWaterOrGas(pHim,sHisGridNo))
 	{
 		bHisActualCTGT = 0;
@@ -326,6 +337,9 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 		}
 	}
 
+	// done evaluating his threat - put his stance back
+	pHim->usAnimState = usHisRealAnimState;
+
 	// if my intended gridno is in water or gas, I can't attack at all from there
 	// here, for smoke, consider bad
 	if (InWaterGasOrSmoke(pMe,sMyGridNo))
@@ -345,9 +359,19 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 		// bMyCTGT = ChanceToGetThrough(pMe,sHisGridNo,FAKE,ACTUAL,TESTWALLS,9999,M9PISTOL,NOT_FOR_LOS); // assume a gunshot
 		// bMyCTGT = SoldierToLocationChanceToGetThrough( pMe, sHisGridNo, pMe->bTargetLevel, pMe->bTargetCubeLevel );
 
+		// Evaluate our ability to shoot from this spot as if we were standing, instead of
+		// from our current stance.  This mirrors the actual attack code (see
+		// AISoldierToSoldierChanceToGetThrough), which always fakes the attacker standing.
+		// Without this, a soldier that is currently prone/crouched behind an obstacle would
+		// undervalue a spot from which it could shoot after simply raising its stance.
+		const UINT16 usMyRealAnimState = pMe->usAnimState;
+		pMe->usAnimState = STANDING;
+
 		// let's not assume anything about the stance the enemy might take, so take an average
 		// value... no cover give a higher value than partial cover
 		bMyCTGT = CalcAverageCTGTForPosition(pMe, pHim, sHisGridNo, pHim->bLevel, iMyAPsLeft);
+
+		pMe->usAnimState = usMyRealAnimState;
 
 		// since NPCs are too dumb to shoot "blind", ie. at opponents that they
 		// themselves can't see (mercs can, using another as a spotter!), if the
@@ -476,6 +500,45 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 }
 
 
+// Bias the AI towards hiding inside buildings, via two separate boosts, because
+// CalcCoverValue judges a tile almost entirely on lines of fire and a tile deep inside
+// a building has none:
+//
+//  - Scaled: a spot we can still shoot from (a window or doorway bearing on a known
+//    opponent) has a positive value already, so scale it up. This is what makes the AI
+//    prefer loopholes facing the player over blind interior corners.
+//
+//  - Flat: a fully enclosed tile sees nothing and is seen by nothing, so both positional
+//    values collapse to ~0 and all that is left is the range term (RangeChangeDesire) -
+//    which for the low-morale soldiers that actually go looking for cover rewards simply
+//    getting further away. That is why a spot *behind* a building, equally blind, used to
+//    win over the inside of it: a percentage boost has nothing to multiply. So credit
+//    indoor tiles a flat amount, sized against what is at stake (iReferenceScale is the
+//    same magnitude CalcPercentBetter divides by), which makes walls and a roof beat open
+//    ground at the same zero line of fire.
+//
+// A window tile gets both, so it still outranks an interior corner. Must be applied to
+// the soldier's current position as well as to the candidates, otherwise a soldier already
+// indoors sees every other indoor tile as an improvement on its own and shuffles around
+// the room every turn.
+static INT32 AddBuildingCoverBonus(INT32 iCoverValue, INT16 sGridNo, INT32 iReferenceScale)
+{
+	INT8 const bBonus = gamepolicy(ai_cover_building_bonus);
+
+	if (bBonus <= 0 || GetRoom(sGridNo) == NO_ROOM)
+	{
+		return iCoverValue;
+	}
+
+	if (iCoverValue > 0)
+	{
+		iCoverValue += (iCoverValue * bBonus) / 100;
+	}
+
+	return iCoverValue + (iReferenceScale * bBonus) / 100;
+}
+
+
 static UINT8 NumberOfTeamMatesAdjacent(SOLDIERTYPE* pSoldier, INT16 sGridNo)
 {
 	INT16 sTempGridNo;
@@ -569,6 +632,14 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 	// decide how far we're gonna be looking
 	iSearchRange = gbDiff[DIFF_MAX_COVER_RANGE][ SoldierDifficultyLevel( pSoldier ) ];
 
+	// how many turns of movement we're allowed to spend reaching cover (1 =
+	// vanilla, this-turn only). When >1 we may look (and head) for cover several
+	// turns away. Clamp to a sane upper bound; the path-cost grid caps the actual
+	// reach at AI_PATHCOST_RADIUS tiles regardless.
+	INT32 const iSearchTurns = std::min<INT32>(5, std::max<INT32>(1, gamepolicy(ai_cover_search_turns)));
+	// a fresh turn's worth of APs, used to budget the extra turns
+	INT32 const iFreshAPs = CalcActionPoints(pSoldier);
+
 	/*
 	switch (pSoldier->bAttitude)
 	{
@@ -601,15 +672,33 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 
 		// must be able to reach the cover, so it can't possibly be more than
 		// action points left (rounded down) tiles away, since minimum
-		// cost to move per tile is 1 points.
-		iMaxMoveTilesLeft = std::max(0, pSoldier->bActionPoints - MinAPsToStartMovement( pSoldier, usMovementMode ));
+		// cost to move per tile is 1 points. With multi-turn cover search we
+		// budget this turn's APs plus a fresh turn for each extra turn allowed.
+		INT32 const iApBudget = pSoldier->bActionPoints + (iSearchTurns - 1) * iFreshAPs;
+		iMaxMoveTilesLeft = std::max(0, iApBudget - MinAPsToStartMovement( pSoldier, usMovementMode ));
 
+		if (iSearchTurns > 1)
+		{
+			// approaching cover over several turns: the multi-turn AP reach (not
+			// Wisdom) sets how far we look, so even low-Wisdom soldiers can spot
+			// distant cover and walk to it across turns
+			iSearchRange = std::max(iSearchRange, iMaxMoveTilesLeft);
+		}
 		// if we can't go as far as the usual full search range
-		if (iMaxMoveTilesLeft < iSearchRange)
+		else if (iMaxMoveTilesLeft < iSearchRange)
 		{
 			// then limit the search range to only as far as we CAN go
 			iSearchRange = iMaxMoveTilesLeft;
 		}
+	}
+
+	// never look farther than the path-cost grid can hold. Keep the historical
+	// 9-tile cap when multi-turn cover search is off, so default behaviour is
+	// byte-for-byte unchanged (tiles beyond 9 were never reachable-flagged before).
+	INT32 const iMaxCoverRadius = (iSearchTurns > 1) ? AI_PATHCOST_RADIUS : 9;
+	if (iSearchRange > iMaxCoverRadius)
+	{
+		iSearchRange = iMaxCoverRadius;
 	}
 
 	if (iSearchRange <= 0)
@@ -728,6 +817,9 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 
 	iCurrentCoverValue -= (iCurrentCoverValue / 10) * NumberOfTeamMatesAdjacent( pSoldier, pSoldier->sGridNo );
 
+	// score where we stand by the same rules as the candidates below
+	iCurrentCoverValue = AddBuildingCoverBonus(iCurrentCoverValue, pSoldier->sGridNo, iCurrentScale);
+
 	// determine maximum horizontal limits
 	sMaxLeft  = std::min(iSearchRange,(pSoldier->sGridNo % MAXCOL));
 	sMaxRight = std::min(iSearchRange,MAXCOL - ((pSoldier->sGridNo % MAXCOL) + 1));
@@ -760,7 +852,10 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 	if (pSoldier->bAlertStatus >= STATUS_RED)          // if already in battle
 	{
 		// to speed this up, tell PathAI to cancel any paths beyond our AP reach!
-		gubNPCAPBudget = pSoldier->bActionPoints;
+		// With multi-turn cover search, extend the budget by a fresh turn per
+		// extra turn so distant cover still gets reachable-flagged & path-costed.
+		// gubNPCAPBudget is a UINT8, so clamp to keep it from overflowing.
+		gubNPCAPBudget = (UINT8) std::min<INT32>(250, pSoldier->bActionPoints + (iSearchTurns - 1) * iFreshAPs);
 	}
 	else
 	{
@@ -869,6 +964,24 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 			iCoverValue = 0;
 			iCoverScale = 0;
 
+			// APs we'd have left to act after moving here. Vanilla: whatever is
+			// left this turn (negative for tiles we can't reach this turn, which
+			// makes them score badly). For multi-turn cover search, a tile we can
+			// only reach over several turns is judged as a next-turn fighting
+			// position: give it a fresh turn's APs minus the APs that overflow
+			// past this turn, so it scores as usable cover yet nearer cover (less
+			// overflow) is still preferred.
+			INT32 iApLeftToAct = pSoldier->bActionPoints - iPathCost;
+			if (iSearchTurns > 1 && iApLeftToAct < AP_CROUCH)
+			{
+				INT32 const iApOverflow = iPathCost - pSoldier->bActionPoints; // > 0
+				iApLeftToAct = iFreshAPs - iApOverflow;
+				if (iApLeftToAct < AP_CROUCH)
+				{
+					iApLeftToAct = AP_CROUCH;
+				}
+			}
+
 			// for every opponent that threatens, consider this spot's cover vs. him
 			for (UINT32 uiLoop = 0; uiLoop < uiThreatCnt; ++uiLoop)
 			{
@@ -878,7 +991,7 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 				if (iThreatRange <= MAX_THREAT_RANGE)
 				{
 					iCoverValue += CalcCoverValue(pSoldier,sGridNo,iMyThreatValue,
-						(pSoldier->bActionPoints - iPathCost),
+						iApLeftToAct,
 						uiLoop,iThreatRange,morale,&iCoverScale);
 				}
 			}
@@ -895,13 +1008,7 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 				iCoverValue += (iCoverValue / 10) * NumberOfTeamMatesAdjacent( pSoldier, sGridNo );
 			}
 
-			//bias the AI towards hiding inside buildings: boost the cover value of tiles
-			//inside a building. Only applied to spots that already favour us (positive
-			//value), so we don't try to "improve" a spot that actually helps the enemy.
-			if (gamepolicy(ai_cover_building_bonus) > 0 && iCoverValue > 0 && GetRoom(sGridNo) != NO_ROOM)
-			{
-				iCoverValue += (iCoverValue * gamepolicy(ai_cover_building_bonus)) / 100;
-			}
+			iCoverValue = AddBuildingCoverBonus(iCoverValue, sGridNo, iCurrentScale);
 
 			if (fNight && GetRoom(sGridNo) == NO_ROOM) // ignore in buildings in case placed there
 			{
@@ -1915,11 +2022,17 @@ INT16 FindSpotToLeaveSector( SOLDIERTYPE * pSoldier )
 	// interior tile (see AIMain.cc, HandleAITacticalTraversal).
 	pSoldier->ubQuoteActionID = 0;
 
+	// A soldier that has decided to abandon the sector is no longer patrolling, so
+	// ignore its roaming range (FLAG_NOROAM) when pathing to the edge. Otherwise
+	// GoAsFarAsPossibleTowards would stop it at the patrol leash and it would just
+	// mill about out of sight instead of actually leaving - the classic "runs out of
+	// sight and sits down" behaviour.
+
 	// If we're close enough to a reachable map edge, head straight for it.
 	INT16 sEdgeSpot = FindNearbyPointOnEdgeOfMap( pSoldier, &bDirection );
 	if (sEdgeSpot != NOWHERE)
 	{
-		sDest = GoAsFarAsPossibleTowards( pSoldier, sEdgeSpot, AI_ACTION_RUN_AWAY );
+		sDest = InternalGoAsFarAsPossibleTowards( pSoldier, sEdgeSpot, -1, AI_ACTION_RUN_AWAY, FLAG_NOROAM );
 		if (sDest == sEdgeSpot)
 		{
 			// we can reach the edge tile this turn - set up the off-map traversal
@@ -1937,7 +2050,7 @@ INT16 FindSpotToLeaveSector( SOLDIERTYPE * pSoldier )
 	INT16 sEdgePoint = FindNearestEdgePoint( pSoldier->sGridNo );
 	if (sEdgePoint != NOWHERE && sEdgePoint != pSoldier->sGridNo)
 	{
-		sDest = GoAsFarAsPossibleTowards( pSoldier, sEdgePoint, AI_ACTION_RUN_AWAY );
+		sDest = InternalGoAsFarAsPossibleTowards( pSoldier, sEdgePoint, -1, AI_ACTION_RUN_AWAY, FLAG_NOROAM );
 		if (sDest != NOWHERE)
 		{
 			return( sDest );

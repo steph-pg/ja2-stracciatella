@@ -25,9 +25,11 @@
 
 // Action Point values
 #define AP_REVERSE_MODIFIER		1
-#define AP_STEALTH_MODIFIER		2
+// #define AP_STEALTH_MODIFIER		2
+#define AP_STEALTH_MODIFIER		1
 
-#define AP_STEAL_ITEM			10 // APs to steal item....
+// #define AP_STEAL_ITEM			10 // APs to steal item....
+#define AP_STEAL_ITEM			6 // APs to steal item....
 
 #define AP_TAKE_BLOOD			10
 
@@ -58,7 +60,7 @@
 #define AP_MOVE_ITEM_FAST		4 // hand, holster, ground only
 #define AP_MOVE_ITEM_SLOW		6 // vests, protective gear
 
-#define AP_RADIO			5
+#define AP_RADIO			1
 #define AP_CROUCH			2
 #define AP_PRONE			2
 
@@ -78,7 +80,9 @@
 #define AP_MIN_AIM_ATTACK		0 // minimum permitted extra aiming
 #define AP_MAX_AIM_ATTACK		4 // maximum permitted extra aiming
 
-#define AP_BURST			5
+//#define AP_BURST			5
+#define AP_BURST			3
+
 
 #define AP_DROP_BOMB			3
 
@@ -194,8 +198,8 @@ const int16_t doorAPs[] = {
 
 #define BP_CHANGE_FACING		10 // turning to face another direction
 
-#define BP_CROUCH			10
-#define BP_PRONE			10
+#define BP_CROUCH			100
+#define BP_PRONE			100
 
 #define BP_CLIMBROOF			500 // BPs to climb roof
 #define BP_CLIMBOFFROOF		250 // BPs to climb off roof

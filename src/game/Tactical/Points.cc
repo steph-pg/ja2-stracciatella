@@ -116,38 +116,7 @@ INT16 TerrainActionPoints(const SOLDIERTYPE* const pSoldier, const INT16 sGridno
 
 static INT16 BreathPointAdjustmentForCarriedWeight(SOLDIERTYPE* pSoldier)
 {
-	UINT32 uiCarriedPercent;
-	UINT32 uiPercentCost;
-
-	uiCarriedPercent = CalculateCarriedWeight( pSoldier );
-	if (uiCarriedPercent < 101)
-	{
-		// normal BP costs
-		uiPercentCost = 100;
-	}
-	else
-	{
-		if (uiCarriedPercent < 151)
-		{
-			// between 101 and 150% of max carried weight, extra BP cost
-			// of 1% per % above 100... so at 150%, we pay 150%
-			uiPercentCost = 100 + (uiCarriedPercent - 100) * 3;
-		}
-		else if (uiCarriedPercent < 201)
-		{
-			// between 151 and 200% of max carried weight, extra BP cost
-			// of 2% per % above 150... so at 200%, we pay 250%
-			uiPercentCost = 100 + (uiCarriedPercent - 100) * 3 + (uiCarriedPercent - 150);
-		}
-		else
-		{
-			// over 200%, extra BP cost of 3% per % above 200
-			uiPercentCost = 100 + (uiCarriedPercent - 100) * 3 +
-					(uiCarriedPercent - 150) + (uiCarriedPercent - 200);
-			// so at 250% weight, we pay 400% breath!
-		}
-	}
-	return( (INT16) uiPercentCost );
+	return CarriedWeightBreathCost(CalculateCarriedWeight(pSoldier));
 }
 
 

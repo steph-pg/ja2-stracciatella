@@ -44,6 +44,7 @@
 #include "MagazineModel.h"
 #include "WeaponModels.h"
 #include <array>
+#include <cmath>
 #include <initializer_list>
 #include <map>
 #include <set>
@@ -863,7 +864,102 @@ UINT32 CalculateCarriedWeight(SOLDIERTYPE const* const s)
 
 	// For now, assume soldiers can carry 500 grams per strength point
 	// without penalty. Multiply by 100 for the percentage.
-	return (100 * total_weight) / (strength_for_carrying * 500);
+	return (100 * total_weight) / (strength_for_carrying * 400);
+}
+
+
+// Progressive-model scaling: (load / capacity) ^ 1.5, so penalties ramp up
+// gently while light and bite harder the more overloaded a merc gets. 0 when
+// unloaded, 1.0 at full capacity, ~2.83 at 200%.
+static double CalculateEncumbranceFactor(UINT32 const uiCarriedPercent)
+{
+	return std::pow(uiCarriedPercent / 100.0, 1.5);
+}
+
+
+UINT8 CarriedWeightAdjustedAP(UINT8 const ubPoints, UINT32 const uiCarriedPercent)
+{
+	if (gamepolicy(progressive_weight_penalties))
+	{
+		// Flat AP loss growing non-linearly: ~5 AP at full capacity, more beyond.
+		INT16 const sPenalty = (INT16)(5.0 * CalculateEncumbranceFactor(uiCarriedPercent) + 0.5);
+		return ubPoints > sPenalty ? ubPoints - sPenalty : 0;
+	}
+
+	// Vanilla: no penalty until above 100% capacity, then scale APs down.
+	if (uiCarriedPercent > 100)
+	{
+		return (UINT8)((UINT32)ubPoints * 100 / uiCarriedPercent);
+	}
+	return ubPoints;
+}
+
+
+INT32 CarriedWeightAgilityModifier(INT32 const iEffAgility, UINT32 const uiCarriedPercent)
+{
+	if (gamepolicy(progressive_weight_penalties))
+	{
+		// Up to 30% agility loss at full capacity, non-linear, capped at 75%.
+		double penalty = 0.30 * CalculateEncumbranceFactor(uiCarriedPercent);
+		if (penalty > 0.75) penalty = 0.75;
+		return -(INT32)(iEffAgility * penalty + 0.5);
+	}
+
+	// Vanilla: no penalty until above 100% capacity.
+	if (uiCarriedPercent > 100)
+	{
+		return (iEffAgility * 100) / (INT32)uiCarriedPercent - iEffAgility;
+	}
+	return 0;
+}
+
+
+INT16 CarriedWeightBreathCost(UINT32 const uiCarriedPercent)
+{
+	if (gamepolicy(progressive_weight_penalties))
+	{
+		// +50% breath cost per move at full capacity, steeper when overloaded.
+		return (INT16)(100 + (UINT32)(50.0 * CalculateEncumbranceFactor(uiCarriedPercent) + 0.5));
+	}
+
+	// Vanilla: normal cost until above 100%, then a piecewise-increasing cost.
+	UINT32 uiPercentCost;
+	if (uiCarriedPercent < 101)
+	{
+		// normal BP costs
+		uiPercentCost = 100;
+	}
+	else if (uiCarriedPercent < 151)
+	{
+		// between 101 and 150% of max carried weight, extra BP cost
+		// of 3% per % above 100
+		uiPercentCost = 100 + (uiCarriedPercent - 100) * 3;
+	}
+	else if (uiCarriedPercent < 201)
+	{
+		// between 151 and 200% of max carried weight, extra BP cost
+		uiPercentCost = 100 + (uiCarriedPercent - 100) * 3 + (uiCarriedPercent - 150);
+	}
+	else
+	{
+		// over 200%, extra BP cost of 3% per % above 200
+		uiPercentCost = 100 + (uiCarriedPercent - 100) * 3 +
+				(uiCarriedPercent - 150) + (uiCarriedPercent - 200);
+	}
+	return (INT16)uiPercentCost;
+}
+
+
+double CarriedWeightStrategicMultiplier(UINT32 const uiCarriedPercent)
+{
+	if (gamepolicy(progressive_weight_penalties))
+	{
+		// +50% travel time / fatigue at full capacity, more beyond.
+		return 1.0 + 0.5 * CalculateEncumbranceFactor(uiCarriedPercent);
+	}
+
+	// Vanilla: no effect until above 100% capacity, then linear.
+	return uiCarriedPercent > 100 ? uiCarriedPercent / 100.0 : 1.0;
 }
 
 

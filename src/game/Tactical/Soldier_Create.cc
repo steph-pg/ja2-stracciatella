@@ -1357,6 +1357,13 @@ void CreateDetailedPlacementGivenBasicPlacementInfo( SOLDIERCREATE_STRUCT *pp, B
 	pp->bLeadership = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 	pp->bStrength = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 	pp->bWisdom = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
+	// Enemies roll explosives and wisdom from a fixed lower bound regardless of level/class,
+	// while the upper bound still scales with their stats level (bBaseAttribute + 15).
+	if (SOLDIER_CLASS_ENEMY(ubSoldierClass))
+	{
+		pp->bExplosive = (INT8)(15 + Random( bBaseAttribute + 16 - 15 ));
+		pp->bWisdom    = (INT8)(50 + Random( bBaseAttribute + 16 - 50 ));
+	}
 	pp->bMorale = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 
 	if (ubSoldierClass != SOLDIER_CLASS_ELITE)
@@ -1590,6 +1597,13 @@ void UpdateSoldierWithStaticDetailedInformation( SOLDIERTYPE *s, SOLDIERCREATE_S
 		s->bLeadership = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 		s->bStrength = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 		s->bWisdom = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
+		// Enemies roll explosives and wisdom from a fixed lower bound regardless of level/class,
+		// while the upper bound still scales with their stats level (bBaseAttribute + 15).
+		if (SOLDIER_CLASS_ENEMY(spp->ubSoldierClass))
+		{
+			s->bExplosive = (INT8)(15 + Random( bBaseAttribute + 16 - 15 ));
+			s->bWisdom    = (INT8)(50 + Random( bBaseAttribute + 16 - 50 ));
+		}
 		s->bMorale = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 	}
 	//Replace any soldier attributes with any static values in the detailed placement.

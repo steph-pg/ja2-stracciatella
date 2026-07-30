@@ -37,7 +37,7 @@ INT8 EffectiveAgility(const SOLDIERTYPE* s)
 {
 	int32_t iEffAgility = EffectStatForBeingDrunk(s, s->bAgility);
 
-	return s->sWeightCarriedAtTurnStart > 100 ? (iEffAgility * 100) / s->sWeightCarriedAtTurnStart : iEffAgility;
+	return iEffAgility + CarriedWeightAgilityModifier(iEffAgility, s->sWeightCarriedAtTurnStart);
 }
 
 

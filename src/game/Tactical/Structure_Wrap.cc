@@ -42,6 +42,10 @@ BOOLEAN	IsJumpableWindowPresentAtGridNo( INT32 sGridNo, INT8 bStartingDir)
 					return false;
 				}
 				break;
+
+			default:
+				// The hop animation only exists for the four cardinal directions
+				return false;
 		}
 
 		// XXX left out 1.13 prison window check, hope STRUCTURE_OPEN is enough

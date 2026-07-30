@@ -1955,7 +1955,30 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 						}
 						break;
 					case ANIM_PRONE:
-						ubHitLocation = AIM_SHOT_TORSO;
+						// The target is too flat to tell where the bullet lands from its
+						// height, so vanilla always scored a torso hit. Optionally roll the
+						// same distribution as a random/blind shot: 15% legs, 5% head, 80%
+						// torso. The shooter still can't aim at a body part on a prone merc.
+						if (gamepolicy(prone_random_hit_location))
+						{
+							UINT32 const uiRoll = PreRandom( 100 );
+							if (uiRoll < 15)
+							{
+								ubHitLocation = AIM_SHOT_LEGS;
+							}
+							else if (uiRoll > 94)
+							{
+								ubHitLocation = AIM_SHOT_HEAD;
+							}
+							else
+							{
+								ubHitLocation = AIM_SHOT_TORSO;
+							}
+						}
+						else
+						{
+							ubHitLocation = AIM_SHOT_TORSO;
+						}
 						break;
 
 				}
@@ -3551,6 +3574,10 @@ void MoveBullet(BULLET* const pBullet)
 		// assemble list of structures we might hit!
 		iNumLocalStructures = 0;
 		pStructure = pMapElement->pStructureHead;
+
+		// reset roof structure pointer each tile
+		pRoofStructure = NULL;
+
 		// calculate chance of hitting each structure
 		uiChanceOfHit = ChanceOfBulletHittingStructure( pBullet->iLoop, pBullet->iDistanceLimit, pBullet->sHitBy );
 		if (iGridNo == (INT32) pBullet->sTargetGridNo)
@@ -3768,7 +3795,7 @@ void MoveBullet(BULLET* const pBullet)
 
 		// check to see if any soldiers are nearby; those soldiers
 		// have their near-miss value incremented
-		if (pMapElement->ubAdjacentSoldierCnt > 0)
+		//if (pMapElement->ubAdjacentSoldierCnt > 0)
 		{
 			// cube level now calculated above!
 			// figure out the LOS cube level of the current point

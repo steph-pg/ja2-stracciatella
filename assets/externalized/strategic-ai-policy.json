@@ -48,13 +48,13 @@
     "enemy_starting_alert_decay_easy": 75,
     "enemy_starting_alert_decay_medium": 50,
     "enemy_starting_alert_decay_hard": 25,
-    
+
     //  The base time that the queen can think about reinforcements for refilling lost patrol
     //  groups, town garrisons, etc. She only is allowed one action per 'turn'.
     //
     //  vanilla values: 480, 360, 180
     "time_evaluate_in_minutes_easy": 480,
-    "time_evaluate_in_minutes_medium": 360,
+    "time_evaluate_in_minutes_medium": 180,
     "time_evaluate_in_minutes_hard": 180,
 
 
@@ -62,7 +62,7 @@
     //
     //  vanilla values: 240, 180, 120
     "time_evaluate_variance_easy": 240,
-    "time_evaluate_variance_medium": 180,
+    "time_evaluate_variance_medium": 120,
     "time_evaluate_variance_hard": 120,
 
     //  When a player takes control of a sector, don't allow any enemy reinforcements to enter
@@ -70,9 +70,9 @@
     //  it less aggressive.
     //
     //  vanilla values: 144, 96, 48
-    "grace_period_in_hours_easy": 144,  // 6 days
-    "grace_period_in_hours_medium": 96, // 4 days
-    "grace_period_in_hours_hard": 48,   // 2 days
+    "grace_period_in_hours_easy": 144, // 6 days
+    "grace_period_in_hours_medium": 36, // 1.5 days
+    "grace_period_in_hours_hard": 48, // 2 days
 
     //  Whether or not the queen would send new groups of army to replace defeated patrols. By
     //  default, the queen only reinforces active patrol groups.

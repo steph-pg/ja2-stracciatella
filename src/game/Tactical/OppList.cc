@@ -102,6 +102,14 @@ UINT8 gubPublicNoiseVolume[MAXTEAMS];
 INT16 gsPublicNoiseGridno[MAXTEAMS];
 INT8	gbPublicNoiseLevel[MAXTEAMS];
 
+// For each soldier, the looker who picked him up as SEEN_CURRENTLY during the look
+// being handled right now (NOBODY if nobody did), i.e. whose opplist he only just
+// entered. Lets the overwatch interrupt tell "this enemy has only just spotted my merc"
+// apart from "this enemy has had my merc in sight for a while". Written and read within
+// a single HandleSight(), which wipes it both on entry and on exit - so it needs no room
+// in the save game, and nothing outside of a look can be influenced by it.
+static UINT8 gubJustSpottedBy[TOTAL_SOLDIERS];
+
 UINT8 gubKnowledgeValue[10][10] =
 {
 	//   P E R S O N A L   O P P L I S T  //
@@ -131,7 +139,7 @@ UINT8 gubKnowledgeValue[10][10] =
 	*/
 };
 
-#define MAX_WATCHED_LOC_POINTS			4
+#define MAX_WATCHED_LOC_POINTS			6
 #define WATCHED_LOC_RADIUS			1
 
 INT16 gsWatchedLoc[ TOTAL_SOLDIERS ][ NUM_WATCHED_LOCS ];
@@ -618,6 +626,18 @@ static void OurTeamRadiosRandomlyAbout(SOLDIERTYPE* about);
 static void OtherTeamsLookForMan(SOLDIERTYPE* pOpponent);
 
 
+bool WasJustSpottedBy(SOLDIERTYPE const& seen, SOLDIERTYPE const& looker)
+{
+	return gubJustSpottedBy[seen.ubID] == looker.ubID;
+}
+
+
+static void ForgetWhoWasJustSpotted()
+{
+	std::fill_n(gubJustSpottedBy, TOTAL_SOLDIERS, static_cast<UINT8>(NOBODY));
+}
+
+
 static bool IsSoldierValidForSightings(SOLDIERTYPE const& s)
 {
 	extern INT32 iHelicopterVehicleId; 	// I don't want to include a map screen header file for this
@@ -635,6 +655,9 @@ void HandleSight(SOLDIERTYPE& s, SightFlags const sight_flags)
 	if (!IsSoldierValidForSightings(s)) return;
 
 	gubSightFlags = sight_flags;
+
+	// the records of who was freshly spotted only describe the look we are about to do
+	ForgetWhoWasJustSpotted();
 
 	if (gubBestToMakeSightingSize != BEST_SIGHTING_ARRAY_SIZE_ALL_TEAMS_LOOK_FOR_ALL)
 	{
@@ -761,6 +784,11 @@ void HandleSight(SOLDIERTYPE& s, SightFlags const sight_flags)
 			them.bNewOppCnt = 0;
 		}
 	}
+
+	// Drop the fresh sighting records again, so that code running outside of a look -
+	// noise interrupts, NoticeUnseenAttacker() - never sees them and keeps behaving
+	// exactly as it does with the overwatch interrupt policy turned off
+	ForgetWhoWasJustSpotted();
 
 	// CJC August 13 2002: At the end of handling sight, reset sight flags to
 	// allow interrupts in case an audio cue should cause someone to see an enemy
@@ -1778,6 +1806,11 @@ static void ManSeesMan(SOLDIERTYPE& s, SOLDIERTYPE& opponent, UINT8 const caller
 		{
 			AddOneOpponent(&s);
 			SLOGD("ManSeesMan: ID {}({}) to ID {} NEW TO ME", s.ubID, s.name, opponent.ubID);
+
+			// remember that the opponent is entering our opplist as SEEN_CURRENTLY only
+			// now - he wasn't in sight a moment ago. ResolveInterruptsVs() uses this to
+			// grant the overwatch interrupt to a merc the looker didn't see until now.
+			gubJustSpottedBy[opponent.ubID] = s.ubID;
 
 			// if we also haven't seen him earlier this turn
 			if (s.bOppList[opponent.ubID] != SEEN_THIS_TURN)
@@ -2874,14 +2907,6 @@ void DebugSoldierPage2()
 
 void DebugSoldierPage3()
 {
-	static const char* const gzAlertStr[] =
-	{
-		"GREEN",
-		"YELLOW",
-		"RED",
-		"BLACK"
-	};
-
 	INT32 const h = DEBUG_PAGE_LINE_HEIGHT;
 
 	const SOLDIERTYPE* const s = gUIFullTarget;
@@ -2892,18 +2917,18 @@ void DebugSoldierPage3()
 		INT32 y = DEBUG_PAGE_START_Y;
 
 		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "ID:",     s->ubID);
-		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Action:", gzActionStr[s->bAction]);
+		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Action:", AIActionName(s->bAction));
 
 		if (s->uiStatusFlags & SOLDIER_ENEMY)
 		{
-			MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Alert:", gzAlertStr[s->bAlertStatus]);
+			MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Alert:", AIAlertName(s->bAlertStatus));
 		}
 
 		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Action Data:", s->usActionData);
 
 		if (s->uiStatusFlags & SOLDIER_ENEMY)
 		{
-			MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "AIMorale", s->bAIMorale);
+			MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "AIMorale", AIMoraleName(s->bAIMorale));
 		}
 		else
 		{
@@ -2932,7 +2957,7 @@ void DebugSoldierPage3()
 			);
 		}
 
-		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Last Action:", gzActionStr[s->bLastAction]);
+		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Last Action:", AIActionName(s->bLastAction));
 
 		if (gubWatchedLocPoints[s->ubID][2] > 0)
 		{

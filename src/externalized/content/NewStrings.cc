@@ -663,10 +663,8 @@ const ST::string GetModifiersForEffectiveAttributes(SOLDIERTYPE* const s, Attrib
 	switch (attrName) {
 		case ATTR_AGILITY:
 			getAlcoMod(s->bAgility);
-			if (s->sWeightCarriedAtTurnStart > 100) {
-				weightMod = (effAttr * 100) / s->sWeightCarriedAtTurnStart - effAttr;
-				effAttr += weightMod;
-			}
+			weightMod = CarriedWeightAgilityModifier(effAttr, s->sWeightCarriedAtTurnStart);
+			effAttr += weightMod;
 	
 			result += st_format_printf("\n" + tab + inventoryStrings[INV_OVERBURDENED], ColorCodeModifier("{+d}", weightMod));
 			break;

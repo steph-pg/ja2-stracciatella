@@ -100,6 +100,7 @@ struct ATTACKTYPE
 	INT8  bTargetLevel;        // target level of this attack
 	UINT8 ubAPCost;            // how many APs the attack will use up
 	INT8  bWeaponIn;           // the inv slot of the weapon in question
+	UINT8 ubAimLocation;       // body part the attack was rated against (AIM_SHOT_RANDOM if none was picked)
 };
 
 extern THREATTYPE Threat[MAXMERCS];
@@ -116,6 +117,10 @@ enum ItemSearchReason
 // go as far as possible flags
 #define FLAG_CAUTIOUS		0x01
 #define FLAG_STOPSHORT	0x02
+// ignore the soldier's patrol roaming range - used when fleeing the sector, so a
+// broken soldier can path all the way to the map edge instead of being leashed to
+// its patrol origin (see FindSpotToLeaveSector)
+#define FLAG_NOROAM		0x04
 
 #define STOPSHORTDIST 5
 

@@ -55,7 +55,7 @@ INT8 gbDiff[MAX_DIFF_PARMS][5] =
 	//       AI DIFFICULTY SETTING
 	// WIMPY  EASY  NORMAL  TOUGH  ELITE
 	{  -20,  -10,     0,    10,     20  },     // DIFF_ENEMY_EQUIP_MOD
-	{  -10,   -5,     0,     5,     10  },     // DIFF_ENEMY_TO_HIT_MOD
+	{   -5,    0,     5,    10,     15  },     // DIFF_ENEMY_TO_HIT_MOD
 	{   -2,   -1,     0,     1,      2  },     // DIFF_ENEMY_INTERRUPT_MOD
 	{   50,   65,    80,    90,     95  },     // DIFF_RADIO_RED_ALERT
 	{    4,    6,     8,    10,     13  }      // DIFF_MAX_COVER_RANGE
@@ -745,7 +745,7 @@ void FreeUpNPCFromTurning(SOLDIERTYPE* pSoldier)
 	if ((pSoldier->bAction == AI_ACTION_CHANGE_FACING) && pSoldier->bActionInProgress)
 	{
 		SLOGD("FreeUpNPCFromTurning: our action {}, desdir {} dir {}",
-			pSoldier->bAction, pSoldier->bDesiredDirection, pSoldier->bDirection);
+			AIActionName(pSoldier->bAction), pSoldier->bDesiredDirection, pSoldier->bDirection);
 		ActionDone(pSoldier);
 	}
 }
@@ -794,7 +794,7 @@ void ActionDone(SOLDIERTYPE *pSoldier)
 		if (pSoldier->uiStatusFlags & SOLDIER_MONSTER)
 		{
 			SLOGD("Cancelling actiondone: our action {}, desdir {} dir {}",
-				pSoldier->bAction, pSoldier->bDesiredDirection, pSoldier->bDirection);
+				AIActionName(pSoldier->bAction), pSoldier->bDesiredDirection, pSoldier->bDirection);
 		}
 
 		// If doing an attack, reset attack busy count and # of bullets
@@ -1314,12 +1314,12 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 	if (gfTurnBasedAI || gTacticalStatus.fAutoBandageMode)
 	{
 		SLOGD("{} does {} (a.d. {}) in {} with {} APs left",
-			pSoldier->ubID, gzActionStr[pSoldier->bAction], pSoldier->usActionData,
+			pSoldier->ubID, AIActionName(pSoldier->bAction), pSoldier->usActionData,
 			pSoldier->sGridNo, pSoldier->bActionPoints);
 	}
 
 	SLOGD("{} does {} (a.d. {}) at time {}", pSoldier->ubID,
-		gzActionStr[pSoldier->bAction], pSoldier->usActionData, GetJA2Clock());
+		AIActionName(pSoldier->bAction), pSoldier->usActionData, GetJA2Clock());
 
 	switch (pSoldier->bAction)
 	{
@@ -1607,7 +1607,7 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 				if ( iRetCode != ITEM_HANDLE_BROKEN ) // if the item broke, this is 'legal' and doesn't need reporting
 				{
 					SLOGW("AI {} got error code {} from HandleItem, doing action {}, has {} APs... aborting deadlock!",
-								pSoldier->ubID, iRetCode, pSoldier->bAction, pSoldier->bActionPoints);
+								pSoldier->ubID, iRetCode, AIActionName(pSoldier->bAction), pSoldier->bActionPoints);
 				}
 				CancelAIAction(pSoldier);
 				if (gfTurnBasedAI)
@@ -1736,7 +1736,7 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 			if ( iRetCode != ITEM_HANDLE_OK)
 			{
 				SLOGW("AI {} got error code {} from HandleItem, doing action {}... aborting deadlock!",
-							pSoldier->ubID, iRetCode, pSoldier->bAction);
+							pSoldier->ubID, iRetCode, AIActionName(pSoldier->bAction));
 				CancelAIAction(pSoldier);
 				EndAIGuysTurn(*pSoldier);
 			}
@@ -1892,8 +1892,10 @@ void InitAttackType(ATTACKTYPE *pAttack)
 	pAttack->ubAimTime           = 0;
 	pAttack->ubChanceToReallyHit = 0;
 	pAttack->sTarget             = NOWHERE;
+	pAttack->bTargetLevel        = 0;
 	pAttack->iAttackValue        = 0;
 	pAttack->ubAPCost            = 0;
+	pAttack->ubAimLocation       = AIM_SHOT_RANDOM;
 }
 
 void HandleInitialRedAlert(INT8 bTeam)

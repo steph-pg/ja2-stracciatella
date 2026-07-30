@@ -44,11 +44,17 @@ public:
 
 	bool hide_bullets;                    // don't draw bullets in flight; resolve shots faster (revives the old TOPTION_HIDE_BULLETS option)
 
+	bool prone_random_hit_location;       // prone targets can be hit in head/torso/legs (5/80/15) instead of always the torso
+
 	bool multiple_interrupts;             // can interrupt more than once per turn
+
+	bool allow_overwatch_interrupt;       // a player merc who already sees an enemy that does not see him gets an interrupt duel the moment that enemy spots him (the merc enters the enemy's opplist as SEEN_CURRENTLY). Independent of the enemy's alert status
 
 	bool fixed_cost_to_shoot;    // Changes the formula for APs to shoot
 
 	int8_t enemy_weapon_minimal_status;   /**< Minimal status of the enemy weapon (0 - 100). */
+
+	int8_t gun_jam_chance_minimum;        // Minimum % chance for a gun to jam even in perfect condition (0 = vanilla, never jams above status 80)
 
 	bool gui_extras;                      /* graphical user interface cosmetic mod */
 	bool hide_terrorist_names;            // don't reveal a terrorist's name on the tactical selection UI
@@ -69,8 +75,11 @@ public:
 	bool ai_avoid_lit_tiles_at_night;     // at night, generic enemy soldiers won't path across tiles that are lit AND visible to a player merc
 	int8_t ai_night_swat_chance;          // at night, % chance a generic enemy that would RUN instead SWATs (0 = vanilla always-run, 100 = always)
 
+	bool ai_always_has_keys;              // AI-controlled soldiers can open any locked door, so locks don't shut them out of buildings; lock and trap are left intact (false = vanilla)
+
 	int8_t ai_cover_building_bonus;       // % bonus to cover value for tiles inside a building, biasing AI to hide indoors (0 = vanilla)
 	int8_t ai_cover_search_wisdom;        // treat AI as having at least this Wisdom when sizing the cover search radius (0 = use actual Wisdom)
+	int8_t ai_cover_search_turns;         // how many turns of movement the AI may spend reaching cover; lets it head for distant cover over several turns (1 = vanilla, this-turn only)
 
 	int8_t enemy_elite_minimum_level;     // increase challenge: minimum experience level for enemy elite soldier
 	int8_t enemy_elite_maximum_level;     // maximum experience level for enemy elite soldier
@@ -85,11 +94,20 @@ public:
 	int8_t chance_to_hit_minimum;         //Minimum chance to hit (0 - chance_to_hit_maximum) vanilla 1
 	int8_t chance_to_hit_maximum;         //Maximum chance to hit (chance_to_hit_minimum - 100) vanilla 99
 
+	bool burst_penalty_after_cth_cap;     // subtract the per-shot burst penalty after clamping chance-to-hit instead of before, so it is not swallowed by the cap/floor (false = vanilla)
+
+	bool nonlinear_range_modifier;        // curve the chance-to-hit range modifier instead of a flat 3%/tile line: bigger bonus up close, accelerating penalty far out (false = vanilla)
+	int16_t range_bonus_point_blank;      // chance-to-hit bonus at range 0, tapering to 0 at NORMAL_RANGE along a concave curve
+	int16_t range_penalty_far_linear;     // per-tile chance-to-hit penalty beyond NORMAL_RANGE, in tenths of a percent
+	int16_t range_penalty_far_quadratic;  // accelerating part of the penalty beyond NORMAL_RANGE, in tenths of a percent; scaled by (tiles beyond)^2 / NORMAL_RANGE in tiles
+
 	int8_t aim_bonus_per_std_ap;          // Aim bonus % for first 4 AP (aim clicks) spent
 	int8_t aim_bonus_sniperscope;         // Flat bonus after at suitable range
 	int8_t aim_bonus_laserscope;          // Aim bonus in the dark
 	int16_t range_penalty_silencer;        // Absolute penalty to range from silencer
 	int16_t range_bonus_barrel_extender;   // Aim bonus from extender
+
+	int16_t thrown_range_modifier;        // % modifier to the maximum range of hand-thrown items (100 = vanilla); does not affect launchers or unaerodynamic items
 
 	bool always_show_cursor_in_tactical;  // Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
 	bool show_hit_chance;                 // Show chance-to-hit when pressing 'F' and next to mouse cursor when preparing an attack
@@ -125,6 +143,12 @@ public:
 	int8_t unhired_merc_deaths_hard;       // Maximum unhired mercs KIA difficulty Hard
 
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
+
+	bool progressive_weight_penalties;	// true: carried weight penalizes APs/agility/breath/strategic movement from any load, scaling non-linearly. false: vanilla penalties (only above 100% capacity).
+
+	int8_t auto_sleep_breath_threshold;   // max breath below which a merc who is not on a squad or in a vehicle turns in on his own during the hourly update (vanilla 50)
+
+	uint8_t enemy_autoresolve_retreat_health_percent; // Health (in percent of maximum) below which enemy soldiers flee an autoresolve battle; 0 disables enemy retreating
 
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start

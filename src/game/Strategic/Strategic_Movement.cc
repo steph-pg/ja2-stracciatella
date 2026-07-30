@@ -1697,7 +1697,7 @@ static void InitiateGroupMovementToNextSector(GROUP* pGroup)
 		//HACK: SAM reinforcements (all-elite enemy groups sent to a SAM site) should sneak in
 		//under cover of darkness.  On the final leg into the SAM sector, delay their arrival
 		//until night time and never let them stop to sleep along the way.
-		if( !pGroup->fPlayer && gamepolicy(reinforce_all_sam_sites) && pGroup->pEnemyGroup &&
+		if( !pGroup->fPlayer && pGroup->pEnemyGroup &&
 			pGroup->pEnemyGroup->ubNumElites > 0 &&
 			pGroup->pEnemyGroup->ubNumTroops == 0 && pGroup->pEnemyGroup->ubNumAdmins == 0)
 		{
@@ -2052,7 +2052,9 @@ INT32 FindTravelTimeBetweenWaypoints(WAYPOINT const* const pSource, WAYPOINT con
 	for( ubCurrentSector = ubStart; ubCurrentSector != ubEnd; ubCurrentSector += ( INT8 ) iDelta )
 	{
 		// find diff between current and next
-		iThisCostInTime = GetSectorMvtTimeForGroup( ubCurrentSector, ubDirection, pGroup );
+		// This is only used for the estimated time of arrival shown on the map
+		// screen, so carried weight is intentionally left out of the estimate.
+		iThisCostInTime = GetSectorMvtTimeForGroup( ubCurrentSector, ubDirection, pGroup, false );
 
 		AssertMsg(iThisCostInTime != static_cast<INT32>(TRAVERSE_TIME_IMPOSSIBLE), ST::format("Group {} ({}) attempting illegal move from sector {}, dir {} ({}).",
 					pGroup->ubGroupID, ( pGroup->fPlayer ) ? "Player" : "AI",
@@ -2075,7 +2077,10 @@ INT32 FindTravelTimeBetweenWaypoints(WAYPOINT const* const pSource, WAYPOINT con
 
 
 // Changes: direction contains the strategic move value, not the delta value.
-INT32 GetSectorMvtTimeForGroup(UINT8 const ubSector, UINT8 const direction, GROUP const* const g)
+// fIncludeEncumbrance factors carried weight into the on-foot movement rate.
+// It should be TRUE for the real travel time, but is set to FALSE for the
+// estimated time of arrival shown on the map screen.
+INT32 GetSectorMvtTimeForGroup(UINT8 const ubSector, UINT8 const direction, GROUP const* const g, bool const fIncludeEncumbrance)
 {
 	/* Determine the group's method(s) of transportation.  If more than one, we
 	 * will always use the highest time. */
@@ -2116,9 +2121,9 @@ INT32 GetSectorMvtTimeForGroup(UINT8 const ubSector, UINT8 const direction, GROU
 		if (best_traverse_time > traverse_time)
 			best_traverse_time = traverse_time;
 
-		if (g->fPlayer)
+		if (g->fPlayer && fIncludeEncumbrance)
 		{
-			INT32 highest_encumbrance = 100;
+			INT32 highest_encumbrance = 0;
 			CFOR_EACH_PLAYER_IN_GROUP(curr, g)
 			{
 				SOLDIERTYPE const* const s = curr->pSoldier;
@@ -2131,7 +2136,8 @@ INT32 GetSectorMvtTimeForGroup(UINT8 const ubSector, UINT8 const direction, GROU
 					highest_encumbrance = encumbrance;
 				}
 			}
-			best_traverse_time = best_traverse_time * highest_encumbrance / 100;
+			// The heaviest-loaded member sets the pace.
+			best_traverse_time = (INT32)(best_traverse_time * CarriedWeightStrategicMultiplier(highest_encumbrance) + 0.5);
 		}
 	}
 

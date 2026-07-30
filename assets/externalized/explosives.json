@@ -56,7 +56,7 @@
         },
         "smokeEffect": {
             "type": "TEARGAS",
-            "initialRadius": 1,
+            "initialRadius": 2,
             "maxRadius": 4,
             "duration": 5
         },
@@ -93,7 +93,7 @@
         },
         "smokeEffect": {
             "type": "MUSTARDGAS",
-            "initialRadius": 1,
+            "initialRadius": 2,
             "maxRadius": 4,
             "duration": 5
         },
@@ -129,7 +129,7 @@
             }
         },
         "blastEffect": {
-            "damage": 15,
+            "damage": 22,
             "radius": 3,
             "structuralDamageDivisor": 3
         },
@@ -169,7 +169,7 @@
             }
         },
         "blastEffect": {
-            "damage": 25,
+            "damage": 37,
             "radius": 4,
             "structuralDamageDivisor": 3
         },
@@ -247,14 +247,14 @@
             }
         },
         "blastEffect": {
-            "damage": 50,
+            "damage": 100,
             "radius": 5
         },
         "stunEffect": {
             "breathDamage": 15,
             "radius": 5
         },
-        "noise": 50,
+        "noise": 60,
         "volatility": 2,
         "ubWeight": 11,
         "ubPerPocket": 1,
@@ -285,14 +285,14 @@
             }
         },
         "blastEffect": {
-            "damage": 60,
+            "damage": 120,
             "radius": 6
         },
         "stunEffect": {
             "breathDamage": 15,
             "radius": 6
         },
-        "noise": 60,
+        "noise": 70,
         "volatility": 2,
         "ubWeight": 11,
         "ubPerPocket": 1,
@@ -323,14 +323,14 @@
             }
         },
         "blastEffect": {
-            "damage": 55,
+            "damage": 110,
             "radius": 6
         },
         "stunEffect": {
             "breathDamage": 15,
             "radius": 6
         },
-        "noise": 55,
+        "noise": 65,
         "volatility": 0,
         "ubWeight": 11,
         "ubPerPocket": 1,
@@ -401,18 +401,18 @@
             }
         },
         "blastEffect": {
-            "damage": 30,
+            "damage": 45,
             "radius": 2
         },
         "stunEffect": {
             "breathDamage": 30,
             "radius": 2
         },
-        "noise": 30,
+        "noise": 60,
         "volatility": 2,
         "isPressureTriggered": true,
         "ubWeight": 8,
-        "ubPerPocket": 1,
+        "ubPerPocket": 2,
         "usPrice": 300,
         "ubCoolness": 5,
         "bReliability": 0,
@@ -441,14 +441,14 @@
             }
         },
         "blastEffect": {
-            "damage": 65,
+            "damage": 130,
             "radius": 7
         },
         "stunEffect": {
             "breathDamage": 30,
             "radius": 7
         },
-        "noise": 65,
+        "noise": 75,
         "volatility": 0,
         "ubWeight": 11,
         "ubPerPocket": 1,
@@ -623,7 +623,7 @@
             }
         },
         "blastEffect": {
-            "damage": 25,
+            "damage": 37,
             "radius": 4,
             "structuralDamageDivisor": 3
         },
@@ -665,7 +665,7 @@
         },
         "smokeEffect": {
             "type": "TEARGAS",
-            "initialRadius": 1,
+            "initialRadius": 2,
             "maxRadius": 3,
             "duration": 5
         },
@@ -744,7 +744,7 @@
         },
         "smokeEffect": {
             "type": "SMOKE",
-            "initialRadius": 1,
+            "initialRadius": 2,
             "maxRadius": 3,
             "duration": 5
         },
@@ -781,7 +781,7 @@
         },
         "smokeEffect": {
             "type": "SMOKE",
-            "initialRadius": 1,
+            "initialRadius": 2,
             "maxRadius": 4,
             "duration": 5
         },
@@ -935,7 +935,7 @@
             "breathDamage": 10,
             "radius": 5
         },
-        "noise": 50,
+        "noise": 100,
         "volatility": 2,
         "ubWeight": 41,
         "ubPerPocket": 2,
@@ -974,7 +974,7 @@
             "breathDamage": 10,
             "radius": 5
         },
-        "noise": 50,
+        "noise": 100,
         "volatility": 2,
         "ubWeight": 41,
         "ubPerPocket": 2,

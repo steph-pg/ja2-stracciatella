@@ -426,7 +426,8 @@ INT16 InternalGoAsFarAsPossibleTowards(SOLDIERTYPE *pSoldier, INT16 sDesGrid, IN
 		}
 
 		// if this takes us beyond our permitted "roaming range"
-		if (SpacesAway(sOrigin,sTempDest) > usMaxDist)
+		// (unless we're fleeing the sector, in which case the patrol leash is ignored)
+		if (!(fFlags & FLAG_NOROAM) && SpacesAway(sOrigin,sTempDest) > usMaxDist)
 			break; // quit here, sGoToGrid is where we are going
 
 		if (room_required != NO_ROOM && room_required != GetRoom(sTempDest))

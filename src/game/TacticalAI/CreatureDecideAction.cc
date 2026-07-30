@@ -1333,8 +1333,11 @@ INT8 CreatureDecideAction( SOLDIERTYPE *pSoldier )
 			bAction = CreatureDecideActionBlack(pSoldier);
 			break;
 	}
-	SLOGD("DecideAction: selected action {}, actionData {}\n\n",
-		bAction, pSoldier->usActionData);
+	SLOGD("CreatureDecideAction: soldier {} on {} alert, orders {}, attitude {}, AI morale {} -- selected action {} ({}), actionData {}\n\n",
+		pSoldier->ubID,
+		AIAlertName(pSoldier->bAlertStatus), AIOrdersName(pSoldier->bOrders),
+		AIAttitudeName(pSoldier->bAttitude), AIMoraleName(pSoldier->bAIMorale),
+		AIActionName(bAction), bAction, pSoldier->usActionData);
 	return(bAction);
 }
 

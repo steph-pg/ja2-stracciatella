@@ -20,6 +20,10 @@ enum HandleDoor
 };
 
 
+// TRUE if this soldier should be treated as holding a key to every lock in the
+// sector (see ai.always_has_keys). AI-controlled, non-player soldiers only.
+bool AIHasKeyToEveryDoor(const SOLDIERTYPE* pSoldier);
+
 BOOLEAN HandleOpenableStruct( SOLDIERTYPE *pSoldier, INT16 sGridNo, STRUCTURE *pStructure );
 
 void InteractWithOpenableStruct(SOLDIERTYPE&, STRUCTURE&, UINT8 direction);

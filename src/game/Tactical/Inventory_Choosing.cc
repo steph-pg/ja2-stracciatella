@@ -20,7 +20,7 @@
 #include "WeaponModels.h"
 #include "policy/GamePolicy.h"
 
-#define ENEMYAMMODROPRATE       50 // % of time enemies drop ammunition
+#define ENEMYAMMODROPRATE       30 // % of time enemies drop ammunition
 #define ENEMYGRENADEDROPRATE    25 // % of time enemies drop grenades
 #define ENEMYEQUIPDROPRATE      15 // % of stuff enemies drop equipment
 

@@ -19,6 +19,8 @@
 #include "Points.h"
 #include "AI.h"
 #include "LOS.h"
+#include "Lighting.h"
+#include "Environment.h"
 #include "RenderWorld.h"
 #include "OppList.h"
 #include "Interface.h"
@@ -53,7 +55,7 @@
 #define BASIC_DEPRECIATE_CHANCE	15
 
 #define NORMAL_RANGE		90 // # world units considered an 'avg' shot
-#define MIN_SCOPE_RANGE	60 // # world units after which scope's useful
+#define MIN_SCOPE_RANGE	120 // # world units after which scope's useful
 
 #define MIN_TANK_RANGE		120 // range at which tank starts really having trouble aiming
 
@@ -272,10 +274,23 @@ FireWeaponResult CheckForGunJam(SOLDIERTYPE * const pSoldier)
 					iChance -= PreRandom( 100 );
 				}
 
+				bool fJam = ((INT32) PreRandom( 100 ) < iChance) || gfNextFireJam;
+
+				// Even a gun in perfect condition has a small chance to jam.
+				// gun_jam_chance_minimum is a flat % floor applied regardless of gun status.
+				if (!fJam)
+				{
+					INT8 const bMinJamChance = gamepolicy(gun_jam_chance_minimum);
+					if (bMinJamChance > 0 && (INT32) PreRandom( 100 ) < bMinJamChance)
+					{
+						fJam = true;
+					}
+				}
+
 #ifdef TESTGUNJAM
 				if ( 1 )
 #else
-				if ((INT32) PreRandom( 100 ) < iChance || gfNextFireJam )
+				if ( fJam )
 #endif
 				{
 					gfNextFireJam = FALSE;
@@ -414,6 +429,73 @@ FireWeaponResult FireWeapon(SOLDIERTYPE * const pSoldier, GridNo const sTargetGr
 }
 
 
+// Returns TRUE if this soldier cannot actually see the target tile (shooting
+// beyond his own visible distance). Uses the shooter's personal visibility so
+// blind shots can be resolved to a random hit location regardless of what
+// teammates can see.
+static BOOLEAN IsShootingBlind( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo )
+{
+	INT16 const sDistVis = DistanceVisible( pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sTargetGridNo, 0 );
+
+	INT32 iSightRange = SoldierTo3DLocationLineOfSightTest( pSoldier, sTargetGridNo, pSoldier->bTargetLevel,
+								pSoldier->bTargetCubeLevel,
+								(UINT8) (MaxDistanceVisible() * 2), TRUE );
+	iSightRange *= 2;
+
+	return iSightRange > (sDistVis * CELL_X_SIZE);
+}
+
+
+UINT8 DecideAimShotLocation( SOLDIERTYPE *pSoldier, const SOLDIERTYPE *pTargetSoldier, INT16 sTargetGridNo, UINT8 ubAimTime, UINT8 *pubChanceToGetThrough )
+{
+	UINT32 const threshold_cth_head = gamepolicy(threshold_cth_head);
+	UINT32 const threshold_cth_legs = gamepolicy(threshold_cth_legs);
+
+	UINT32 const cth_ctgt_head = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_HEAD );
+	UINT32 const cth_ctgt_torso = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_TORSO );
+	UINT32 const cth_ctgt_legs = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_LEGS );
+
+	UINT32 const cth_aim_shot_head = cth_ctgt_head * CalcChanceToHitGun(pSoldier, sTargetGridNo, ubAimTime, AIM_SHOT_HEAD, FALSE) / 100;
+	UINT32 const cth_aim_shot_torso = cth_ctgt_torso * CalcChanceToHitGun(pSoldier, sTargetGridNo, ubAimTime, AIM_SHOT_TORSO, FALSE) / 100;
+	UINT32 const cth_aim_shot_legs = cth_ctgt_legs * CalcChanceToHitGun(pSoldier, sTargetGridNo, ubAimTime, AIM_SHOT_LEGS, FALSE) / 100;
+
+	UINT8 ubAimLocation = AIM_SHOT_TORSO; // default
+	UINT32 uiChanceToGetThrough = cth_ctgt_torso;
+
+	if (gAnimControl[pTargetSoldier->usAnimState].ubEndHeight == ANIM_STAND && (cth_aim_shot_legs >= threshold_cth_legs || cth_aim_shot_legs >= cth_aim_shot_torso)) // good enough, override
+	{
+		ubAimLocation = AIM_SHOT_LEGS;
+		uiChanceToGetThrough = cth_ctgt_legs;
+	}
+
+	if (cth_aim_shot_head >= threshold_cth_head || cth_aim_shot_head >= cth_aim_shot_torso)  // even better, override
+	{
+		ubAimLocation = AIM_SHOT_HEAD;
+		uiChanceToGetThrough = cth_ctgt_head;
+	}
+
+	if (pubChanceToGetThrough)
+	{
+		*pubChanceToGetThrough = (UINT8) uiChanceToGetThrough;
+	}
+
+	return ubAimLocation;
+}
+
+
+UINT8 AIDecideAimShotLocation( SOLDIERTYPE *pSoldier, const SOLDIERTYPE *pTargetSoldier, INT16 sTargetGridNo, UINT8 ubAimTime, UINT8 *pubChanceToGetThrough )
+{
+	// same as DecideAimShotLocation but fakes the attacker standing, the way
+	// AICalcChanceToHitGun and AISoldierToSoldierChanceToGetThrough do - the AI may still
+	// be crouched or prone while it is only deciding what to do
+	UINT16 const usTrueState = pSoldier->usAnimState;
+	pSoldier->usAnimState = STANDING;
+	UINT8 const ubAimLocation = DecideAimShotLocation( pSoldier, pTargetSoldier, sTargetGridNo, ubAimTime, pubChanceToGetThrough );
+	pSoldier->usAnimState = usTrueState;
+	return ubAimLocation;
+}
+
+
 void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT *pdXPos, FLOAT *pdYPos, FLOAT *pdZPos )
 {
 	FLOAT  dTargetX, dTargetY, dTargetZ;
@@ -428,6 +510,15 @@ void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT 
 		dTargetY = (FLOAT) CenterY( pTargetSoldier->sGridNo );
 
 		INT8 const bAimShotLocation = pSoldier->bAimShotLocation;
+
+		// If the shooter can't see the target, discard the chosen aim location:
+		// a blind shot lands wherever the bullet happens to travel, so force the
+		// random hit-location roll below (and skip any "aim for the head" upgrade).
+		BOOLEAN const fBlindShot = IsShootingBlind( pSoldier, sTargetGridNo );
+		if (fBlindShot)
+		{
+			pSoldier->bAimShotLocation = AIM_SHOT_RANDOM;
+		}
 
 		if (pSoldier->bAimShotLocation == AIM_SHOT_RANDOM)
 		{
@@ -444,7 +535,7 @@ void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT 
 			{
 				pSoldier->bAimShotLocation = AIM_SHOT_TORSO;
 			}
-			if ( pSoldier->bAimShotLocation != AIM_SHOT_HEAD )
+			if (!fBlindShot && pSoldier->bAimShotLocation != AIM_SHOT_HEAD)
 			{
 				UINT32 uiChanceToGetThrough = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, pSoldier->bAimShotLocation );
 
@@ -460,30 +551,9 @@ void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT 
 
 		}
 
-		if (gamepolicy(ai_better_aiming_choice) && bAimShotLocation == AIM_SHOT_RANDOM)
+		if (!fBlindShot && gamepolicy(ai_better_aiming_choice) && bAimShotLocation == AIM_SHOT_RANDOM)
 		{
-			UINT32 const threshold_cth_head = gamepolicy(threshold_cth_head);
-			UINT32 const threshold_cth_legs = gamepolicy(threshold_cth_legs);
-
-			UINT32 const cth_ctgt_head = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_HEAD );
-			UINT32 const cth_ctgt_torso = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_TORSO );
-			UINT32 const cth_ctgt_legs = SoldierToSoldierBodyPartChanceToGetThrough(pSoldier, pTargetSoldier, AIM_SHOT_LEGS);
-
-			UINT32 const cth_aim_shot_head = cth_ctgt_head * CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_HEAD, FALSE) / 100;
-			UINT32 const cth_aim_shot_torso = cth_ctgt_torso * CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_TORSO, FALSE) / 100;
-			UINT32 const cth_aim_shot_legs = cth_ctgt_torso * CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_LEGS, FALSE) / 100;
-
-			pSoldier->bAimShotLocation = AIM_SHOT_TORSO; // default
-
-			if (gAnimControl[pTargetSoldier->usAnimState].ubEndHeight == ANIM_STAND && (cth_aim_shot_legs >= threshold_cth_legs || cth_aim_shot_legs >= cth_aim_shot_torso)) // good enough, override
-			{
-				pSoldier->bAimShotLocation = AIM_SHOT_LEGS;
-			}
-
-			if (cth_aim_shot_head >= threshold_cth_head || cth_aim_shot_head >= cth_aim_shot_torso)  // even better, override
-			{
-				pSoldier->bAimShotLocation = AIM_SHOT_HEAD;
-			}
+			pSoldier->bAimShotLocation = DecideAimShotLocation( pSoldier, pTargetSoldier, sTargetGridNo, pSoldier->bAimTime );
 		}
 
 		switch( pSoldier->bAimShotLocation )
@@ -538,10 +608,16 @@ static UINT16 ModifyExpGainByTarget(const UINT16 exp_gain, const SOLDIERTYPE* co
 static BOOLEAN WillExplosiveWeaponFail(const SOLDIERTYPE* pSoldier, const OBJECTTYPE* pObj);
 
 
+bool IsSilenced(SOLDIERTYPE const& soldier)
+{
+	return FindAttachment(&soldier.inv[soldier.ubAttackingHand], SILENCER) != NO_SLOT;
+}
+
+
 static ST::string GetBurstSoundName(SOLDIERTYPE const& soldier)
 {
 	auto * const weapon = GCM->getWeapon(soldier.usAttackingWeapon);
-	bool isSilenced = FindAttachment(&soldier.inv[soldier.ubAttackingHand], SILENCER) != NO_SLOT;
+	bool isSilenced = IsSilenced(soldier);
 	auto const& burstSound = isSilenced ? weapon->silencedBurstSound : weapon->burstSound;
 
 	if (!burstSound.empty())
@@ -626,7 +702,7 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 		if ( GCM->getItem(usItemNum)->getItemClass() != IC_THROWING_KNIFE )
 		{
 			// Switch on silencer...
-			if( FindAttachment( &( pSoldier->inv[ pSoldier->ubAttackingHand ] ), SILENCER ) != NO_SLOT )
+			if( IsSilenced( *pSoldier ) )
 			{
 				if (!weapon->silencedSound.empty()) {
 					PlayLocationJA2Sample(pSoldier->sGridNo, weapon->silencedSound, HIGHVOLUME, 1);
@@ -665,6 +741,16 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 	uiDiceRoll = PreRandom( 100 );
 
 	bool const fGonnaHit = uiDiceRoll <= uiHitChance;
+
+	// The cursor only shows the first round's chance to hit, so log each round of a burst
+	// to make the per-round falloff from ubBurstPenalty visible.
+	if ( pSoldier->bDoBurst )
+	{
+		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE,
+			ST::format("{}: bullet {}, chance {}, roll {} - {}",
+				pSoldier->name, int(pSoldier->bDoBurst), uiHitChance, uiDiceRoll,
+				fGonnaHit ? "hit" : "miss"));
+	}
 
 	// ATE; Moved a whole blotch if logic code for finding target positions to a function
 	// so other places can use it
@@ -730,17 +816,26 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 		fBuckshot = FALSE;
 		if (!CREATURE_OR_BLOODCAT( pSoldier ) )
 		{
-			pSoldier->fMuzzleFlash = TRUE;
+			// a silencer hides the flash, so the shot doesn't give the firer's position
+			// away at night
+			BOOLEAN fFlash = !IsSilenced( *pSoldier );
 			switch ( pSoldier->inv[ pSoldier->ubAttackingHand ].ubGunAmmoType )
 			{
 				case AMMO_BUCKSHOT:
 					fBuckshot = TRUE;
 					break;
 				case AMMO_SLEEP_DART:
-					pSoldier->fMuzzleFlash = FALSE;
+					fFlash = FALSE;
 					break;
 				default:
 					break;
+			}
+			// Two-pistol shooting fires each hand as its own shot through here, so only
+			// ever turn the flash on: a flashless shot must not cancel out the flash of
+			// the other hand. It is turned off at the end of the turn (EndMuzzleFlash).
+			if ( fFlash )
+			{
+				pSoldier->fMuzzleFlash = TRUE;
 			}
 		}
 	}
@@ -845,12 +940,14 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 	}
 	else
 	{
-		// if the weapon has a silencer attached
-		bSilencerPos = FindAttachment( &(pSoldier->inv[HANDPOS]), SILENCER );
-		if (bSilencerPos != -1)
+		// if the weapon we are firing has a silencer attached (which is not necessarily
+		// the one in the main hand - two-pistol shooting fires each hand separately)
+		OBJECTTYPE& gun = pSoldier->inv[ pSoldier->ubAttackingHand ];
+		bSilencerPos = FindAttachment( &gun, SILENCER );
+		if (bSilencerPos != NO_SLOT)
 		{
 			// reduce volume by a percentage equal to silencer's work %age (min 1)
-			ubVolume = 1 + ((100 - WEAPON_STATUS_MOD(pSoldier->inv[HANDPOS].bAttachStatus[bSilencerPos])) / (100 / (ubVolume - 1)));
+			ubVolume = 1 + ((100 - WEAPON_STATUS_MOD(gun.bAttachStatus[bSilencerPos])) / (100 / (ubVolume - 1)));
 		}
 	}
 
@@ -1039,6 +1136,7 @@ void UseHandToHand(SOLDIERTYPE* const pSoldier, INT16 const sTargetGridNo, BOOLE
 	INT32          iHitChance, iDiceRoll;
 	INT16          sAPCost;
 	INT32          iImpact;
+	INT32          iImpactForCrits;
 	UINT16         usOldItem;
 
 	// Deduct points!
@@ -1217,6 +1315,17 @@ void UseHandToHand(SOLDIERTYPE* const pSoldier, INT16 const sTargetGridNo, BOOLE
 			{
 				// CALCULATE DAMAGE!
 				iImpact = HTHImpact( pSoldier, pTargetSoldier, (iHitChance - iDiceRoll), FALSE );
+
+				// modify by hit location (as knives and bullets do); for punches this
+				// scales both breath and life damage since they are split from the same
+				// value downstream in EVENT_SoldierGotHit
+				AdjustImpactByHitLocation( iImpact, pSoldier->bAimShotLocation, &iImpact, &iImpactForCrits );
+
+				// any successful hit does at LEAST 1 pt minimum damage
+				if (iImpact < 1)
+				{
+					iImpact = 1;
+				}
 
 				// Send event for getting hit
 				EV_S_WEAPONHIT SWeaponHit{};
@@ -1961,6 +2070,70 @@ BOOLEAN InRange(const SOLDIERTYPE* pSoldier, INT16 sGridNo)
 	return( FALSE );
 }
 
+// Chance-to-hit penalty for the current round of a burst: ubBurstPenalty per shot
+// after the first, reduced for the autofire trait. Zero for the first round and for
+// non-burst attacks.
+static INT32 CalcBurstPenalty( const SOLDIERTYPE *pSoldier, UINT16 usInHand )
+{
+	if ( !pSoldier->bDoBurst )
+	{
+		return 0;
+	}
+
+	INT32 iPenalty = GCM->getWeapon(usInHand)->ubBurstPenalty * (pSoldier->bDoBurst - 1);
+
+	// halve the penalty for people with the autofire trait
+	UINT AutoWeaponsSkill = NUM_SKILL_TRAITS(pSoldier, AUTO_WEAPS);
+	if (AutoWeaponsSkill != 0)
+	{
+		iPenalty /= 2 * AutoWeaponsSkill;
+	}
+
+	return iPenalty;
+}
+
+// Chance-to-hit modifier for range, anchored so that NORMAL_RANGE gives no modifier at
+// all: positive closer in, negative further out.
+//
+// Vanilla is a single straight line of 3% per tile in both directions, which makes the
+// near and far halves mirror each other and never lets either end pull away.
+//
+// The non-linear variant curves both halves instead. The close-range bonus rises
+// steeply and then flattens, so most of it is already earned a few tiles in and point
+// blank is worth the full range_bonus_point_blank. The long-range penalty is a linear
+// term plus a quadratic one, so every extra tile past NORMAL_RANGE costs more than the
+// last, and shots far beyond it fall apart rather than degrading evenly.
+static INT32 CalcRangeModifier( INT32 iSightRange )
+{
+	if ( !gamepolicy(nonlinear_range_modifier) )
+	{
+		// From for JA2.5:  3% bonus/penalty for each tile different from range NORMAL_RANGE.
+		// This doesn't provide a bigger bonus at close range, but stretches it out, making
+		// medium range less penalized, and longer range more penalized
+		return 3 * ( NORMAL_RANGE - iSightRange ) / CELL_X_SIZE;
+	}
+
+	INT32 const iNormalTiles = NORMAL_RANGE / CELL_X_SIZE;
+	INT32 const iTiles = iSightRange / CELL_X_SIZE;
+
+	if ( iTiles <= iNormalTiles )
+	{
+		// Downward parabola through (0, 0) and (iNormalTiles, range_bonus_point_blank):
+		// concave, so it stays above the straight line everywhere in between.
+		INT32 const d = iNormalTiles - iTiles;
+		return ( gamepolicy(range_bonus_point_blank) * d * ( 2 * iNormalTiles - d ) ) /
+			( iNormalTiles * iNormalTiles );
+	}
+
+	// Both far-range coefficients are in tenths of a percent, so they can be tuned
+	// more finely than the 1% steps the rest of this function works in.
+	INT32 const d = iTiles - iNormalTiles;
+	INT32 const iPenaltyTenths = gamepolicy(range_penalty_far_linear) * d +
+			( gamepolicy(range_penalty_far_quadratic) * d * d ) / iNormalTiles;
+
+	return -( iPenaltyTenths / 10 );
+}
+
 UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime, UINT8 ubAimPos, BOOLEAN fModify )
 {
 	INT32 iChance, iRange, iSightRange, iMaxRange, iScopeBonus, iBonus; //, minRange;
@@ -1995,7 +2168,13 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 	}
 	else
 	{
-		iMarksmanship = EffectiveMarksmanship( pSoldier );
+		// weighted blend: marksmanship dominates, dexterity full, wisdom half, plus experience
+		iMarksmanship = ( 2 * EffectiveDexterity( pSoldier )
+				+ 4 * EffectiveMarksmanship( pSoldier )
+				+     EffectiveWisdom( pSoldier )
+				+ 20 * EffectiveExpLevel( pSoldier ) ) / 9;
+
+		iMarksmanship = EffectiveMarksmanship(pSoldier);
 
 		if ( AM_A_ROBOT( pSoldier ) )
 		{
@@ -2096,18 +2275,12 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 		}
 	}
 
-	// If in burst mode, deduct points for change to hit for each shot after the first
-	if ( pSoldier->bDoBurst )
+	// If in burst mode, deduct points for change to hit for each shot after the first.
+	// With burst_penalty_after_cth_cap the deduction is postponed until after the
+	// min/max clamp at the end of this function instead.
+	if ( !gamepolicy(burst_penalty_after_cth_cap) )
 	{
-		iPenalty = GCM->getWeapon(usInHand)->ubBurstPenalty * (pSoldier->bDoBurst - 1);
-
-		// halve the penalty for people with the autofire trait
-		UINT AutoWeaponsSkill = NUM_SKILL_TRAITS(pSoldier, AUTO_WEAPS);
-		if (AutoWeaponsSkill != 0)
-		{
-			iPenalty /= 2 * AutoWeaponsSkill;
-		}
-		iChance -= iPenalty;
+		iChance -= CalcBurstPenalty( pSoldier, usInHand );
 	}
 
 	sDistVis = DistanceVisible( pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, 0 );
@@ -2150,6 +2323,22 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 	// if shooter spent some extra time aiming and can see the target
 	if (iSightRange > 0 && ubAimTime && !pSoldier->bDoBurst)
 		iChance += (AIM_BONUS_PER_AP * ubAimTime); // bonus for every pt of aiming
+
+	//// if shooter can see the target and isn't spraying a burst
+	//if (iSightRange > 0 && !pSoldier->bDoBurst)
+	//{
+	//	// Reserve the top of the hit-chance band for aiming: cap the un-aimed
+	//	// chance at MAX minus the largest possible aim bonus, so each aim click
+	//	// spreads the chance evenly toward the maximum instead of being lost to
+	//	// clamping. (REFINE_AIM_5 / 2 is the max aim AP, i.e. 4 aim clicks.)
+	//	INT32 iBaseCap = MAXCHANCETOHIT - AIM_BONUS_PER_AP * (REFINE_AIM_5 / 2);
+	//	if (iBaseCap < MINCHANCETOHIT) iBaseCap = MINCHANCETOHIT;
+	//	if (iChance > iBaseCap) iChance = iBaseCap;
+
+	//	// if shooter spent some extra time aiming
+	//	if (ubAimTime)
+	//		iChance += (AIM_BONUS_PER_AP * ubAimTime); // bonus for every pt of aiming
+	//}
 
 	if ( !(pSoldier->uiStatusFlags & SOLDIER_PC ) ) // if this is a computer AI controlled enemy
 	{
@@ -2226,7 +2415,12 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 	if ( iSightRange > 0 )
 	{
 
-		if (IsWearingHeadGear(*pSoldier, SUNGOGGLES))
+		// Sun goggles only help when the target is standing in light brighter than
+		// normal daylight (e.g. glare); they give no bonus in ordinary daylight and
+		// none in low light or at night. LightTrueLevel is inverted (lower = brighter),
+		// so "brighter than day" means a value below NORMAL_LIGHTLEVEL_DAY.
+		if (IsWearingHeadGear(*pSoldier, SUNGOGGLES) &&
+			LightTrueLevel(sGridNo, pSoldier->bTargetLevel) < NORMAL_LIGHTLEVEL_DAY)
 		{
 			// decrease effective range by 10% when using sungoggles (w or w/o scope)
 			iSightRange -= iRange / 10; //basically, +1% to hit per every 2 squares
@@ -2322,10 +2516,7 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 	else
 	{
 		// Effects based on aiming & sight
-		// From for JA2.5:  3% bonus/penalty for each tile different from range NORMAL_RANGE.
-		// This doesn't provide a bigger bonus at close range, but stretches it out, making medium
-		// range less penalized, and longer range more penalized
-		iChance += 3 * ( NORMAL_RANGE - iSightRange ) / CELL_X_SIZE;
+		iChance += CalcRangeModifier( iSightRange );
 		/*
 		if (iSightRange < NORMAL_RANGE)
 		{
@@ -2430,13 +2621,22 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 				break;
 		}
 
+		// A target that has been knocked off its feet - by a leg hit, by running out of breath,
+		// or by dropping unconscious - is sprawled on the ground rather than lying prone by
+		// choice. It is neither a moving target any more nor in any shape to dodge, no matter
+		// how far it ran before it went down or how agile and experienced it is.
+		const bool fTargetKnockedDown = pTarget->bCollapsed;
+
 		// penalty for amount that enemy has moved
-		iPenalty = std::min(((pTarget->bTilesMoved * 3) / 2), 30);
-		iChance -= iPenalty;
+		if ( !fTargetKnockedDown )
+		{
+			iPenalty = std::min(((pTarget->bTilesMoved * 3) / 2), 30);
+			iChance -= iPenalty;
+		}
 
 		// if target sees us, he may have a chance to dodge before the gun goes off
 		// but ability to dodge is reduced if crouched or prone!
-		if (pTarget->bOppList[pSoldier->ubID] == SEEN_CURRENTLY && !TANK( pTarget ) && !(pSoldier->ubBodyType != QUEENMONSTER) )
+		if (!fTargetKnockedDown && pTarget->bOppList[pSoldier->ubID] == SEEN_CURRENTLY && !TANK( pTarget ) && !(pSoldier->ubBodyType != QUEENMONSTER) )
 		{
 			iPenalty = ( EffectiveAgility( pTarget ) / 5 + EffectiveExpLevel( pTarget ) * 2);
 			switch( gAnimControl[ pTarget->usAnimState ].ubHeight )
@@ -2526,6 +2726,21 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 	{
 		if (iChance > MAXCHANCETOHIT)
 			iChance = MAXCHANCETOHIT;
+	}
+
+	// Apply the burst penalty after the clamp, so it always bites. Deducted before the
+	// clamp (vanilla) it is silently swallowed whenever the raw chance sits far enough
+	// outside the [MINCHANCETOHIT, MAXCHANCETOHIT] band: a shooter with headroom above
+	// the cap - prone with a bipod, laserscope, close range - gets every round of the
+	// burst clamped back to the same number, so the spray-vs-aim tradeoff disappears
+	// exactly for the mercs it should apply to. The two range halvings above also
+	// dilute the penalty along with everything else.
+	if ( gamepolicy(burst_penalty_after_cth_cap) )
+	{
+		iChance -= CalcBurstPenalty( pSoldier, usInHand );
+
+		// don't let the penalty push a round below the floor the clamp just established
+		iChance = std::max(iChance, TANK( pSoldier ) ? 0 : INT32(MINCHANCETOHIT));
 	}
 
 	return (iChance);
@@ -3551,12 +3766,18 @@ INT32 CalcMaxTossRange(const SOLDIERTYPE* pSoldier, UINT16 usItem, BOOLEAN fArme
 			// start with the range based on the soldier's strength and the item's weight
 			INT32 iThrowingStrength = ( EffectiveStrength( pSoldier ) * 2 + 100 ) / 3;
 			iRange = 2 + ( iThrowingStrength / std::min(( 3 + (GCM->getItem(usItem)->getWeight()) / 3 ), 4 ));
+
+			// apply the throwing range modifier
+			iRange = iRange * gamepolicy(thrown_range_modifier) / 100;
 		}
 		else
 		{	// not as aerodynamic!
 
 			// start with the range based on the soldier's strength and the item's weight
 			iRange = 2 + ( ( EffectiveStrength( pSoldier ) / ( 5 + GCM->getItem(usItem)->getWeight()) ) );
+
+			// apply the throwing range modifier
+			iRange = iRange * gamepolicy(thrown_range_modifier) / 100;
 		}
 
 		// adjust for thrower's remaining breath (lose up to 1/2 of range)
@@ -3646,7 +3867,12 @@ UINT32 CalcThrownChanceToHit(SOLDIERTYPE *pSoldier, INT16 sGridNo, UINT8 ubAimTi
 	// calculate actual range (in world units)
 	iRange = (INT16)GetRangeInCellCoordsFromGridNoDiff( pSoldier->sGridNo, sGridNo );
 
-	if (IsWearingHeadGear(*pSoldier, SUNGOGGLES))
+	// Sun goggles only help when the target is standing in light brighter than
+	// normal daylight (e.g. glare); they give no bonus in ordinary daylight and
+	// none in low light or at night. LightTrueLevel is inverted (lower = brighter),
+	// so "brighter than day" means a value below NORMAL_LIGHTLEVEL_DAY.
+	if (IsWearingHeadGear(*pSoldier, SUNGOGGLES) &&
+		LightTrueLevel(sGridNo, pSoldier->bTargetLevel) < NORMAL_LIGHTLEVEL_DAY)
 	{
 		// decrease effective range by 10% when using sungoggles (w or w/o scope)
 		iRange -= iRange / 10;	//basically, +1% to hit per every 2 squares

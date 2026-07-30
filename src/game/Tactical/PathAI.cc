@@ -1171,7 +1171,7 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 									pDoor = FindDoorInfoAtGridNo( iDoorGridNo );
 									if (pDoor)
 									{
-										if (!pDoor->fLocked || s->bHasKeys)
+										if (!pDoor->fLocked || s->bHasKeys || AIHasKeyToEveryDoor(s))
 										{
 											// add to AP cost
 											if (gubNPCAPBudget)
@@ -2567,7 +2567,7 @@ UINT8 InternalDoorTravelCost(const SOLDIERTYPE* pSoldier, INT32 iGridNo, UINT8 u
 					pDoor = FindDoorInfoAtGridNo( iDoorGridNo );
 					if ( pDoor )
 					{
-						if ( ( !pDoor->fLocked || (pSoldier && pSoldier->bHasKeys) ) && !fReturnDoorCost )
+						if ( ( !pDoor->fLocked || (pSoldier && pSoldier->bHasKeys) || AIHasKeyToEveryDoor(pSoldier) ) && !fReturnDoorCost )
 						{
 							ubMovementCost = gTileTypeMovementCost[ gpWorldLevelData[ iGridNo ].ubTerrainID ];
 						}

@@ -105,6 +105,11 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 	InitAttackType(pBestShot);      // set all structure fields to defaults
 
+	// firing on a target we can't currently see (only heard, or spotted earlier /
+	// by a squadmate) only makes sense with a gun. Throwing knives still require
+	// the enemy in plain sight.
+	BOOLEAN const fWeaponIsGun = GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_GUN;
+
 	// hang a pointer into active soldier's personal opponent list
 	//pbPersOL = &(pSoldier->bOppList[0]);
 
@@ -120,16 +125,88 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		if ( CONSIDERED_NEUTRAL( pSoldier, pOpponent ) || (pSoldier->bSide == pOpponent->bSide))
 			continue;          // next merc
 
-		// if this opponent is not currently in sight - personally OR to the team
-		// (ignore merely known-but-unseen). The team/public sighting lets us fire
-		// on a target a squadmate can see (e.g. suppression); the PERSONAL sighting
-		// is the normal "I can see him myself" case and must be kept too. Checking
-		// public alone is wrong: on our own turn we often spot an opponent before
-		// the public opplist catches up (Personally 1, public 0), and a soldier
-		// that plainly sees an enemy would then refuse to shoot and take cover.
-		INT8 *pbPublOL = &(gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID]);
+		// Decide whether we may fire on this opponent, and if so, where to aim.
+		//
+		// We look at both our PERSONAL knowledge (bOppList) and the team's PUBLIC
+		// knowledge (gbPublicOpplist) and use whichever is fresher - gubKnowledgeValue
+		// tells us which of the two is more up to date. This also means the two lists
+		// briefly drifting out of sync no longer matters: on our own turn we often
+		// spot an opponent before the public list catches up (personal 1, public 0),
+		// and a squadmate's sighting lets us fire on a target we can't see ourselves.
+		INT8 const bPersOL = pSoldier->bOppList[pOpponent->ubID];
+		INT8 const bPublOL = gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID];
 
-		if (pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY && *pbPublOL != SEEN_CURRENTLY)
+		// use personal knowledge if it is at least as up to date as public knowledge
+		BOOLEAN const fUsePersonal =
+			gubKnowledgeValue[bPublOL - OLDEST_HEARD_VALUE][bPersOL - OLDEST_HEARD_VALUE] > 0 ||
+			bPersOL == bPublOL;
+		INT8 const bKnowledge = fUsePersonal ? bPersOL : bPublOL;
+
+		// do we (personally or via the team) see the opponent right now?
+		BOOLEAN const fSeenNow = (bPersOL == SEEN_CURRENTLY || bPublOL == SEEN_CURRENTLY);
+
+		// is the sighting we hold good enough to shoot at?
+		BOOLEAN fSeenUsable;
+		switch (bKnowledge)
+		{
+			case SEEN_CURRENTLY:
+			//case SEEN_THIS_TURN:
+				fSeenUsable = TRUE;
+				break;
+			case SEEN_LAST_TURN:
+				// only fire at a last-turn sighting if the target has
+				// not moved since (otherwise the tile is stale)
+				fSeenUsable = (pOpponent->bTilesMoved == 0);
+				break;
+			default:
+				fSeenUsable = FALSE;
+				break;
+		}
+
+		// Did we hear him ourselves this or last turn? Unlike a sighting this counts
+		// from our PERSONAL list only: the public list collects every noise the whole
+		// team reported, so firing on it would have mercs shoot at tiles they have no
+		// business knowing about.
+		BOOLEAN const fHeardHimSelf = (bPersOL == HEARD_THIS_TURN || bPersOL == HEARD_LAST_TURN);
+
+		if (fWeaponIsGun)
+		{
+			// guns may fire on anything seen (currently / last turn) or heard by us
+			// this or last turn; everything staler is too vague to shoot at
+			if (!fSeenUsable && !fHeardHimSelf)
+				continue;  // next opponent
+		}
+		else if (!fSeenNow)
+		{
+			// throwing knives etc. only when the enemy is in plain sight
+			continue;  // next opponent
+		}
+
+		// If we see the opponent right now we know his exact tile and aim there.
+		// Otherwise (guns only) we can merely aim at the last KNOWN tile, which may
+		// be stale - "blind"/suppression fire at where we last saw or heard him.
+		INT16 sTarget;
+		INT8  bTargetLevel;
+		if (fSeenNow)
+		{
+			sTarget      = pOpponent->sGridNo;
+			bTargetLevel = pOpponent->bLevel;
+		}
+		else if (fUsePersonal || !fSeenUsable)
+		{
+			// !fSeenUsable means we only got here because we heard him, so aim at the
+			// noise our own ears placed - the public list is not usable for hearing
+			sTarget      = gsLastKnownOppLoc[pSoldier->ubID][pOpponent->ubID];
+			bTargetLevel = gbLastKnownOppLevel[pSoldier->ubID][pOpponent->ubID];
+		}
+		else
+		{
+			sTarget      = gsPublicLastKnownOppLoc[pSoldier->bTeam][pOpponent->ubID];
+			bTargetLevel = gbPublicLastKnownOppLevel[pSoldier->bTeam][pOpponent->ubID];
+		}
+
+		// no usable location to aim at (NOWHERE == GRIDSIZE + 1 is caught here too)
+		if (sTarget < 0 || sTarget >= GRIDSIZE)
 			continue;  // next opponent
 
 		// Special stuff for Carmen the bounty hunter
@@ -137,15 +214,17 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			continue;  // next opponent
 
 		// calculate minimum action points required to shoot at this opponent
-		UINT8 const ubMinAPcost = MinAPsToAttack(pSoldier, pOpponent->sGridNo, ADDTURNCOST);
+		UINT8 const ubMinAPcost = MinAPsToAttack(pSoldier, sTarget, ADDTURNCOST);
 
 		// if we don't have enough APs left to shoot even a snap-shot at this guy
 		if (ubMinAPcost > pSoldier->bActionPoints)
 			continue;          // next opponent
 
-		// calculate chance to get through the opponent's cover (if any)
-
-		ubChanceToGetThrough = AISoldierToSoldierChanceToGetThrough( pSoldier, pOpponent );
+		// calculate chance to get through the cover (if any) to the aim point.
+		// AISoldierToLocationChanceToGetThrough falls back to the soldier-to-soldier
+		// calc when the opponent really is on that tile, so a currently-seen target
+		// behaves exactly as before.
+		ubChanceToGetThrough = AISoldierToLocationChanceToGetThrough( pSoldier, sTarget, bTargetLevel, 0 );
 
 		// if we can't possibly get through all the cover
 		if (ubChanceToGetThrough == 0)
@@ -162,7 +241,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 				INT8   bDir;
 
 				// must make sure that structure data can be added in the direction of the target
-				bDir = (INT8) GetDirectionToGridNoFromGridNo( pSoldier->sGridNo, pOpponent->sGridNo );
+				bDir = (INT8) GetDirectionToGridNoFromGridNo( pSoldier->sGridNo, sTarget );
 
 				// ATE: Only if we have a levelnode...
 				UINT16 const usStructureID = GetStructureID(pSoldier);
@@ -176,9 +255,9 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		}
 
 		// calc next attack's minimum shooting cost (excludes readying & turning)
-		UINT8 ubRawAPCost = MinAPsToShootOrStab(*pSoldier, pOpponent->sGridNo, DONTADDTURNCOST);
+		UINT8 ubRawAPCost = MinAPsToShootOrStab(*pSoldier, sTarget, DONTADDTURNCOST);
 
-		if (pOpponent->sGridNo != pSoldier->sLastTarget)
+		if (sTarget != pSoldier->sLastTarget)
 		{
 			// raw AP cost calculation included cost of changing target!
 			ubRawAPCost -= AP_CHANGE_TARGET;
@@ -207,14 +286,30 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			ubMaxPossibleAimTime = std::min(AP_MAX_AIM_ATTACK,pSoldier->bActionPoints - ubMinAPcost);
 		}
 
+		// Work out which body part we would aim at, so the shot is rated against the part
+		// we will really shoot at. Reading pSoldier->bAimShotLocation here is no use: the
+		// part is not chosen until the bullet is created (see GetTargetWorldPositions), so
+		// it still holds AIM_SHOT_RANDOM, which CalcChanceToHitGun rates as a torso shot -
+		// a head shot then turned out harder to hit than the shot we had rated.
+		// Only for an opponent we can see, since the body part calculations need him to
+		// really be on the target tile; otherwise we are firing at a remembered location.
+		BOOLEAN const fPickAimLocation = gamepolicy(ai_better_aiming_choice) && fSeenNow;
+
+		UINT8 ubBestAimLocation = AIM_SHOT_RANDOM;
+		UINT8 ubBestChanceToGetThrough = ubChanceToGetThrough;
+
 		// consider the various aiming times
 		for (ubAimTime = AP_MIN_AIM_ATTACK; ubAimTime <= ubMaxPossibleAimTime; ubAimTime++)
 		{
+			// how well cover is defeated depends on the body part, so each aim location
+			// brings its own chance to get through
 			UINT8 target = AIM_SHOT_TORSO;
-			if (gamepolicy(ai_better_aiming_choice)) {
-				target = pSoldier->bAimShotLocation;
+			UINT8 ubTargetChanceToGetThrough = ubChanceToGetThrough;
+			if (fPickAimLocation)
+			{
+				target = AIDecideAimShotLocation(pSoldier, pOpponent, sTarget, ubAimTime, &ubTargetChanceToGetThrough);
 			}
-			ubChanceToHit = (UINT8) AICalcChanceToHitGun(pSoldier, pOpponent->sGridNo, ubAimTime, target);
+			ubChanceToHit = (UINT8) AICalcChanceToHitGun(pSoldier, sTarget, ubAimTime, target);
 
 			iHitRate = (pSoldier->bActionPoints * ubChanceToHit) / (ubRawAPCost + ubAimTime);
 
@@ -224,6 +319,8 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 				iBestHitRate = iHitRate;
 				ubBestAimTime = ubAimTime;
 				ubBestChanceToHit = ubChanceToHit;
+				ubBestAimLocation = target;
+				ubBestChanceToGetThrough = ubTargetChanceToGetThrough;
 			}
 		}
 
@@ -233,14 +330,14 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			continue;          // next opponent
 
 		// calculate chance to REALLY hit: shoot accurately AND get past cover
-		ubChanceToReallyHit = (ubBestChanceToHit * ubChanceToGetThrough) / 100;
+		ubChanceToReallyHit = (ubBestChanceToHit * ubBestChanceToGetThrough) / 100;
 
 		// if we can't REALLY hit at all
 		if (ubChanceToReallyHit == 0)
 			continue;          // next opponent
 
 		// really limit knife throwing so it doesn't look wrong
-		if ( GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_THROWING_KNIFE && (ubChanceToReallyHit < 30 || ( PythSpacesAway( pSoldier->sGridNo, pOpponent->sGridNo ) > CalcMaxTossRange( pSoldier, THROWING_KNIFE, FALSE ) / 2 ) ) )
+		if ( GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_THROWING_KNIFE && (ubChanceToReallyHit < 30 || ( PythSpacesAway( pSoldier->sGridNo, sTarget ) > CalcMaxTossRange( pSoldier, THROWING_KNIFE, FALSE ) / 2 ) ) )
 			continue; // don't bother... next opponent
 
 		// calculate this opponent's threat value (factor in my cover from him)
@@ -279,9 +376,9 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 				// if this chance to really hit between 50% worse to 50% better
 				if (iPercentBetter < PERCENT_TO_IGNORE_THREAT)
 				{
-					// then the one with the higher ATTACK VALUE is the better target
-					if (iAttackValue < pBestShot->iAttackValue)
-						// the previous guy is more important since he's more dangerous
+					// then the one we're more likely to REALLY hit is the better target
+					if (ubChanceToReallyHit < pBestShot->ubChanceToReallyHit)
+						// the previous guy is easier to actually hit
 						continue;            // next opponent
 					}
 			}
@@ -291,10 +388,11 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			pBestShot->opponent            = pOpponent;
 			pBestShot->ubAimTime           = ubBestAimTime;
 			pBestShot->ubChanceToReallyHit = ubChanceToReallyHit;
-			pBestShot->sTarget             = pOpponent->sGridNo;
-			pBestShot->bTargetLevel        = pOpponent->bLevel;
+			pBestShot->sTarget             = sTarget;
+			pBestShot->bTargetLevel        = bTargetLevel;
 			pBestShot->iAttackValue        = iAttackValue;
 			pBestShot->ubAPCost            = ubMinAPcost + ubBestAimTime;
+			pBestShot->ubAimLocation       = ubBestAimLocation;
 		}
 	}
 }
@@ -591,13 +689,13 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 					return;
 				}
 				break;
-			case 2:
-				// they won't use them until they have 2+ opponents as long as 3/4 life left
-				if ((ubOpponentCnt < 2) && (pSoldier->bLife > (pSoldier->bLifeMax / 4) * 3 ))
-				{
-					return;
-				}
-				break;
+			//case 2:
+			//	// they won't use them until they have 2+ opponents as long as 3/4 life left
+			//	if ((ubOpponentCnt < 2) && (pSoldier->bLife > (pSoldier->bLifeMax / 4) * 3 ))
+			//	{
+			//		return;
+			//	}
+			//	break;
 
 			default:
 				break;
@@ -1475,7 +1573,7 @@ static INT32 EstimateThrowDamage(SOLDIERTYPE* pSoldier, UINT8 ubItemPos, SOLDIER
 	}
 
 	// if this opponent is standing
-	if (gAnimControl[ pSoldier->usAnimState ].ubEndHeight == ANIM_STAND)
+	if (gAnimControl[ pOpponent->usAnimState ].ubEndHeight == ANIM_STAND)
 	{
 		// 15 pt. flat bonus for knocking him down (for ANY type of explosion)
 		iDamage += 15;

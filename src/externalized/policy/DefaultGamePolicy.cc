@@ -21,11 +21,17 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	hide_bullets = gp.getOptionalBool("hide_bullets");
 
+	prone_random_hit_location = gp.getOptionalBool("prone_random_hit_location");
+
 	multiple_interrupts = gp.getOptionalBool("multiple_interrupts");
+
+	allow_overwatch_interrupt = gp.getOptionalBool("allow_overwatch_interrupt");
 
 	fixed_cost_to_shoot = gp.getOptionalBool("fixed_cost_to_shoot");
 
 	enemy_weapon_minimal_status = gp.getOptionalInt("enemy_weapon_minimal_status", 0);
+
+	gun_jam_chance_minimum = gp.getOptionalInt("gun_jam_chance_minimum", 0);
 
 	squad_size = gp.getOptionalUInt("squad_size", 6);
 
@@ -40,8 +46,11 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	ai_avoid_lit_tiles_at_night = ai.getOptionalBool("avoid_lit_tiles_at_night");
 	ai_night_swat_chance = ai.getOptionalInt("night_swat_chance", 0);
 
+	ai_always_has_keys = ai.getOptionalBool("always_has_keys");
+
 	ai_cover_building_bonus = ai.getOptionalInt("cover_building_bonus", 0);
 	ai_cover_search_wisdom = ai.getOptionalInt("cover_search_wisdom", 0);
+	ai_cover_search_turns = ai.getOptionalInt("cover_search_turns", 1);
 
 	enemy_elite_minimum_level = gp.getOptionalInt("enemy_elite_minimum_level", 6);
 	enemy_elite_maximum_level = gp.getOptionalInt("enemy_elite_maximum_level", 10);
@@ -60,11 +69,20 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	chance_to_hit_maximum = gp.getOptionalInt("chance_to_hit_maximum", 99);
 	chance_to_hit_minimum = gp.getOptionalInt("chance_to_hit_minimum", 1);
 
+	burst_penalty_after_cth_cap = gp.getOptionalBool("burst_penalty_after_cth_cap");
+
+	nonlinear_range_modifier = gp.getOptionalBool("nonlinear_range_modifier");
+	range_bonus_point_blank = gp.getOptionalInt("range_bonus_point_blank", 30);
+	range_penalty_far_linear = gp.getOptionalInt("range_penalty_far_linear", 30);
+	range_penalty_far_quadratic = gp.getOptionalInt("range_penalty_far_quadratic", 10);
+
 	aim_bonus_per_std_ap = gp.getOptionalInt("aim_bonus_per_std_ap", 10);
 	aim_bonus_sniperscope = gp.getOptionalInt("aim_bonus_sniperscope", 20);
 	aim_bonus_laserscope = gp.getOptionalInt("aim_bonus_laserscope", 20);
 	range_penalty_silencer = gp.getOptionalInt("range_penalty_silencer", 0);
 	range_bonus_barrel_extender = gp.getOptionalInt("range_bonus_barrel_extender", 100);
+
+	thrown_range_modifier = gp.getOptionalInt("thrown_range_modifier", 100);
 
 	always_show_cursor_in_tactical = gp.getOptionalBool("always_show_cursor_in_tactical", false);
 	show_hit_chance = gp.getOptionalBool("show_hit_chance", false);
@@ -101,6 +119,12 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	unhired_merc_deaths_hard = gp.getOptionalInt("unhired_merc_deaths_hard", 3);
 
 	enable_stat_healing = gp.getOptionalBool("enable_stat_healing", false);
+
+	progressive_weight_penalties = gp.getOptionalBool("progressive_weight_penalties", true);
+
+	auto_sleep_breath_threshold = gp.getOptionalInt("auto_sleep_breath_threshold", 50);
+
+	enemy_autoresolve_retreat_health_percent = gp.getOptionalUInt("enemy_autoresolve_retreat_health_percent", 40);
 
 	auto campaign = gp["campaign"].toObject();
 	ST::string sector_string = campaign.getOptionalString("start_sector");

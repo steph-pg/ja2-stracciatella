@@ -867,6 +867,26 @@ static INT8 DecideActionGreen(SOLDIERTYPE* pSoldier)
 
 
 	////////////////////////////////////////////////////////////////////////////
+	// PICKUP A NEARBY ITEM THAT'S USEFUL
+	////////////////////////////////////////////////////////////////////////////
+
+	// even while unaware, grab a nearby better weapon/armour before wandering off;
+	// this also makes patrolling soldiers path across the sector more (e.g. onto mines)
+	{
+		const UINT8 ubCanMove = (pSoldier->bActionPoints >= MinPtsToMove(pSoldier));
+		if ( ubCanMove && !pSoldier->bNeutral && (gfTurnBasedAI || pSoldier->bTeam == ENEMY_TEAM ) )
+		{
+			pSoldier->bAction = SearchForItems(*pSoldier, SEARCH_GENERAL_ITEMS, pSoldier->inv[HANDPOS].usItem);
+
+			if (pSoldier->bAction != AI_ACTION_NONE)
+			{
+				return( pSoldier->bAction );
+			}
+		}
+	}
+
+
+	////////////////////////////////////////////////////////////////////////////
 	// RANDOM PATROL:  determine % chance to start a new patrol route
 	////////////////////////////////////////////////////////////////////////////
 
@@ -1228,6 +1248,27 @@ static INT8 DecideActionYellow(SOLDIERTYPE* pSoldier)
 		return(AI_ACTION_NONE);
 	}
 
+
+	////////////////////////////////////////////////////////////////////////////
+	// PICKUP A NEARBY ITEM THAT'S USEFUL
+	////////////////////////////////////////////////////////////////////////////
+
+	// while investigating a noise, grab a nearby better weapon/armour on the way;
+	// this also makes soldiers path across the sector more (e.g. onto mines)
+	{
+		const UINT8 ubCanMove = (pSoldier->bActionPoints >= MinPtsToMove(pSoldier));
+		if ( ubCanMove && !pSoldier->bNeutral && (gfTurnBasedAI || pSoldier->bTeam == ENEMY_TEAM ) )
+		{
+			pSoldier->bAction = SearchForItems(*pSoldier, SEARCH_GENERAL_ITEMS, pSoldier->inv[HANDPOS].usItem);
+
+			if (pSoldier->bAction != AI_ACTION_NONE)
+			{
+				return( pSoldier->bAction );
+			}
+		}
+	}
+
+
 	if ( !( pSoldier->bTeam == CIV_TEAM && pSoldier->ubProfile != NO_PROFILE && pSoldier->ubProfile != ELDIN ) )
 	{
 		// IF WE ARE MILITIA/CIV IN REALTIME, CLOSE TO NOISE, AND CAN SEE THE SPOT WHERE THE NOISE CAME FROM, FORGET IT
@@ -1443,6 +1484,55 @@ static INT8 DecideActionYellow(SOLDIERTYPE* pSoldier)
 	// by default, if everything else fails, just stands in place without turning
 	pSoldier->usActionData = NOWHERE;
 	return(AI_ACTION_NONE);
+}
+
+
+// TRUE if any live opponent already knows about pSoldier (has him on their
+// opplist - seen or heard), i.e. the player is already aware of this enemy.
+// Used to decide whether breaking contact is worthwhile: there's no point
+// fleeing to hide from someone who hasn't spotted us in the first place.
+static BOOLEAN AnyOpponentAwareOf(SOLDIERTYPE* pSoldier)
+{
+	FOR_EACH_MERC(i)
+	{
+		SOLDIERTYPE* const pOpponent = *i;
+
+		// skip inactive/dead/unconscious
+		if (pOpponent->bLife < OKLIFE) continue;
+
+		// skip neutrals and anyone on our own side
+		if (CONSIDERED_NEUTRAL(pSoldier, pOpponent) || (pSoldier->bSide == pOpponent->bSide))
+		{
+			continue;
+		}
+
+		// does this opponent know where (or roughly where) we are?
+		if (pOpponent->bOppList[pSoldier->ubID] != NOT_HEARD_OR_SEEN)
+		{
+			return(TRUE);
+		}
+	}
+
+	return(FALSE);
+}
+
+
+// Sets up the shot the AI has settled on and returns the action to take: either fire right
+// away, or get into the stance the shot needs and fire immediately afterwards (the queued
+// action is picked up in AIMain, together with bNextTargetLevel).
+static INT8 FireGunOrChangeStanceFirst(SOLDIERTYPE *pSoldier, const ATTACKTYPE &attack, UINT8 ubStance)
+{
+	if (ubStance != 0)
+	{
+		pSoldier->bNextAction      = AI_ACTION_FIRE_GUN;
+		pSoldier->usNextActionData = attack.sTarget;
+		pSoldier->bNextTargetLevel = attack.bTargetLevel;
+		pSoldier->usActionData     = ubStance;
+		return(AI_ACTION_CHANGE_STANCE);
+	}
+
+	pSoldier->usActionData = attack.sTarget;
+	return(AI_ACTION_FIRE_GUN);
 }
 
 
@@ -1708,7 +1798,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 	// seeking cover, or turning to face - otherwise it burns its turn raising a
 	// weapon and ends up exposed. Enemies head for the map edge and traverse out;
 	// failing that (or for non-enemies), run to the spot farthest from known threats.
-	if ((pSoldier->bAIMorale == MORALE_HOPELESS) && ubCanMove)
+	if ((pSoldier->bLife < 45) && ubCanMove)
 	{
 		if (pSoldier->bTeam == ENEMY_TEAM)
 		{
@@ -1799,10 +1889,17 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 		BestShot.ubPossible = FALSE;
 
+		// Forget the body part aimed at for the previous shot, as DecideActionBlack does.
+		// Firing writes the part it settled on back into bAimShotLocation (see
+		// GetTargetWorldPositions), and that is even carried across saves, so a leftover
+		// value would keep this shot from picking a part of its own and make it repeat the
+		// part of the last one instead.
+		pSoldier->bAimShotLocation = AIM_SHOT_RANDOM;
+
 		// find a usable gun and ready it before evaluating the shot;
 		// CalcBestShot does not set bWeaponIn, so it must be set here (see DecideActionBlack)
 		INT8 bGunIn = FindAIUsableObjClass(pSoldier, IC_GUN);
-		if (bGunIn != NO_SLOT)
+		if (bGunIn != NO_SLOT && Chance(60))
 		{
 			BestShot.bWeaponIn = bGunIn;
 			pSoldier->bDoBurst = 0;
@@ -1818,33 +1915,78 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 				if (BestShot.ubPossible && BestShot.ubChanceToReallyHit > 0 && BestShot.opponent->bLife >= OKLIFE)
 				{
+					// the shot is executed with pSoldier->bTargetLevel (see AIMain's HandleItem
+					// call), which still holds the level of whatever we did last - firing at a
+					// ground target with a leftover roof level (or the reverse) aims the bullet
+					// at a height nothing was ever checked against
+					pSoldier->bTargetLevel = BestShot.bTargetLevel;
+
+					// CalcBestShot rates every shot as if we were standing (both
+					// AICalcChanceToHitGun and AISoldierToLocationChanceToGetThrough fake it),
+					// so a crouched or prone shooter can settle on a target its real stance has
+					// no line to at all and then fire into its own cover. DecideActionBlack asks
+					// ShootingStanceChange about this before every shot; blind fire has to do
+					// the same. Only when we are not standing: standing is what the shot was
+					// rated from, so there is nothing to correct then, and we don't want the AI
+					// spending APs going prone for a shot at a remembered position.
+					UINT8 ubBestStance = 0;
+					UINT8 ubStanceCost = 0;
+
+					if (!TANK(pSoldier) && gAnimControl[pSoldier->usAnimState].ubEndHeight != ANIM_STAND)
+					{
+						INT8 const bDirection = (INT8) GetDirectionToGridNoFromGridNo(pSoldier->sGridNo, BestShot.sTarget);
+
+						ubBestStance = ShootingStanceChange(pSoldier, &BestShot, bDirection);
+						if (ubBestStance != 0)
+						{
+							// it judged the stances for the direction of the target, so we have
+							// to be facing that way for its answer to hold
+							if (pSoldier->bDirection != bDirection &&
+								InternalIsValidStance(pSoldier, bDirection, gAnimControl[pSoldier->usAnimState].ubEndHeight))
+							{
+								// turn this action, shoot the next one - put the gun back where
+								// it was, as the decision gets made again from scratch
+								if (bGunIn != HANDPOS)
+									RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
+
+								pSoldier->usActionData = bDirection;
+								return(AI_ACTION_CHANGE_FACING);
+							}
+
+							// ShootingStanceChange only offers a stance we can still afford to
+							// shoot from - it reserves the attack's AP cost before rating any of
+							// them - so the shot below stays payable, it just has this much less
+							// to spend
+							ubStanceCost = (UINT8) GetAPsToChangeStance(pSoldier, ubBestStance);
+						}
+					}
+
+					INT8 const bAPsForAttack = pSoldier->bActionPoints - ubStanceCost;
+
 					if (BestShot.ubChanceToReallyHit >= 15)
 					{
 
-						pSoldier->usActionData = BestShot.sTarget;
 						pSoldier->bAimTime = BestShot.ubAimTime;
 
 						// prioritize single aimed shots that has real chance to hit
-						return(AI_ACTION_FIRE_GUN);
+						return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 					}
 					else if (BestShot.ubChanceToReallyHit <= 5 && IsGunBurstCapable(pSoldier, HANDPOS) && pSoldier->inv[HANDPOS].ubGunShotsLeft > 1)
 					{
 						UINT8 const ubBurstAPs = CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[HANDPOS]); // gun is in HANDPOS after the swap, not its original pocket
-						if (pSoldier->bActionPoints >= ubBurstAPs)
+						if (bAPsForAttack >= ubBurstAPs)
 						{
 							pSoldier->bDoBurst = 1;
-							pSoldier->usActionData = BestShot.sTarget;
-							pSoldier->bAimTime = BURSTING;
+							pSoldier->bAimTime = 0;
 							// if at least min chance to hit is possible and weapon can burst do this instead
-							return(AI_ACTION_FIRE_GUN);
+							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 						}
 					}
 					else
 					{
-						pSoldier->usActionData = BestShot.sTarget;
 						pSoldier->bAimTime = BestShot.ubAimTime;
 						// single shots with low chance to hit
-						return(AI_ACTION_FIRE_GUN);
+						return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 					}
 				}
 			}
@@ -1957,6 +2099,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 		// and have more APs than we want to reserve
 		if (ubCanMove && pSoldier->bActionPoints > MAX_AP_CARRIED && !fCivilian)
 		{
+			// set when we're already inside a building worth holding, see below
+			bool fHoldBuilding = false;
+
 			if (fCivilian)
 			{
 				// only interested in hiding out...
@@ -1981,9 +2126,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 				{
 					case MORALE_HOPELESS:  bSeekPts = -99; bHelpPts = -99; bHidePts  = +1; bWatchPts =	-99; break;
 					case MORALE_WORRIED:   bSeekPts += -1; bHelpPts +=  0; bHidePts += +1; bWatchPts +=	1; break;
-					case MORALE_NORMAL:    bSeekPts +=  0; bHelpPts +=  0; bHidePts +=  0; bWatchPts +=	0; break;
-					case MORALE_CONFIDENT: bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts +=	0; break;
-					case MORALE_FEARLESS:  bSeekPts += +1; bHelpPts +=  0; bHidePts =  -1; bWatchPts +=  0; break;
+					case MORALE_NORMAL:    bSeekPts +=  0; bHelpPts +=  0; bHidePts += 1; bWatchPts +=	1; break;
+					case MORALE_CONFIDENT: bSeekPts += +1; bHelpPts +=  0; bHidePts += 1; bWatchPts +=	1; break;
+					case MORALE_FEARLESS:  bSeekPts += +1; bHelpPts +=  0; bHidePts = 0; bWatchPts +=  0; break;
 				}
 
 				// modify tendencies according to orders
@@ -1996,7 +2141,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 					case POINTPATROL:  bSeekPts +=  0; bHelpPts +=  0; bHidePts +=  0; bWatchPts +=  0; break;
 					case FARPATROL:    bSeekPts +=  0; bHelpPts +=  0; bHidePts +=  0; bWatchPts +=  0; break;
 					case ONCALL:       bSeekPts +=  0; bHelpPts += +1; bHidePts += -1; bWatchPts +=  0; break;
-					case SEEKENEMY:    bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts += -1; break;
+					case SEEKENEMY:    bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts += +1; break;
 				}
 
 				// modify tendencies according to attitude
@@ -2005,25 +2150,73 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 					case DEFENSIVE:     bSeekPts += -1; bHelpPts +=  0; bHidePts += +1; bWatchPts += +1; break;
 					case BRAVESOLO:     bSeekPts += +1; bHelpPts += -1; bHidePts += -1; bWatchPts += -1; break;
 					case BRAVEAID:      bSeekPts += +1; bHelpPts += +1; bHidePts += -1; bWatchPts += -1; break;
-					case CUNNINGSOLO:   bSeekPts +=  0; bHelpPts += -1; bHidePts += +1; bWatchPts +=  0; break;
+					case CUNNINGSOLO:   bSeekPts +=  0; bHelpPts += -1; bHidePts += +1; bWatchPts += +1; break;
 					case CUNNINGAID:    bSeekPts +=  0; bHelpPts += +1; bHidePts += +1; bWatchPts +=  0; break;
 					case AGGRESSIVE:    bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts +=  0; break;
 					case ATTACKSLAYONLY:bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts +=  0; break;
 				}
 
-				// Low-morale enemies should try to break contact and take cover
-				// (ideally inside a building, see ai_cover_building_bonus) BEFORE
-				// standing to watch a location. WATCH is evaluated ahead of HIDE in
-				// the loop below and wins ties, and its base score
-				// (GetHighestWatchedLocPoints) can easily out-weigh the small morale/
-				// orders/attitude nudges - so a scared soldier ends up just turning to
-				// face (AI_ACTION_CHANGE_FACING) instead of hiding. Force HIDE to be
-				// strictly preferred here; if no cover is found, FindBestNearbyCover
-				// drops bHidePts to -99 and WATCH is still available as the fallback.
-				if (pSoldier->bTeam == ENEMY_TEAM && pSoldier->bAIMorale < MORALE_NORMAL &&
-					bHidePts > -90 && bWatchPts >= bHidePts)
+				// If we're already standing inside a building with a known opponent
+				// anywhere in the neighbourhood, the walls and roof around us are the best
+				// cover we're going to find: hold this room and watch the way in, rather
+				// than walking back out to look for something better. This is the other
+				// half of ai_cover_building_bonus - that gets an enemy indoors, this keeps
+				// it there, since a cover search or a seek from inside would otherwise pull
+				// it straight back out on the following turn.
+				//
+				// Needs a watched location to aim at; with nothing to watch we fall through
+				// to the normal preferences below.
+				if (pSoldier->bTeam == ENEMY_TEAM && bWatchPts > -90 &&
+					GetRoom(pSoldier->sGridNo) != NO_ROOM)
 				{
-					bHidePts = bWatchPts + 1;
+					const INT16 HOLD_BUILDING_MAX_RANGE = 35;
+					const INT16 sHoldOpponent = ClosestKnownOpponent(pSoldier, NULL, NULL);
+
+					if (sHoldOpponent != NOWHERE &&
+						SpacesAway(pSoldier->sGridNo, sHoldOpponent) < HOLD_BUILDING_MAX_RANGE)
+					{
+						fHoldBuilding = true;
+
+						// force WATCH strictly above everything that would move us
+						const INT8 bTopOther = std::max(bSeekPts, std::max(bHelpPts, bHidePts));
+						if (bTopOther >= bWatchPts)
+						{
+							bWatchPts = bTopOther + 1;
+						}
+					}
+				}
+
+				// Prefer taking cover over SEEKING/WATCHING when it makes sense.
+				// WATCH is evaluated ahead of HIDE in the loop below and wins ties, and
+				// its base score (GetHighestWatchedLocPoints) can easily out-weigh the
+				// small morale/orders/attitude nudges - so without this an enemy ends up
+				// turning to face (AI_ACTION_CHANGE_FACING) or advancing instead of
+				// hiding. We force HIDE strictly above SEEK/HELP/WATCH in two cases:
+				//   (1) Low-morale enemies should break contact and hunker down (ideally
+				//       inside a building, see ai_cover_building_bonus).
+				//   (2) At longer ranges the main threat is an opponent who changes
+				//       stance and shoots next turn, so an enemy more than
+				//       COVER_PREF_MIN_RANGE tiles from the nearest known opponent should
+				//       grab cover if any is reachable; closer in it instead banks APs to
+				//       watch/react.
+				// This is safe to force: if no cover is actually reachable, the HIDE
+				// branch drops bHidePts to -99 and WATCH remains as the fallback.
+				if (pSoldier->bTeam == ENEMY_TEAM && bHidePts > -90 && !fHoldBuilding)
+				{
+					const INT16 COVER_PREF_MIN_RANGE = 12;
+					const INT16 sCoverPrefOpponent = ClosestKnownOpponent(pSoldier, NULL, NULL);
+					const bool fLowMorale = (pSoldier->bAIMorale < MORALE_NORMAL);
+					const bool fLongRange = (sCoverPrefOpponent != NOWHERE &&
+						SpacesAway(pSoldier->sGridNo, sCoverPrefOpponent) > COVER_PREF_MIN_RANGE);
+
+					if (fLowMorale || fLongRange)
+					{
+						const INT8 bTopOther = std::max(bSeekPts, std::max(bHelpPts, bWatchPts));
+						if (bTopOther >= bHidePts)
+						{
+							bHidePts = bTopOther + 1;
+						}
+					}
 				}
 			}
 
@@ -2036,6 +2229,118 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 			// while one of the three main RED REACTIONS remains viable
 			while ((bSeekPts > -90) || (bHelpPts > -90) || (bHidePts > -90))
 			{
+				// if HIDING is possible and at least as desirable as seeking or helping
+				if ((bHidePts > -90) && (bHidePts >= bSeekPts) && (bHidePts >= bHelpPts) && (bHidePts >= bWatchPts))
+				{
+					sClosestOpponent = ClosestKnownOpponent(pSoldier, NULL, NULL);
+					// if an opponent is known (not necessarily reachable or conscious)
+
+					if (!SkipCoverCheck && sClosestOpponent != NOWHERE)
+					{
+						//////////////////////////////////////////////////////////////////////
+						// TAKE BEST NEARBY COVER FROM ALL KNOWN OPPONENTS
+						//////////////////////////////////////////////////////////////////////
+#ifdef AI_TIMING_TESTS
+						uiStartTime = GetJA2Clock();
+#endif
+
+						pSoldier->usActionData = FindBestNearbyCover(pSoldier, pSoldier->bAIMorale, &iDummy);
+#ifdef AI_TIMING_TESTS
+						uiEndTime = GetJA2Clock();
+
+						guiRedHideTimeTotal += (uiEndTime - uiStartTime);
+						guiRedHideCounter++;
+#endif
+
+						// let's be a bit cautious about going right up to a location without enough APs to shoot
+						if (pSoldier->usActionData != NOWHERE)
+						{
+							// Multi-turn cover: the chosen tile may be several turns away.
+							// Advance toward it as far as this turn's APs allow (this reserves
+							// APs so we can still crouch/react), and finish the approach over
+							// later turns, when the cover search re-evaluates from the new spot.
+							// Movement loop-detection in ExecuteAction guards against thrashing.
+							if (gamepolicy(ai_cover_search_turns) > 1)
+							{
+								INT16 const sCoverGoal = pSoldier->usActionData;
+
+								// If the approach to cover takes us toward a known opponent,
+								// keep enough APs in reserve to crouch and fire, so we can
+								// still react (e.g. shoot on an interrupt) instead of ending
+								// the turn frozen and exposed. Plain GoAsFarAsPossibleTowards
+								// reserves only MAX_AP_CARRIED, which isn't enough for a shot -
+								// this mirrors the vanilla cover path below. When cover leads
+								// away from the enemy (retreat) we keep the light default
+								// reserve so the getaway isn't slowed.
+								INT8 bReserveAPs = -1; // -1 = default reserve (MAX_AP_CARRIED)
+								if (sClosestOpponent != NOWHERE &&
+									SpacesAway(sCoverGoal, sClosestOpponent) < SpacesAway(pSoldier->sGridNo, sClosestOpponent))
+								{
+									// Reserve enough to crouch and fire on an interrupt once we arrive.
+									// MinAPsToAttack is measured from our CURRENT (pre-move) stance and
+									// weapon readiness - but running to cover lowers the weapon, so the
+									// real interrupt shot also pays the weapon-raise (ubReadyTime) that
+									// the pre-move estimate skips when we start in a fire-ready pose.
+									// Add it explicitly so we don't arrive a few APs short of the shot we
+									// banked for. GetAPsToReadyWeapon returns 0 for empty hands/melee, so
+									// this only bites for guns.
+									bReserveAPs = (INT8)(MinAPsToAttack(pSoldier, sClosestOpponent, ADDTURNCOST)
+										+ AP_CROUCH
+										+ GetAPsToReadyWeapon(pSoldier, pSoldier->usAnimState));
+								}
+
+								INT16 const sCoverStep = InternalGoAsFarAsPossibleTowards(pSoldier, sCoverGoal, bReserveAPs, AI_ACTION_TAKE_COVER, 0);
+								if (sCoverStep != NOWHERE)
+								{
+									pSoldier->usActionData = sCoverStep;
+									return(AI_ACTION_TAKE_COVER);
+								}
+								// already adjacent or blocked: restore goal, fall through to vanilla handling
+								pSoldier->usActionData = sCoverGoal;
+							}
+
+							sClosestDisturbance = ClosestReachableDisturbance(pSoldier, ubUnconsciousOK, &fClimb);
+							if (sClosestDisturbance != NOWHERE && (SpacesAway(pSoldier->usActionData, sClosestDisturbance) < 5 || SpacesAway(pSoldier->usActionData, sClosestDisturbance) + 5 < SpacesAway(pSoldier->sGridNo, sClosestDisturbance)))
+							{
+								// either moving significantly closer or into very close range
+								// ensure will we have enough APs for a possible crouch plus a shot
+								if (InternalGoAsFarAsPossibleTowards(pSoldier, pSoldier->usActionData, (INT8)(MinAPsToAttack(pSoldier, sClosestOpponent, ADDTURNCOST) + AP_CROUCH), AI_ACTION_TAKE_COVER, 0) == pSoldier->usActionData)
+								{
+									return(AI_ACTION_TAKE_COVER);
+								}
+							}
+							else
+							{
+								return(AI_ACTION_TAKE_COVER);
+							}
+						}
+						else if (0 && ubCanMove && pSoldier->bTeam == ENEMY_TEAM && AnyOpponentAwareOf(pSoldier))
+						{
+							// No cover at all is reachable from here. If the player already
+							// knows where we are, sitting in the open just invites a
+							// stance-change-and-shoot next turn - so break contact instead:
+							// retreat toward the spot farthest from all known threats, which
+							// takes us out of sight (up to ~MaxDistanceVisible() tiles, ~26 in
+							// daytime) over one or more turns.
+							pSoldier->usActionData = FindSpotMaxDistFromOpponents(pSoldier);
+							if (pSoldier->usActionData != NOWHERE && pSoldier->usActionData != pSoldier->sGridNo)
+							{
+								// From now on behave as "worried". bAIMorale is recomputed by
+								// CalcMorale every turn, so setting it here wouldn't persist;
+								// instead set the same persistent fields CalcMorale itself
+								// assigns for below-normal morale (see CalcMorale) so the
+								// retreat and following turns stay cautious.
+								pSoldier->bAttitude = DEFENSIVE;
+								pSoldier->bOrders   = ONGUARD;
+								return(AI_ACTION_RUN_AWAY);
+							}
+						}
+
+					}
+
+					// mark HIDING as impossible for next time through while loop
+					bHidePts = -99;
+				}
 				// if SEEKING is possible and at least as desirable as helping or hiding
 				if ( (bSeekPts > -90) && (bSeekPts >= bHelpPts) && (bSeekPts >= bHidePts) && (bSeekPts >= bWatchPts ) )
 				{
@@ -2149,7 +2454,10 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 						// from there instead. (Honours roaming range/orders via GoAsFarAsPossible-
 						// Towards, so genuine sentries with no room to move just watch in place.)
 					
-						if (ubCanMove)
+						// ...but not when we're deliberately holding a building (see
+						// fHoldBuilding above): closing on the watched spot would march us
+						// out of the very cover we chose to watch from.
+						if (ubCanMove && !fHoldBuilding)
 						{
 							const INT8 bGunSlot = FindAIUsableObjClass(pSoldier, IC_GUN);
 							if (bGunSlot != NO_SLOT)
@@ -2282,54 +2590,6 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 					// mark SEEKING as impossible for next time through while loop
 					bHelpPts = -99;
-				}
-
-
-				// if HIDING is possible and at least as desirable as seeking or helping
-				if ((bHidePts > -90) && (bHidePts >= bSeekPts) && (bHidePts >= bHelpPts) && (bHidePts >= bWatchPts ))
-				{
-					sClosestOpponent = ClosestKnownOpponent( pSoldier, NULL, NULL );
-					// if an opponent is known (not necessarily reachable or conscious)
-					if (!SkipCoverCheck && sClosestOpponent != NOWHERE )
-					{
-						//////////////////////////////////////////////////////////////////////
-						// TAKE BEST NEARBY COVER FROM ALL KNOWN OPPONENTS
-						//////////////////////////////////////////////////////////////////////
-						#ifdef AI_TIMING_TESTS
-						uiStartTime = GetJA2Clock();
-						#endif
-
-						pSoldier->usActionData = FindBestNearbyCover(pSoldier,pSoldier->bAIMorale,&iDummy);
-						#ifdef AI_TIMING_TESTS
-						uiEndTime = GetJA2Clock();
-
-						guiRedHideTimeTotal += (uiEndTime - uiStartTime);
-						guiRedHideCounter++;
-						#endif
-
-						// let's be a bit cautious about going right up to a location without enough APs to shoot
-						if ( pSoldier->usActionData != NOWHERE )
-						{
-							sClosestDisturbance = ClosestReachableDisturbance(pSoldier, ubUnconsciousOK, &fClimb);
-							if ( sClosestDisturbance != NOWHERE && ( SpacesAway( pSoldier->usActionData, sClosestDisturbance ) < 5 || SpacesAway( pSoldier->usActionData, sClosestDisturbance ) + 5 < SpacesAway( pSoldier->sGridNo, sClosestDisturbance ) ) )
-							{
-								// either moving significantly closer or into very close range
-								// ensure will we have enough APs for a possible crouch plus a shot
-								if ( InternalGoAsFarAsPossibleTowards( pSoldier, pSoldier->usActionData, (INT8) (MinAPsToAttack( pSoldier, sClosestOpponent, ADDTURNCOST) + AP_CROUCH), AI_ACTION_TAKE_COVER, 0 ) == pSoldier->usActionData )
-								{
-									return(AI_ACTION_TAKE_COVER);
-								}
-							}
-							else
-							{
-								return(AI_ACTION_TAKE_COVER);
-							}
-						}
-
-					}
-
-					// mark HIDING as impossible for next time through while loop
-					bHidePts = -99;
 				}
 			}
 		}
@@ -2804,7 +3064,7 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 	// raising its weapon, or taking cover - otherwise it wastes its turn and ends
 	// up exposed. Enemies head for the map edge and traverse out; failing that (or
 	// for non-enemies allowed to retreat), run to the spot farthest from threats.
-	if (pSoldier->bAIMorale == MORALE_HOPELESS && ubCanMove && !(pSoldier->uiStatusFlags & SOLDIER_BOXER))
+	if (pSoldier->bLife < 50 && ubCanMove && !(pSoldier->uiStatusFlags & SOLDIER_BOXER))
 	{
 		if (pSoldier->bTeam == ENEMY_TEAM)
 		{
@@ -3887,8 +4147,11 @@ INT8 DecideAction(SOLDIERTYPE *pSoldier)
 				break;
 		}
 	}
-	SLOGD("DecideAction: selected action {}, actionData {}\n\n",
-		bAction, pSoldier->usActionData);
+	SLOGD("DecideAction: soldier {} on {} alert, orders {}, attitude {}, AI morale {} -- selected action {} ({}), actionData {}\n\n",
+		pSoldier->ubID,
+		AIAlertName(pSoldier->bAlertStatus), AIOrdersName(pSoldier->bOrders),
+		AIAttitudeName(pSoldier->bAttitude), AIMoraleName(pSoldier->bAIMorale),
+		AIActionName(bAction), bAction, pSoldier->usActionData);
 	return(bAction);
 }
 

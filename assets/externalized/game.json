@@ -23,6 +23,9 @@
   //  vanilla setting: false
   "middle_mouse_look": true,
 
+  "reinforce_all_sam_sites": false,
+
+
   //  --------------------------------------------------
   //  System settings
   //  --------------------------------------------------
@@ -35,7 +38,7 @@
   //  power consumption, higher values can make the game appear to be more responsive.
   //  Minimum: 1, Maximum: 144
   //  Stracciatella default value: 40
-  "target_fps": 40,
+  "target_fps": 80,
 
   // Many of the game's predefined durations are multiplied by this value, including animations. This means
   // that a value greater than 1 slows down the game, while values less than 1 speed it up. For example, the
@@ -62,15 +65,16 @@
   //  vanilla setting: false
   "all_drops_visible": false,
 
-  //  Don't draw bullets in flight; shots resolve faster. Revives the old
-  //  "hide bullets" option as a game policy.
-  //  vanilla setting: false
-  "hide_bullets": false,
-
   //  Everyone will be able to interrupt multiple times in the same turn. Vanilla behaviour is that if you skipped reacting to the first interrupt
   //  (say your buddies took care of it), you'd still get skipped for any further interrupts. Annoying in ambushes or when sneaking.
   //  vanilla setting: false
-  "multiple_interrupts": false,
+  "multiple_interrupts": true,
+
+  // Lets a merc who already sees an enemy, and who that enemy does not see, get an interrupt duel the moment that enemy
+  // spots him (the merc enters the enemy's opplist as seen). Normally interrupts only fire when an enemy is newly sighted.
+  // The enemy's alert status does not matter, only that this enemy did not have this merc in sight. Player's team only.
+  // vanilla setting: false
+  "allow_overwatch_interrupt": true,
 
   // Boosting stats like agility, dexterity, exp. level and health absurdly increases the action points cost to shoot.
   // With this option on: the better the stats the fewer APs will be needed.
@@ -80,6 +84,12 @@
   //  Minimal status in % for each gun in the hand of enemy soldiers. Note that this value has no influence on enemy behaviour (CtH, jams).
   //  vanilla value: 0
   "enemy_weapon_minimal_status": 0,
+
+  // Minimum % chance for a player merc's gun to jam even in perfect (100%) condition.
+  // Vanilla guns above status 80 never jam; this adds a floor so there is always some risk.
+  // Applied on top of the normal condition-based jam roll. 0 restores vanilla behaviour.
+  // vanilla value: 0
+  "gun_jam_chance_minimum": 2,
 
   // Maxiumum number of soldiers in one squad.
   // Larger squad sizes requires the wider screen to display all members. For a squad size of n, the screen must be at
@@ -93,38 +103,54 @@
     //  Aiming: will choose other body parts when appropriate and random choice was selected.
     //  Prone: when already facing its focus, lay down if nothing else.
     //  vanilla values: false, false, 0 ,0
-    "better_aiming_choice": false,
-    "go_prone_more_often": false,
-    "threshold_cth_head": 67,
-    "threshold_cth_legs": 67,
+    "better_aiming_choice": true,
+    "go_prone_more_often": true,
+    "threshold_cth_head": 65,
+    "threshold_cth_legs": 75,
 
     //  AI is capable of knowing and avoid of an ambush on seeing corpses of friendlies, but
     //  it was not enabled in the original game due to a bug
     //  vanilla value: false
-    "avoid_ambushes": false,
+    "avoid_ambushes": true,
 
     //  Enemy guards on rooftop are disallowed to climb down
     //  vanilla value: false
-    "stay_on_rooftop": false,
-
-    //  At night, generic enemy soldiers avoid pathing across tiles that are lit
-    //  AND currently visible to a player merc, routing through darkness instead.
-    //  vanilla value: false
-    "avoid_lit_tiles_at_night": false,
-
-    //  At night, % chance a generic enemy soldier that would RUN instead moves in
-    //  a low, quiet SWAT (stalk). 0 = vanilla always-run, 100 = always swat.
+    "stay_on_rooftop": true,
+    //  Don't draw bullets in flight; shots resolve faster. Revives the old
+    //  "hide bullets" option as a game policy.
+    //  vanilla setting: false
+    //  Bias the AI to take cover inside buildings: a percentage bonus added to the
+    //  cover value of any candidate tile that is inside a building. Higher values make
+    //  the AI strongly prefer hiding indoors. 0 disables it (vanilla behaviour).
     //  vanilla value: 0
-    "night_swat_chance": 0,
+    "cover_building_bonus": 100,
 
-    //  % bonus to cover value for tiles inside a building, biasing the AI to hide
-    //  indoors. 0 = vanilla.
-    "cover_building_bonus": 0,
+    //  Treat every soldier as having at least this much Wisdom when sizing the cover
+    //  search radius (the radius is capped at Wisdom/8 tiles). Raises how far low-Wisdom
+    //  soldiers look for cover. 0 uses the soldier's actual Wisdom. Use 100 for "as if
+    //  100 Wisdom", or 104+ to effectively remove the cap.
+    //  vanilla value: 0
+    "cover_search_wisdom": 100,
+    "cover_search_turns": 1,
 
-    //  Treat the AI as having at least this much Wisdom when sizing the cover
-    //  search radius (1 tile per 8 Wisdom). 0 = use actual Wisdom (vanilla).
-    "cover_search_wisdom": 0
+    "avoid_lit_tiles_at_night": true,
+    "night_swat_chance": 65,
+
+    //  Treat AI-controlled soldiers as carrying a key to every door in the sector, so a
+    //  locked door only costs them the APs to open it instead of walling them out of a
+    //  building entirely (which is what kept them from ever using cover_building_bonus).
+    //  The lock is left untouched: the trap doesn't go off for the AI and isn't spent,
+    //  so the player still finds the door locked and trapped once it is shut again.
+    //  vanilla value: false
+    "always_has_keys": true
   },
+  "hide_bullets": true,
+
+  //  Prone targets can be hit in the head, torso or legs (5%/80%/15%),
+  //  the same distribution used for random/blind shots, instead of the
+  //  vanilla behaviour where every hit on a prone merc lands on the torso.
+  "prone_random_hit_location": true,
+
 
   //  How much variation should there be in elite soldier xp level?
   //  vanilla_setting: 6, 10
@@ -136,56 +162,70 @@
   //  vanilla_setting: false
   "gui_extras": true,
 
-  //  Don't reveal a terrorist's name on the tactical selection UI.
-  //  vanilla_setting: false
-  "hide_terrorist_names": false,
-
   //  Displays modifiers in hover boxes revealing hidden mechanics.
   //  vanilla_setting: false
-  "informative_tooltips": false,
+  "informative_tooltips": true,
 
   //  Skips the "cannot sleep" popup when driving or when the merc is already rested.
   //  vanilla setting: false
-  "skip_sleep_explanation": false,
+  "skip_sleep_explanation": true,
 
   //  Enables extra attachments: boosters and break lights on leggings, goggles on helmets.
   //  vanilla setting: false
-  "extra_attachments": false,
+  "extra_attachments": true,
 
   //  Packages at Drassen airport never get stolen, no need to bribe Pablo.
   //  vanilla_setting: false
   "pablo_wont_steal": false,
 
-  //  Capturing any SAM site makes the queen reinforce all three town SAM sites,
-  //  and their all-elite reinforcement groups sneak in at night without sleeping.
-  //  vanilla setting: false
-  "reinforce_all_sam_sites": false,
-
   //  Min/max chance to hit and headshot damage multiplier.
   //  vanilla_setting: 1, 99, 1.5, 0.5
-  "chance_to_hit_minimum": 1,
-  "chance_to_hit_maximum": 99,
+  "chance_to_hit_minimum": 3,
+  "chance_to_hit_maximum": 80,
   "tactical_head_damage_multiplier": 1.5,
   "tactical_legs_damage_multiplier": 0.5,
 
+  //  Deduct a weapon's ubBurstPenalty after chance-to-hit is clamped to the min/max above, not before.
+  //  Otherwise the penalty is swallowed by the clamp for anyone with headroom above the cap, and every
+  //  round of a burst ends up with the same chance to hit.
+  //  vanilla setting: false
+  "burst_penalty_after_cth_cap": true,
+
   //  Aim bonus per spent AP and for using scopes
   //  vanilla setting (%): 10, 20, 20
-  "aim_bonus_per_std_ap": 10,
-  "aim_bonus_sniperscope": 20,
-  "aim_bonus_laserscope": 20,
+  "aim_bonus_per_std_ap": 8,
+  "aim_bonus_sniperscope":16,
+  "aim_bonus_laserscope": 15,
 
   //  Range bonuses and penalties. 10 per 1 tile.
   //  vanilla setting: 0, 100
-  "range_penalty_silencer": 0,
-  "range_bonus_barrel_extender": 100,
+  "range_penalty_silencer": 10,
+  "range_bonus_barrel_extender": 50,
+
+  //  Curve the chance-to-hit range modifier instead of the vanilla flat 3%/tile line, which pivots
+  //  on 9 tiles and treats both directions the same. Closer than 9 tiles the bonus rises steeply
+  //  then flattens, reaching range_bonus_point_blank at range 0. Beyond 9 tiles the penalty is
+  //  range_penalty_far_linear per tile plus an accelerating quadratic term, both in tenths of a
+  //  percent, so each further tile costs more than the last.
+  //  vanilla setting: false, 27, 30, 0
+  "nonlinear_range_modifier": true,
+  "range_bonus_point_blank": 30,
+  "range_penalty_far_linear": 30,
+  "range_penalty_far_quadratic": 25,
+
+  //  Percentage modifier to the maximum range of hand-thrown items (grenades, throwing knives).
+  //  Launchers and unaerodynamic items are unaffected. Applied before the breath penalty and the
+  //  Throwing trait bonus.
+  //  vanilla setting: 100
+  "thrown_range_modifier": 70,
 
   //  Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
   //  vanilla setting: false
-  "always_show_cursor_in_tactical": false,
+  "always_show_cursor_in_tactical": true,
 
   //  Show chance-to-hit next to mouse cursor when preparing an attack
   //  vanilla setting: false
-  "show_hit_chance": false,
+  "show_hit_chance": true,
 
   //  Scales the loading time of websites on the laptop. Lower value means faster loading. Setting this to 0.0 removes the loading entirely.
   //  vanilla setting: 1.0
@@ -194,7 +234,7 @@
   //  Open or close doors diagonally (unless AI-controlled). Makes room clearings much easier by reducing exposure when opening doors.
   //  Your character must already stand on the door-adjacent tile to effect diagonal interaction.
   //  vanilla setting: false
-  "diagonally_interactable_doors": false,
+  "diagonally_interactable_doors": true,
 
   //  IMP creation tweaks
   "imp": {
@@ -213,7 +253,7 @@
     // Replace the IMP personality quiz with a form to select skills directly
     // NOTE: does not set any personality
     // vanilla setting: false
-    "pick_skills_directly": false,
+    "pick_skills_directly": true,
 
     //  Load an IMP merc from a previous save game by typing in same nickname on IMP form.
     //  Make sure to put in only the nickname and use the same capitalization!
@@ -254,9 +294,29 @@
   //  vanilla settings: 1, 2, 3
   "unhired_merc_deaths_easy": 1,
   "unhired_merc_deaths_medium": 2,
-  "unhired_merc_deaths_hard": 3,
+  "unhired_merc_deaths_hard": 2,
 
   "enable_stat_healing": false,
+
+  //  Model used for carried-weight penalties (action points, agility, breath
+  //  cost, strategic movement speed and fatigue).
+  //    true  - penalties apply from any load and scale non-linearly, so they
+  //            ramp up gently while light and bite harder when overloaded.
+  //    false - vanilla behaviour: no penalties until above 100% of capacity.
+  "progressive_weight_penalties": false,
+
+  //  Max breath below which a merc who is not on a squad and not in a vehicle
+  //  goes to sleep on his own during the hourly update, interrupting whatever
+  //  assignment he is on. Mercs on a squad or in a vehicle are unaffected: they
+  //  only complain about being tired, and still collapse at max breath 10.
+  //  vanilla setting: 50
+  "auto_sleep_breath_threshold": 70,
+
+  //  Health (in percent of their maximum) below which enemy soldiers break off
+  //  an autoresolve battle and run for it. Survivors are handed back to the
+  //  queen's pool of reinforcements. Militia and creatures never retreat.
+  //    0 - vanilla behaviour: enemies always fight to the death.
+  "enemy_autoresolve_retreat_health_percent": 40,
 
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
@@ -267,11 +327,14 @@
 
     //  Is the start sector revealed at game start?
     //  vanilla settings: true
-    "start_sector_revealed": true
-    },
+    "start_sector_revealed": false
+  },
+  //  Don't reveal a terrorist's name on the tactical selection UI.
+  //  vanilla_setting: false
+  "hide_terrorist_names": true,
 
     // Scales AP loss from suppression (numerator of the AP-loss formula); vanilla 6, recommended setting is 24
-    "suppression_fire_modifier": 6,
+    "suppression_fire_modifier": 30,
     // Threshold (numerator) above which a suppressed soldier drops to a lower stance.
     // vanilla settings: 130. Set to 0 to make soldiers always react (1.13 behaviour); raise it to make them even more resistant.
     "suppression_fire_reaction_threshold": 130

@@ -43,6 +43,7 @@
 #include "NPC.h"
 #include "Meanwhile.h"
 #include "Explosion_Control.h"
+#include "FOV.h"
 #include "LOS.h"
 #include "GameSettings.h"
 #include "Boxing.h"
@@ -84,6 +85,15 @@ static const DOUBLE gClimbDownRoofStartDist[NUMSOLDIERBODYTYPES]    = { 5.0, 1.0
 static const DOUBLE gClimbUpRoofDistGoingLower[NUMSOLDIERBODYTYPES] = { 0.9, 0.1, 1, 1 };
 
 
+// A fence occupies a tile of its own, so hopping one covers two tiles. A window sits on
+// the edge between two tiles, so climbing through it only covers one - move at half pace.
+static FLOAT HopFenceMoveDist(const SOLDIERTYPE* const pSoldier, const DOUBLE (&dists)[NUMSOLDIERBODYTYPES])
+{
+	const DOUBLE dDist = dists[pSoldier->ubBodyType];
+	return (FLOAT)(pSoldier->fClimbingWindow ? dDist / 2 : dDist);
+}
+
+
 static void CheckForAndHandleSoldierIncompacitated(SOLDIERTYPE* pSoldier);
 static BOOLEAN CheckForImproperFireGunEnd(SOLDIERTYPE* pSoldier);
 static BOOLEAN HandleUnjamAnimation(SOLDIERTYPE* pSoldier);
@@ -109,26 +119,6 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 	{
 		// Get new frame code
 		sNewAniFrame = gusAnimInst[ pSoldier->usAnimState ][ pSoldier->usAniCode ];
-
-		// Handle muzzel flashes
-		if ( pSoldier->bMuzFlashCount > 0 )
-		{
-			// FLash for about 3 frames
-			if ( pSoldier->bMuzFlashCount > MAX_ANIFRAMES_PER_FLASH )
-			{
-				pSoldier->bMuzFlashCount = 0;
-				if (pSoldier->muzzle_flash != NULL)
-				{
-					LightSpriteDestroy(pSoldier->muzzle_flash);
-					pSoldier->muzzle_flash = NULL;
-				}
-			}
-			else
-			{
-				pSoldier->bMuzFlashCount++;
-			}
-
-		}
 
 		if ( pSoldier->bBreathCollapsed )
 		{
@@ -168,6 +158,28 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 		// Check for special code
 		if ( sNewAniFrame < 399 )
 		{
+			// Handle muzzel flashes. This counts frames actually drawn, not script codes
+			// processed: a script can hold several codes between the flash code and the
+			// next real frame (the burst script holds one more than the single-shot one),
+			// and counting those expires the flash before it is ever rendered.
+			if ( pSoldier->bMuzFlashCount > 0 )
+			{
+				// FLash for about 3 frames
+				if ( pSoldier->bMuzFlashCount > MAX_ANIFRAMES_PER_FLASH )
+				{
+					pSoldier->bMuzFlashCount = 0;
+					if (pSoldier->muzzle_flash != NULL)
+					{
+						LightSpriteDestroy(pSoldier->muzzle_flash);
+						pSoldier->muzzle_flash = NULL;
+					}
+				}
+				else
+				{
+					pSoldier->bMuzFlashCount++;
+				}
+
+			}
 
 			// Adjust / set true ani frame
 			// Use -1 because ani files are 1-based, these are 0-based
@@ -451,6 +463,18 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					// DO ONLY IF WE'RE AT A GOOD LEVEL
 					if (ubAmbientLightLevel < MIN_AMB_LEVEL_FOR_MERC_LIGHTS) break;
 
+					// a silencer hides the flash
+					if (IsSilenced(*pSoldier)) break;
+
+					// The previous round's flash may still be alive - a burst runs this
+					// code once per round, as does two-pistol shooting - and only one
+					// sprite is tracked, so let go of the old one instead of leaking it.
+					if (pSoldier->muzzle_flash != NULL)
+					{
+						LightSpriteDestroy(pSoldier->muzzle_flash);
+						pSoldier->muzzle_flash = NULL;
+					}
+
 					LIGHT_SPRITE* const l = LightSpriteCreate("L-R03.LHT");
 					pSoldier->muzzle_flash = l;
 					if (l == NULL) return TRUE;
@@ -496,12 +520,12 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						case SOUTH:
 						case EAST:
 
-							MoveMercFacingDirection( pSoldier, FALSE, (FLOAT)gHopFenceForwardSEDist[ pSoldier->ubBodyType ] );
+							MoveMercFacingDirection( pSoldier, FALSE, HopFenceMoveDist( pSoldier, gHopFenceForwardSEDist ) );
 							break;
 
 						case NORTH:
 						case WEST:
-							MoveMercFacingDirection( pSoldier, FALSE, (FLOAT)gHopFenceForwardNWDist[ pSoldier->ubBodyType ] );
+							MoveMercFacingDirection( pSoldier, FALSE, HopFenceMoveDist( pSoldier, gHopFenceForwardNWDist ) );
 							break;
 					}
 					break;
@@ -510,6 +534,37 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					// CODE: End Hop Fence
 					// MOVE TO FORCASTED GRIDNO
 					EVENT_SetSoldierPosition(pSoldier, pSoldier->sForcastGridno, SSP_NO_DEST | SSP_NO_FINAL_DEST);
+
+					if ( pSoldier->fClimbingWindow )
+					{
+						// We are through the window - stay put, keep facing the way we jumped
+						// and settle into the crouch this animation ends in
+						pSoldier->fClimbingWindow = FALSE;
+						pSoldier->sZLevelOverride = -1;
+						EVENT_SetSoldierDesiredDirection( pSoldier, pSoldier->bDirection );
+
+						pSoldier->sDestination      = pSoldier->sGridNo;
+						pSoldier->sFinalDestination = pSoldier->sGridNo;
+						pSoldier->sDestXPos         = (INT16)pSoldier->dXPos;
+						pSoldier->sDestYPos         = (INT16)pSoldier->dYPos;
+
+						pSoldier->ubDesiredHeight   = ANIM_CROUCH;
+						pSoldier->usUIMovementMode  = GetMoveStateBasedOnStance( pSoldier, ANIM_CROUCH );
+
+						pSoldier->fInNonintAnim = FALSE;
+						SoldierGotoStationaryStance( pSoldier );
+
+						if (pSoldier->bTeam == OUR_TEAM)
+						{
+							UnSetUIBusy(pSoldier);
+							fInterfacePanelDirty = DIRTYLEVEL2;
+						}
+
+						RevealRoofsAndItems( pSoldier, TRUE );
+						HandleSight(*pSoldier, SIGHT_LOOK | SIGHT_RADIO | SIGHT_INTERRUPT);
+						return( TRUE );
+					}
+
 					EVENT_SetSoldierDirection(pSoldier, TwoCDirection(pSoldier->bDirection));
 					pSoldier->sZLevelOverride = -1;
 					EVENT_SetSoldierDesiredDirection( pSoldier, pSoldier->bDirection );
@@ -558,13 +613,13 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						case SOUTH:
 						case EAST:
 
-							MoveMercFacingDirection( pSoldier, FALSE, (FLOAT)gHopFenceForwardFullSEDist[ pSoldier->ubBodyType ] );
+							MoveMercFacingDirection( pSoldier, FALSE, HopFenceMoveDist( pSoldier, gHopFenceForwardFullSEDist ) );
 							break;
 
 						case NORTH:
 						case WEST:
 
-							MoveMercFacingDirection( pSoldier, FALSE, (FLOAT)gHopFenceForwardFullNWDist[ pSoldier->ubBodyType ] );
+							MoveMercFacingDirection( pSoldier, FALSE, HopFenceMoveDist( pSoldier, gHopFenceForwardFullNWDist ) );
 							break;
 
 					}
@@ -739,10 +794,21 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				case 450:
 
 					//CODE: BEGINHOPFENCE
-					// MOVE TWO FACGIN GRIDNOS
-					sNewGridNo = NewGridNo( (UINT16)pSoldier->sGridNo, DirectionInc( pSoldier->bDirection ) );
-					sNewGridNo = NewGridNo( (UINT16)sNewGridNo, DirectionInc( pSoldier->bDirection ) );
-					pSoldier->sForcastGridno = sNewGridNo;
+					if ( pSoldier->fClimbingWindow )
+					{
+						// The window is on the tile edge, so we land on the very next tile
+						pSoldier->sForcastGridno = pSoldier->sTempNewGridNo;
+					}
+					else
+					{
+						// MOVE TWO FACGIN GRIDNOS
+						// Worked out here rather than read from sTempNewGridNo: that one is
+						// saved with the game, so a save from an older build would carry a
+						// landing tile in the old meaning
+						sNewGridNo = NewGridNo( (UINT16)pSoldier->sGridNo, DirectionInc( pSoldier->bDirection ) );
+						sNewGridNo = NewGridNo( (UINT16)sNewGridNo, DirectionInc( pSoldier->bDirection ) );
+						pSoldier->sForcastGridno = sNewGridNo;
+					}
 					break;
 
 

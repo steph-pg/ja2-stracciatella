@@ -39,6 +39,16 @@ extern BOOLEAN RemoveAttachment( OBJECTTYPE * pObj, INT8 bAttachPos, OBJECTTYPE 
 // Returns (in percent) how much of his carrying capacity this soldier uses.
 UINT32 CalculateCarriedWeight(const SOLDIERTYPE* pSoldier);
 
+// Carried-weight penalties. Each picks between the vanilla behaviour (penalties
+// only above 100% of capacity) and the progressive model (penalties from any
+// load, scaling non-linearly), based on the progressive_weight_penalties game
+// policy. All take a merc's carried weight in percent of capacity (see
+// CalculateCarriedWeight).
+UINT8  CarriedWeightAdjustedAP(UINT8 ubPoints, UINT32 uiCarriedPercent);         // action points after the weight penalty
+INT32  CarriedWeightAgilityModifier(INT32 iEffAgility, UINT32 uiCarriedPercent); // (negative) modifier to effective agility
+INT16  CarriedWeightBreathCost(UINT32 uiCarriedPercent);                         // breath-point cost per move, in percent (100 = normal)
+double CarriedWeightStrategicMultiplier(UINT32 uiCarriedPercent);               // multiplier for strategic travel time and fatigue
+
 extern UINT16 TotalPoints(const OBJECTTYPE*);
 UINT16 UseKitPoints(OBJECTTYPE&, UINT16 points, SOLDIERTYPE const&);
 

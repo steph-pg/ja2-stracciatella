@@ -2049,17 +2049,14 @@ void FatigueCharacter(SOLDIERTYPE& s)
 	INT8       max_breath_loss = 50 / divisor;
 	if (max_breath_loss < 2) max_breath_loss = 2;
 
-	/* KM: Added encumbrance calculation to soldiers moving on foot. Anything
-	 * above 100% will increase rate of fatigue. 200% encumbrance will cause
-	 * soldiers to tire twice as quickly. */
+	/* Encumbrance increases the rate of fatigue for soldiers moving on foot
+	 * (see CarriedWeightStrategicMultiplier for the vanilla/progressive model). */
 	if (s.fBetweenSectors && s.bAssignment != VEHICLE)
 	{ // Soldier is on foot and traveling. Factor encumbrance into fatigue rate.
 		INT32 const percent_encumbrance = CalculateCarriedWeight(&s);
-		if (percent_encumbrance > 100)
-		{
-			INT32 const breath_loss = max_breath_loss * percent_encumbrance / 100;
-			max_breath_loss = std::min(breath_loss, 127);
-		}
+		double const factor = CarriedWeightStrategicMultiplier(percent_encumbrance);
+		INT32 const breath_loss = (INT32)(max_breath_loss * factor + 0.5);
+		max_breath_loss = std::min(breath_loss, 127);
 	}
 
 	INT8 breath_max = s.bBreathMax;
@@ -5688,34 +5685,38 @@ static void HandleRestFatigueAndSleepStatus()
 				// Guy collapses
 				s.fMercCollapsedFlag = TRUE;
 			}
-			else if (s.bBreathMax < BREATHMAX_PRETTY_TIRED && !s.fForcedToStayAwake)
-			{ // Pretty tired, and not forced to stay awake
-				if (s.bAssignment >= ON_DUTY && s.bAssignment != VEHICLE)
-				{ // Not on squad/in vehicle
-					// Try to go to sleep on your own
-					if (!SetMercAsleep(s, false)) continue;
+			else if (s.fForcedToStayAwake)
+			{ // Player insists he stays up, so no turning in and no complaining
+				continue;
+			}
+			else if (s.bAssignment >= ON_DUTY && s.bAssignment != VEHICLE)
+			{ /* Not on squad/in vehicle, so he turns in on his own as soon as he's
+				* tired enough */
+				if (s.bBreathMax >= gamepolicy(auto_sleep_breath_threshold)) continue;
 
-					if (!gGameSettings.fOptions[TOPTION_SLEEPWAKE_NOTIFICATION]) continue;
+				// Try to go to sleep on your own
+				if (!SetMercAsleep(s, false)) continue;
 
-					// If the first one
-					if (!reason_added)
-					{ // Tell player about it
-						AddReasonToWaitingListQueue(ASLEEP_GOING_AUTO_FOR_UPDATE);
-						reason_added = true;
-					}
+				if (!gGameSettings.fOptions[TOPTION_SLEEPWAKE_NOTIFICATION]) continue;
 
-					AddSoldierToWaitingListQueue(s);
-					box_set_up = true;
+				// If the first one
+				if (!reason_added)
+				{ // Tell player about it
+					AddReasonToWaitingListQueue(ASLEEP_GOING_AUTO_FOR_UPDATE);
+					reason_added = true;
 				}
-				else
-				{ // Tired, in a squad / vehicle
-					if (s.fComplainedThatTired) continue;
-					// He hasn't complained yet
 
-					TacticalCharacterDialogue(&s, sleep_quote);
-					sleep_quote            = QUOTE_ME_TOO;
-					s.fComplainedThatTired = TRUE;
-				}
+				AddSoldierToWaitingListQueue(s);
+				box_set_up = true;
+			}
+			else if (s.bBreathMax < BREATHMAX_PRETTY_TIRED)
+			{ // Pretty tired, in a squad / vehicle
+				if (s.fComplainedThatTired) continue;
+				// He hasn't complained yet
+
+				TacticalCharacterDialogue(&s, sleep_quote);
+				sleep_quote            = QUOTE_ME_TOO;
+				s.fComplainedThatTired = TRUE;
 			}
 		}
 
@@ -6238,8 +6239,10 @@ BOOLEAN PutMercInAwakeState( SOLDIERTYPE *pSoldier )
 		fCharacterInfoPanelDirty = TRUE;
 		fTeamPanelDirty = TRUE;
 
-		// determine if merc is being forced to stay awake
-		if ( pSoldier->bBreathMax < BREATHMAX_PRETTY_TIRED )
+		/* Determine if merc is being forced to stay awake. Uses the same threshold
+		 * as the automatic turning in, so a merc woken up below it isn't sent
+		 * straight back to bed by the next hourly update */
+		if (pSoldier->bBreathMax < gamepolicy(auto_sleep_breath_threshold))
 		{
 			pSoldier->fForcedToStayAwake = TRUE;
 		}

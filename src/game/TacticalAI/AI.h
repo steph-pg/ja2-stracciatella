@@ -5,8 +5,12 @@
 #include "WorldDef.h"
 
 
-extern INT8	gubAIPathCosts[19][19];
-#define AI_PATHCOST_RADIUS 9
+// Half-width of the AI path-cost grid. Was 9 (a 19x19 grid); enlarged to 16 so
+// the cover search can reach tiles several turns away when multi-turn cover
+// search is enabled (game policy ai_cover_search_turns). The grid is
+// (2*AI_PATHCOST_RADIUS + 1) on a side.
+#define AI_PATHCOST_RADIUS 16
+extern INT8	gubAIPathCosts[2 * AI_PATHCOST_RADIUS + 1][2 * AI_PATHCOST_RADIUS + 1];
 
 extern BOOLEAN gfDisplayCoverValues;
 extern INT16 gsCoverValue[WORLD_MAX];
@@ -87,6 +91,8 @@ enum ActionType
 	AI_ACTION_END_COWER_AND_MOVE,	// sort of dummy value, special for civilians who are to go somewhere at end of battle
 	AI_ACTION_TRAVERSE_DOWN,			// move down a level
 	AI_ACTION_OFFER_SURRENDER,		// offer surrender to the player
+
+	NUM_AI_ACTIONS								// keep last; gzActionStr[] in Overhead.cc is checked against this
 };
 
 
