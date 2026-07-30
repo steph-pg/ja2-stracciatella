@@ -14,6 +14,8 @@
   //  Press 'ctrl+q' to swap hand items
   //  Press 'shift+j' to climb through open window
   //  Press 's' in strategic view to send the selected mercs to sleep, or wake them up again.
+  //  Press 'alt+1' to 'alt+0' in strategic view to put the selected mercs on squad 1 to 10.
+  //  Press 'alt+`' in strategic view to put them on the first squad that will take them.
   "extra_hotkeys": true,
 
   //  Press d in realtime mode to manually start turn based mode.

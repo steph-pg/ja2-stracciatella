@@ -175,6 +175,14 @@ void CreateDestroyAssignmentPopUpBoxes();
 void SetSoldierAssignmentHospital(SOLDIERTYPE&);
 void SetSoldierAssignmentRepair(SOLDIERTYPE&, BOOLEAN robot, INT8 vehicle_id);
 
+/* Put one merc on a squad, telling the player why if it can't be done. Returns
+ * whether he ended up on the squad; being on it already counts as success. */
+bool SetSoldierAssignmentSquad(SOLDIERTYPE&, INT8 squad);
+
+/* Lowest-numbered squad this merc could join, out of the ones the squad menu
+ * offers, counting one he is already on. -1 if none of them would take him. */
+INT8 FindFirstJoinableSquad(SOLDIERTYPE const&);
+
 // set merc asleep and awake under the new sleep system implemented June 29, 1998
 // if give warning is false, the function can be used as an internal function
 BOOLEAN SetMercAwake( SOLDIERTYPE *pSoldier, BOOLEAN fGiveWarning, BOOLEAN fForceHim );
