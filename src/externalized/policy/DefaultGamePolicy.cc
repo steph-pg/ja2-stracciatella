@@ -108,7 +108,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	reveal_start_sector = campaign.getOptionalBool("start_sector_revealed", false);
 
 	suppression_fire_modifier = gp.getOptionalUInt("suppression_fire_modifier", 6);
-	suppression_fire_soldiers_always_react = gp.getOptionalBool("suppression_fire_soldiers_always_react", false);
+	suppression_fire_reaction_threshold = gp.getOptionalUInt("suppression_fire_reaction_threshold", 130);
 }
 
 /** Check if a hotkey is enabled. */

@@ -130,7 +130,7 @@ public:
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
 
 	uint8_t suppression_fire_modifier; // Scales AP loss from suppression (numerator of the AP-loss formula); vanilla 6, 0 disables AP loss
-	bool suppression_fire_soldiers_always_react; // Close call bullets always cause soldier to drop to lower stance
+	uint16_t suppression_fire_reaction_threshold; // Numerator of the stance-reaction threshold; vanilla 130, 0 = always react (1.13 behaviour), higher = more resistant
 
 	////////////////////////////////////////////////////////////
 	//

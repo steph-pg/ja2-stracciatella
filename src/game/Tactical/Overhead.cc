@@ -5219,8 +5219,8 @@ static void HandleSuppressionFire(const SOLDIERTYPE* const targeted_merc, SOLDIE
 			ubPointsLost -= pSoldier->ubAPsLostToSuppression;
 			ubNewStance = 0;
 
-			// merc may get to react
-			if (gamepolicy(suppression_fire_soldiers_always_react) || pSoldier->ubSuppressionPoints >= (130 / (6 + bTolerance)))
+			// merc may get to react (threshold numerator is externalized; 0 = always react)
+			if (pSoldier->ubSuppressionPoints >= (gamepolicy(suppression_fire_reaction_threshold) / (6 + bTolerance)))
 			{
 				// merc gets to use APs to react!
 				switch (gAnimControl[ pSoldier->usAnimState ].ubEndHeight)
