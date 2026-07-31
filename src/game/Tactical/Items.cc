@@ -1893,42 +1893,65 @@ BOOLEAN PlaceObject( SOLDIERTYPE * pSoldier, INT8 bPos, OBJECTTYPE * pObj )
 
 	if (pInSlot->ubNumberOfObjects == 0)
 	{
-		// placement in an empty slot
-		ubNumberToDrop = pObj->ubNumberOfObjects;
-
-		if (ubNumberToDrop > std::max(ubSlotLimit, 1))
+		if (item->isMoney())
 		{
-			// drop as many as possible into pocket
-			ubNumberToDrop = std::max(ubSlotLimit, 1);
-		}
+			// money carries its quantity in uiMoneyAmount, and a slot only holds so
+			// much of it, so only part of the amount may fit in here
+			UINT32 const uiMoneyMax = MoneySlotLimit( bPos );
 
-		// could be wrong type of object for slot... need to check...
-		// but assuming it isn't
-		*pInSlot = *pObj;
+			*pInSlot = *pObj;
+			pInSlot->ubNumberOfObjects = 1;
 
-		if (ubNumberToDrop != pObj->ubNumberOfObjects)
-		{
-			// in the InSlot copy, zero out all the objects we didn't drop
-			for (ubLoop = ubNumberToDrop; ubLoop < pObj->ubNumberOfObjects; ubLoop++)
+			if (pObj->uiMoneyAmount > uiMoneyMax)
 			{
-				pInSlot->bStatus[ubLoop] = 0;
+				// fill this slot up and leave the remainder for the caller to place
+				pInSlot->uiMoneyAmount = uiMoneyMax;
+				pObj->uiMoneyAmount -= uiMoneyMax;
+			}
+			else
+			{
+				DeleteObj( pObj );
 			}
 		}
-		pInSlot->ubNumberOfObjects = ubNumberToDrop;
-
-		// remove a like number of objects from pObj
-		RemoveObjs( pObj, ubNumberToDrop );
-		if (pObj->ubNumberOfObjects == 0)
+		else
 		{
-			// dropped everything
-			if (bPos == HANDPOS && GCM->getItem(pInSlot->usItem)->isTwoHanded())
+			// placement in an empty slot
+			ubNumberToDrop = pObj->ubNumberOfObjects;
+
+			if (ubNumberToDrop > std::max(ubSlotLimit, 1))
 			{
-				// We just performed a successful drop of a two-handed object into the
-				// main hand
-				if (pSoldier->inv[SECONDHANDPOS].usItem != 0)
+				// drop as many as possible into pocket
+				ubNumberToDrop = std::max(ubSlotLimit, 1);
+			}
+
+			// could be wrong type of object for slot... need to check...
+			// but assuming it isn't
+			*pInSlot = *pObj;
+
+			if (ubNumberToDrop != pObj->ubNumberOfObjects)
+			{
+				// in the InSlot copy, zero out all the objects we didn't drop
+				for (ubLoop = ubNumberToDrop; ubLoop < pObj->ubNumberOfObjects; ubLoop++)
 				{
-					// swap what WAS in the second hand into the cursor
-					SwapObjs( pObj, &(pSoldier->inv[SECONDHANDPOS]));
+					pInSlot->bStatus[ubLoop] = 0;
+				}
+			}
+			pInSlot->ubNumberOfObjects = ubNumberToDrop;
+
+			// remove a like number of objects from pObj
+			RemoveObjs( pObj, ubNumberToDrop );
+			if (pObj->ubNumberOfObjects == 0)
+			{
+				// dropped everything
+				if (bPos == HANDPOS && GCM->getItem(pInSlot->usItem)->isTwoHanded())
+				{
+					// We just performed a successful drop of a two-handed object into the
+					// main hand
+					if (pSoldier->inv[SECONDHANDPOS].usItem != 0)
+					{
+						// swap what WAS in the second hand into the cursor
+						SwapObjs( pObj, &(pSoldier->inv[SECONDHANDPOS]));
+					}
 				}
 			}
 		}
