@@ -57,11 +57,14 @@ static UINT8 GetDrugType(UINT16 usItem)
 }
 
 
-BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject )
+BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject, BOOLEAN *pfGoodAPs )
 {
 	UINT8 ubDrugType;
 	UINT8 ubKitPoints;
 	UINT16 usItem;
+	INT16 sBreathGain = 0;
+
+	(*pfGoodAPs) = TRUE;
 
 	usItem = pObject->usItem;
 
@@ -73,6 +76,17 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject )
 	if ( ubDrugType == NO_DRUG )
 	{
 		return( FALSE );
+	}
+
+	/* A collapsed merc may still take a drug.  An adrenaline booster clears their
+	 * accumulated breath loss outright, so it is one of the few things that ends
+	 * the collapse rather than waiting it out, and refusing it would deny them
+	 * that.  EnoughPoints() turns down everything while collapsed, so only ask it
+	 * about the drug while the merc is on their feet. */
+	if ( !pSoldier->bCollapsed && !EnoughPoints( pSoldier, AP_USE_DRUGS, 0, TRUE ) )
+	{
+		(*pfGoodAPs) = FALSE;
+		return( TRUE );
 	}
 
 	// do switch for Larry!!
@@ -130,7 +144,15 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject )
 				ubKitPoints = 100;
 			}
 
-			UseKitPoints(*pObject, ubKitPoints, *pSoldier);
+			UINT16 const usPointsUsed = UseKitPoints(*pObject, ubKitPoints, *pSoldier);
+
+			/* Beer refreshes as well as it intoxicates.  UseKitPoints() returns what
+			 * it actually managed to drain, which is the status of the bottle when it
+			 * is not full, so a half-empty one is worth half the breath. */
+			if ( usItem == BEER )
+			{
+				sBreathGain = BP_USE_BEER * usPointsUsed / 100;
+			}
 		}
 		else
 		{
@@ -211,6 +233,11 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject )
 	{
 		ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(pMessageStrings[ MSG_MERC_TOOK_DRUG ], pSoldier->name) );
 	}
+
+	/* Charge for the dose, and hand back the beer's breath in the same
+	 * transaction.  DeductPoints() clamps the action points at zero, so billing a
+	 * collapsed merc who has none costs them nothing extra. */
+	DeductPoints( pSoldier, AP_USE_DRUGS, sBreathGain );
 
 	// Dirty panel
 	DirtyMercPanelInterface(pSoldier, DIRTYLEVEL2);

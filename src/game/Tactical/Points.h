@@ -144,6 +144,7 @@ const int16_t doorAPs[] = {
 #define AP_DISARM_MINE			10
 
 #define AP_DRINK			5
+#define AP_USE_DRUGS			5
 #define AP_CAMOFLAGE			10
 
 #define AP_TAKE_PHOTOGRAPH		5
@@ -222,6 +223,11 @@ const int16_t doorAPs[] = {
 #define BP_RELOAD_GUN			20 // loading new clip/magazine
 
 #define BP_THROW_ITEM			50 // throw grenades, fire-bombs, etc.
+
+// A beer is mostly water, so it refreshes as well as it intoxicates.  This is
+// the gain for draining a full one; a part-empty bottle gives proportionally
+// less.  Expressed on the same 0..100 scale as the breath bar, hence the ratio.
+#define BP_USE_BEER			(-30 * BP_RATIO_RED_PTS_TO_NORMAL) // gain breath!
 
 #define BP_START_FIRST_AID		0 // get the stuff out of medic kit
 #define BP_PER_HP_FIRST_AID		-25 // gain breath for each point healed
