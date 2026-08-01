@@ -13,6 +13,7 @@
   //  Press 'alt+r' to reload
   //  Press 'ctrl+q' to swap hand items
   //  Press 'shift+j' to climb through open window
+  //  Press 'shift+space' in strategic view to run the clock until the next hour, then stop.
   "extra_hotkeys": true,
 
   //  Press d in realtime mode to manually start turn based mode.

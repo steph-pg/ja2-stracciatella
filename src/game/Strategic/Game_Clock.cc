@@ -85,6 +85,8 @@ BOOLEAN        gfPauseDueToPlayerGamePause = FALSE;
 BOOLEAN        gfResetAllPlayerKnowsEnemiesFlags = FALSE;
 static BOOLEAN gfTimeCompressionOn = FALSE;
 UINT32         guiLockPauseStateLastReasonId = 0;
+// run time compression until the next hour, then stop it
+bool           gfStopTimeCompressionNextHour = false;
 //***When adding new saved time variables, make sure you remove the appropriate amount from the paddingbytes and
 //   more IMPORTANTLY, add appropriate code in Save/LoadGameClock()!
 #define TIME_PADDINGBYTES 20
@@ -103,6 +105,7 @@ void InitNewGameClock( )
 	guiTimeCurrentSectorWasLastLoaded = 0;
 	guiGameSecondsPerRealSecond = 0;
 	gubClockResolution = 1;
+	gfStopTimeCompressionNextHour = false;
 }
 
 UINT32 GetWorldTotalMin( )
@@ -393,6 +396,12 @@ void DecreaseGameTimeCompressionRate()
 void SetGameTimeCompressionLevel( UINT32 uiCompressionRate )
 {
 	Assert( uiCompressionRate < NUM_TIME_COMPRESS_SPEEDS );
+
+	// any deliberate stop of the clock also cancels a pending stop at the next hour
+	if( uiCompressionRate == TIME_COMPRESS_X0 )
+	{
+		gfStopTimeCompressionNextHour = false;
+	}
 
 	if( guiCurrentScreen == GAME_SCREEN )
 	{
@@ -739,6 +748,9 @@ void LoadGameClock(HWFILE const hFile)
 	hFile->read(&guiLockPauseStateLastReasonId,     sizeof(UINT32));
 
 	hFile->seek(TIME_PADDINGBYTES, FILE_SEEK_FROM_CURRENT);
+
+	// not saved, so never inherit it from the session we are loading over
+	gfStopTimeCompressionNextHour = false;
 
 	UpdateGameClockGlobals(pDayStrings);
 
