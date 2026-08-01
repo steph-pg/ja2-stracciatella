@@ -147,6 +147,11 @@ extern BOOLEAN gfResetAllPlayerKnowsEnemiesFlags;
 
 extern UINT32 guiLockPauseStateLastReasonId;
 
+// run time compression until the next hour, then stop it
+extern bool gfStopTimeCompressionNextHour;
+// compression mode to restore (paused) when that run stops
+extern INT32 giTimeCompressModeAfterNextHour;
+
 UINT32 GetWorldTotalMin(void);
 UINT32 GetWorldTotalSeconds(void);
 UINT32 GetWorldHour(void);
