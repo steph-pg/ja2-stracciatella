@@ -38,6 +38,12 @@ void HandleHourlyUpdate()
 	if ( DidGameJustStart() )
 		return;
 
+	// the player asked for time compression to run only until the next hour
+	if ( gfStopTimeCompressionNextHour )
+	{
+		SetGameTimeCompressionLevel( TIME_COMPRESS_X0 );
+	}
+
 	// hourly update of team assignments
 	UpdateAssignments();
 

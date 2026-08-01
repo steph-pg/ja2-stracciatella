@@ -15,6 +15,7 @@ properties:
       - `alt+r` to reload
       - `ctrl+q` to swap hand items
       - `shift+j` to climb through open window
+      - `shift+space` in strategic view to run the clock until the next hour, then stop.
 
       Vanilla setting: `false`
   can_enter_turnbased:
