@@ -22,7 +22,6 @@
 #include "Campaign_Types.h"
 #include "LOS.h"
 #include "TileDat.h"
-#include "TileDef.h"
 #include "Overhead.h"
 #include "Structure.h"
 #include "RenderWorld.h"
@@ -211,77 +210,6 @@ BOOLEAN AttemptToLockDoor(const SOLDIERTYPE* pSoldier, DOOR* pDoor)
 }
 
 
-// A door's leaf swings either away from whoever is working on it (matching the
-// forward KICK_DOOR "boot" animation) or toward them (matching the crowbar pry
-// animation). Which one it is depends on BOTH the door's wall orientation and
-// which of the door's two sides the merc is standing on. Booting a door that
-// opens toward the user, or crowbarring one that opens away, is the "wrong"
-// tool for the job: still permitted, but heavily penalised (see
-// AttemptToSmashDoor / AttemptToCrowbarLock) so it almost never works.
-enum DoorSwingDirection
-{
-	DOOR_SWING_UNKNOWN, // can't tell -> don't penalise either tool
-	DOOR_SWING_AWAY,    // opens away from the merc -> suited to booting
-	DOOR_SWING_TOWARD,  // opens toward the merc    -> suited to the crowbar
-};
-
-// Large skill penalty for using boot/crowbar on a door that swings the wrong
-// way for that tool. Big enough that success is possible but very rare.
-static constexpr int WRONG_DOOR_TOOL_PENALTY = 100;
-
-// The door's wall sits on an edge of its own base tile; the tile on the far
-// side of that wall is the "offset" tile. A TOP_LEFT wall separates the base
-// tile from the tile to its south, a TOP_RIGHT wall from the tile to its east
-// (matching the offsets the engine already uses for switches/explosions).
-static GridNo DoorOffsetSideGridNo(GridNo const baseGridNo, UINT8 const orientation)
-{
-	switch (orientation)
-	{
-		case INSIDE_TOP_LEFT:
-		case OUTSIDE_TOP_LEFT:  return NewGridNo(baseGridNo, DirectionInc(SOUTH));
-		case INSIDE_TOP_RIGHT:
-		case OUTSIDE_TOP_RIGHT: return NewGridNo(baseGridNo, DirectionInc(EAST));
-		default:                return NOWHERE;
-	}
-}
-
-static DoorSwingDirection GetDoorSwingDirection(SOLDIERTYPE const* const pSoldier, DOOR const* const pDoor)
-{
-	STRUCTURE const* const structure = FindStructure(pDoor->sGridNo, STRUCTURE_ANYDOOR);
-	if (!structure) return DOOR_SWING_UNKNOWN;
-
-	UINT8  const orientation  = structure->pDBStructureRef->pDBStructure->ubWallOrientation;
-	GridNo const baseGridNo   = pDoor->sGridNo;
-	GridNo const offsetGridNo = DoorOffsetSideGridNo(baseGridNo, orientation);
-	if (offsetGridNo == NOWHERE) return DOOR_SWING_UNKNOWN;
-
-	// Which of the door's two sides is the merc on?
-	bool mercOnOffsetSide;
-	if      (pSoldier->sGridNo == baseGridNo)   mercOnOffsetSide = false;
-	else if (pSoldier->sGridNo == offsetGridNo) mercOnOffsetSide = true;
-	else return DOOR_SWING_UNKNOWN; // not squarely on either side -> don't penalise
-
-	// Which side does the leaf swing toward? Determined in-game with an
-	// OUTSIDE_TOP_LEFT door: it opens away from its base tile, i.e. toward the
-	// offset side. We assume OUTSIDE_* doors swing toward their offset side and
-	// INSIDE_* doors toward their base side. If an orientation turns out
-	// reversed, flip its entry here.
-	bool swingsTowardOffset;
-	switch (orientation)
-	{
-		case OUTSIDE_TOP_LEFT:
-		case OUTSIDE_TOP_RIGHT: swingsTowardOffset = true;  break;
-		case INSIDE_TOP_LEFT:
-		case INSIDE_TOP_RIGHT:  swingsTowardOffset = false; break;
-		default:                return DOOR_SWING_UNKNOWN;
-	}
-
-	// The door swings toward the merc when he stands on the side it opens into.
-	bool const swingsTowardMerc = (mercOnOffsetSide == swingsTowardOffset);
-	return swingsTowardMerc ? DOOR_SWING_TOWARD : DOOR_SWING_AWAY;
-}
-
-
 BOOLEAN AttemptToCrowbarLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 {
 	INT32 iResult;
@@ -331,14 +259,7 @@ BOOLEAN AttemptToCrowbarLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	}
 	else
 	{
-		int modifier = -(LockTable[pDoor->ubLockID].ubSmashDifficulty - pDoor->bLockDamage);
-		// The crowbar suits doors that open toward the user; heavily penalise
-		// prying a door that swings away (that one is a job for booting).
-		if (GetDoorSwingDirection(pSoldier, pDoor) == DOOR_SWING_AWAY)
-		{
-			modifier -= WRONG_DOOR_TOOL_PENALTY;
-		}
-		iResult = SkillCheck( pSoldier, OPEN_WITH_CROWBAR, (INT8) std::max(modifier, (int) INT8_MIN) );
+		iResult = SkillCheck( pSoldier, OPEN_WITH_CROWBAR, (INT8) ( - (INT8) (LockTable[pDoor->ubLockID].ubSmashDifficulty - pDoor->bLockDamage) ) );
 	}
 
 	if (iResult > 0)
@@ -415,14 +336,7 @@ BOOLEAN AttemptToSmashDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	}
 	else
 	{
-		int modifier = -(LockTable[pDoor->ubLockID].ubSmashDifficulty - pDoor->bLockDamage);
-		// Booting suits doors that open away from the user; heavily penalise
-		// kicking a door that swings toward you (that one is a job for the crowbar).
-		if (GetDoorSwingDirection(pSoldier, pDoor) == DOOR_SWING_TOWARD)
-		{
-			modifier -= WRONG_DOOR_TOOL_PENALTY;
-		}
-		iResult = SkillCheck( pSoldier, SMASH_DOOR_CHECK, (INT8) std::max(modifier, (int) INT8_MIN) );
+		iResult = SkillCheck( pSoldier, SMASH_DOOR_CHECK, (INT8) ( - (INT8) (LockTable[pDoor->ubLockID].ubSmashDifficulty - pDoor->bLockDamage) ) );
 	}
 	if (iResult > 0)
 	{
