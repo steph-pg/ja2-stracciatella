@@ -19,7 +19,7 @@
 #define REGEN_POINTS_PER_BOOSTER	4
 #define LIFE_GAIN_PER_REGEN_POINT	10
 
-BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject );
+BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject, BOOLEAN *pfGoodAPs );
 
 void HandleEndTurnDrugAdjustments( SOLDIERTYPE *pSoldier );
 void HandleAPEffectDueToDrugs(const SOLDIERTYPE* pSoldier, UINT8* pubPoints);
