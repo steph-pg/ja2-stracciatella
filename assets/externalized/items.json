@@ -110,7 +110,7 @@
         "bReliability": 0,
         "bRepairEase": -2,
         "bDamageable": true,
-        "bRepairable": false,
+        "bRepairable": true,
         "bMetal": true,
         "bSinks": true,
         "bShowStatus": true,
