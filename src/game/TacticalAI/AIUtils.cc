@@ -140,6 +140,23 @@ static BOOLEAN ConsiderProne(SOLDIERTYPE* pSoldier)
 	}
 }
 
+// APs to hold back on top of MinAPsToAttack() when the shot being banked for is taken
+// after a move. MinAPsToAttack() charges the weapon-raise (ubReadyTime) only when the
+// shooter is not already in a fire-ready pose - but walking or running lowers the
+// weapon, so a soldier who is fire-ready right now pays that cost again on arrival, and
+// a reserve measured before the move leaves them a few APs short of the shot they
+// banked for. Returns 0 for melee and empty hands, which cost nothing to ready.
+UINT8 APsToReadyWeaponAfterMoving(SOLDIERTYPE *pSoldier)
+{
+	if (AM_A_ROBOT(pSoldier) || !(gAnimControl[pSoldier->usAnimState].uiFlags & (ANIM_FIREREADY | ANIM_FIRE)))
+	{
+		// MinAPsToAttack() already includes the raise cost (or never charges it)
+		return(0);
+	}
+
+	return((UINT8) GetAPsToReadyWeapon(pSoldier, pSoldier->usAnimState));
+}
+
 UINT8 StanceChange( SOLDIERTYPE * pSoldier, UINT8 ubAttackAPCost )
 {
 	// consider crouching or going prone
