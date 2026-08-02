@@ -1445,6 +1445,26 @@ static INT8 DecideActionYellow(SOLDIERTYPE* pSoldier)
 }
 
 
+// Sets up the shot the AI has settled on and returns the action to take: either fire right
+// away, or get into the stance the shot needs and fire immediately afterwards (the queued
+// action is picked up in AIMain, together with bNextTargetLevel).
+static INT8 FireGunOrChangeStanceFirst(SOLDIERTYPE *pSoldier, const ATTACKTYPE &attack, UINT8 ubStance)
+{
+	if (ubStance != 0)
+	{
+		pSoldier->bNextAction      = AI_ACTION_FIRE_GUN;
+		pSoldier->usNextActionData = attack.sTarget;
+		pSoldier->bNextTargetLevel = attack.bTargetLevel;
+		pSoldier->usActionData     = ubStance;
+		return(AI_ACTION_CHANGE_STANCE);
+	}
+
+	pSoldier->usActionData = attack.sTarget;
+	pSoldier->bTargetLevel = attack.bTargetLevel;
+	return(AI_ACTION_FIRE_GUN);
+}
+
+
 INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 {
 	INT8 bActionReturned;
@@ -1454,7 +1474,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 	INT8 bInWater, bInDeepWater, bInGas;
 	INT8 bSeekPts = 0, bHelpPts = 0, bHidePts = 0, bWatchPts = 0;
 	INT8	bHighestWatchLoc;
-	ATTACKTYPE BestThrow;
+	ATTACKTYPE BestThrow, BestShot;
 #ifdef AI_TIMING_TEST
 	UINT32	uiStartTime, uiEndTime;
 #endif
@@ -1762,6 +1782,115 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 				pSoldier->bActionPoints = 0;
 				pSoldier->usActionData = NOWHERE;
 				return(AI_ACTION_NONE);
+			}
+		}
+
+		////////////////////////////////////////////////////////////////////////
+		// IF POSSIBLE, SHOOT AT AN OPPONENT WE KNOW ABOUT BUT CANNOT SEE
+		////////////////////////////////////////////////////////////////////////
+
+		// On red alert we know roughly where the player is but have no one in sight, so
+		// vanilla only ever manoeuvres here. With enemy_shoot_unseen we let CalcBestShot
+		// look for a shot as well: it will find one when a team-mate has the opponent in
+		// sight. Not every turn, though - an enemy that shoots the moment it has any
+		// target at all never advances or takes cover.
+		if (gamepolicy(enemy_shoot_unseen) && PreChance(60))
+		{
+			BestShot.ubPossible = FALSE;
+
+			// find a usable gun and ready it before evaluating the shot;
+			// CalcBestShot does not set bWeaponIn, so it must be set here (see DecideActionBlack)
+			INT8 const bGunIn = FindAIUsableObjClass(pSoldier, IC_GUN);
+			if (bGunIn != NO_SLOT)
+			{
+				BestShot.bWeaponIn = bGunIn;
+				pSoldier->bDoBurst = 0;
+
+				// Pick the body part afresh, as DecideActionBlack does before it weighs any
+				// attack. Nothing else clears this for the AI, and firing overwrites it with the
+				// part that shot resolved to, so leaving it be would rate this shot against a
+				// part chosen for some earlier target in different cover - and, since the aiming
+				// choice in GetTargetWorldPositions only runs on a location still RANDOM going in,
+				// would skip that choice for the shot itself too.
+				pSoldier->bAimShotLocation = AIM_SHOT_RANDOM;
+
+				// if it's in another pocket, swap it into the hand temporarily
+				if (bGunIn != HANDPOS)
+					RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
+
+				// now it better be a usable gun, or this guy can't shoot
+				if (GCM->getItem(pSoldier->inv[HANDPOS].usItem)->getItemClass() == IC_GUN && pSoldier->inv[HANDPOS].bGunStatus >= USABLE)
+				{
+					CalcBestShot(pSoldier, &BestShot);
+
+					if (BestShot.ubPossible && BestShot.ubChanceToReallyHit > 0 && BestShot.opponent->bLife >= OKLIFE)
+					{
+						// CalcBestShot rates every shot as if we were standing (both
+						// AICalcChanceToHitGun and the cover calc fake it), so a crouched or
+						// prone shooter can settle on a target its real stance has no line to
+						// at all and then fire into its own cover. DecideActionBlack asks
+						// ShootingStanceChange about this before every shot; this one has to do
+						// the same. Only when we are not standing: standing is what the shot was
+						// rated from, so there is nothing to correct then.
+						UINT8 ubBestStance = 0;
+						UINT8 ubStanceCost = 0;
+
+						if (!TANK(pSoldier) && gAnimControl[pSoldier->usAnimState].ubEndHeight != ANIM_STAND)
+						{
+							INT8 const bDirection = (INT8) GetDirectionToGridNoFromGridNo(pSoldier->sGridNo, BestShot.sTarget);
+
+							ubBestStance = ShootingStanceChange(pSoldier, &BestShot, bDirection);
+							if (ubBestStance != 0)
+							{
+								// it judged the stances for the direction of the target, so we
+								// have to be facing that way for its answer to hold
+								if (pSoldier->bDirection != bDirection &&
+									InternalIsValidStance(pSoldier, bDirection, gAnimControl[pSoldier->usAnimState].ubEndHeight))
+								{
+									// turn this action, shoot the next one - put the gun back
+									// where it was, as the decision gets made again from scratch
+									if (bGunIn != HANDPOS)
+										RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
+
+									pSoldier->usActionData = bDirection;
+									return(AI_ACTION_CHANGE_FACING);
+								}
+
+								// ShootingStanceChange only offers a stance we can still afford to
+								// shoot from - it reserves the attack's AP cost before rating any
+								// of them - so the shot below stays payable, it just has this much
+								// less to spend
+								ubStanceCost = (UINT8) GetAPsToChangeStance(pSoldier, ubBestStance);
+							}
+						}
+
+						// the gun sits in HANDPOS after the swap, not in its original pocket
+						UINT8 const ubBurstAPs = CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[HANDPOS]);
+						INT8  const bAPsForAttack = pSoldier->bActionPoints - ubStanceCost;
+
+						// a shot this unlikely is only worth taking as a burst - one round at
+						// those odds just throws the turn away
+						bool const fTooUnlikelyForSingle = (BestShot.ubChanceToReallyHit <= 5);
+						bool const fCanBurst = IsGunBurstCapable(pSoldier, HANDPOS) &&
+							pSoldier->inv[HANDPOS].ubGunShotsLeft > 1 && bAPsForAttack >= ubBurstAPs;
+
+						if (fTooUnlikelyForSingle && fCanBurst)
+						{
+							pSoldier->bDoBurst = 1;
+							pSoldier->bAimTime = 0;
+							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
+						}
+						else if (!fTooUnlikelyForSingle)
+						{
+							pSoldier->bAimTime = BestShot.ubAimTime;
+							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
+						}
+					}
+				}
+
+				// not firing after all - swap the gun back into its original pocket
+				if (bGunIn != HANDPOS)
+					RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
 			}
 		}
 	}

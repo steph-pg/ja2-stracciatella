@@ -105,6 +105,11 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 	InitAttackType(pBestShot);      // set all structure fields to defaults
 
+	// Firing on someone we can't see ourselves only makes sense with a gun; throwing
+	// knives still want the opponent in plain sight.
+	BOOLEAN const fShootUnseen = gamepolicy(enemy_shoot_unseen) &&
+		GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_GUN;
+
 	// hang a pointer into active soldier's personal opponent list
 	//pbPersOL = &(pSoldier->bOppList[0]);
 
@@ -120,9 +125,24 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		if ( CONSIDERED_NEUTRAL( pSoldier, pOpponent ) || (pSoldier->bSide == pOpponent->bSide))
 			continue;          // next merc
 
-		// if this opponent is not currently in sight (ignore known but unseen!)
-		if (pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY)
+		// May we shoot at this opponent?
+		//
+		// Vanilla only fires at what we personally see right now. enemy_shoot_unseen also
+		// accepts the team's PUBLIC knowledge, so a squadmate spotting someone is enough for
+		// us to open up on them. It has to be a sighting that still holds, though: the public
+		// list drops to SEEN_THIS_TURN as soon as the last team-mate loses sight of them
+		// (TeamNoLongerSeesMan), so SEEN_CURRENTLY means somebody has eyes on them at this
+		// moment - and therefore that pOpponent->sGridNo, which the rest of the routine aims
+		// at, really is where they are.
+		//
+		// Hearing is never enough, here or in the public list: every HEARD_ value sits below
+		// NOT_HEARD_OR_SEEN, and a noise only places an opponent roughly, which is no basis
+		// for aiming a bullet.
+		if (pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY &&
+			!(fShootUnseen && gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == SEEN_CURRENTLY))
+		{
 			continue;  // next opponent
+		}
 
 		// Special stuff for Carmen the bounty hunter
 		if (pSoldier->bAttitude == ATTACKSLAYONLY && pOpponent->ubProfile != SLAY)
