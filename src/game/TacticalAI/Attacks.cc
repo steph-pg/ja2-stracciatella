@@ -145,29 +145,16 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		// do we (personally or via the team) see the opponent right now?
 		BOOLEAN const fSeenNow = (bPersOL == SEEN_CURRENTLY || bPublOL == SEEN_CURRENTLY);
 
-		// is the sighting we hold good enough to shoot at?
-		BOOLEAN fSeenUsable;
-		switch (bKnowledge)
-		{
-			case SEEN_CURRENTLY:
-			//case SEEN_THIS_TURN:
-				fSeenUsable = TRUE;
-				break;
-			case SEEN_LAST_TURN:
-				// only fire at a last-turn sighting if the target has
-				// not moved since (otherwise the tile is stale)
-				fSeenUsable = (pOpponent->bTilesMoved == 0);
-				break;
-			default:
-				fSeenUsable = FALSE;
-				break;
-		}
+		// is the sighting we hold good enough to shoot at? (whether the remembered tile
+		// is still worth a bullet is checked further down, once we know which tile it is)
+		BOOLEAN const fSeenUsable = (bKnowledge == SEEN_CURRENTLY || bKnowledge == SEEN_LAST_TURN);
 
 		// Did we hear him ourselves this or last turn? Unlike a sighting this counts
 		// from our PERSONAL list only: the public list collects every noise the whole
 		// team reported, so firing on it would have mercs shoot at tiles they have no
 		// business knowing about.
-		BOOLEAN const fHeardHimSelf = (bPersOL == HEARD_THIS_TURN || bPersOL == HEARD_LAST_TURN);
+		BOOLEAN fHeardHimSelf = (bPersOL == HEARD_THIS_TURN || bPersOL == HEARD_LAST_TURN);
+		fHeardHimSelf = FALSE;
 
 		if (fWeaponIsGun)
 		{
@@ -207,6 +194,14 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 		// no usable location to aim at (NOWHERE == GRIDSIZE + 1 is caught here too)
 		if (sTarget < 0 || sTarget >= GRIDSIZE)
+			continue;  // next opponent
+
+		// We are about to fire at a remembered tile rather than at someone we can see, so
+		// cheat and check he REALLY is still standing there. CalcBestThrow does the same
+		// for stale sightings (see CloseEnoughForGrenadeToss), only with the tolerance a
+		// blast radius allows - a bullet needs the exact tile. Without this the AI empties
+		// magazines into tiles the target walked away from turns ago.
+		if (!fSeenNow && (pOpponent->sGridNo != sTarget || pOpponent->bLevel != bTargetLevel))
 			continue;  // next opponent
 
 		// Special stuff for Carmen the bounty hunter

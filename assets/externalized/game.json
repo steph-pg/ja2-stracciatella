@@ -184,7 +184,7 @@
 
   //  Min/max chance to hit and headshot damage multiplier.
   //  vanilla_setting: 1, 99, 1.5, 0.5
-  "chance_to_hit_minimum": 3,
+  "chance_to_hit_minimum": 2,
   "chance_to_hit_maximum": 80,
   "tactical_head_damage_multiplier": 1.5,
   "tactical_legs_damage_multiplier": 0.5,
@@ -246,7 +246,7 @@
   //  poured into the one being used, up to a full 100%, so carrying spares
   //  is what keeps the picking chance up.
   //  vanilla setting: false
-  "locksmith_kit_wear": false,
+  "locksmith_kit_wear": true,
 
   //  IMP creation tweaks
   "imp": {
@@ -328,7 +328,7 @@
   //  assignment he is on. Mercs on a squad or in a vehicle are unaffected: they
   //  only complain about being tired, and still collapse at max breath 10.
   //  vanilla setting: 50
-  "auto_sleep_breath_threshold": 70,
+  "auto_sleep_breath_threshold": 50,
 
   //  Health (in percent of their maximum) below which enemy soldiers break off
   //  an autoresolve battle and run for it. Survivors are handed back to the
@@ -355,5 +355,5 @@
     "suppression_fire_modifier": 30,
     // Threshold (numerator) above which a suppressed soldier drops to a lower stance.
     // vanilla settings: 130. Set to 0 to make soldiers always react (1.13 behaviour); raise it to make them even more resistant.
-    "suppression_fire_reaction_threshold": 130
+    "suppression_fire_reaction_threshold": 0
 }

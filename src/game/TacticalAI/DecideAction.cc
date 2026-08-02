@@ -874,7 +874,7 @@ static INT8 DecideActionGreen(SOLDIERTYPE* pSoldier)
 	// this also makes patrolling soldiers path across the sector more (e.g. onto mines)
 	{
 		const UINT8 ubCanMove = (pSoldier->bActionPoints >= MinPtsToMove(pSoldier));
-		if ( ubCanMove && !pSoldier->bNeutral && (gfTurnBasedAI || pSoldier->bTeam == ENEMY_TEAM ) )
+		if ( ubCanMove && !pSoldier->bNeutral && pSoldier->bTeam == ENEMY_TEAM )
 		{
 			pSoldier->bAction = SearchForItems(*pSoldier, SEARCH_GENERAL_ITEMS, pSoldier->inv[HANDPOS].usItem);
 
@@ -1257,7 +1257,7 @@ static INT8 DecideActionYellow(SOLDIERTYPE* pSoldier)
 	// this also makes soldiers path across the sector more (e.g. onto mines)
 	{
 		const UINT8 ubCanMove = (pSoldier->bActionPoints >= MinPtsToMove(pSoldier));
-		if ( ubCanMove && !pSoldier->bNeutral && (gfTurnBasedAI || pSoldier->bTeam == ENEMY_TEAM ) )
+		if ( ubCanMove && !pSoldier->bNeutral && pSoldier->bTeam == ENEMY_TEAM )
 		{
 			pSoldier->bAction = SearchForItems(*pSoldier, SEARCH_GENERAL_ITEMS, pSoldier->inv[HANDPOS].usItem);
 
@@ -1798,7 +1798,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 	// seeking cover, or turning to face - otherwise it burns its turn raising a
 	// weapon and ends up exposed. Enemies head for the map edge and traverse out;
 	// failing that (or for non-enemies), run to the spot farthest from known threats.
-	if ((pSoldier->bLife < 45) && ubCanMove)
+	if (0 && (pSoldier->bLife < 45) && ubCanMove)
 	{
 		if (pSoldier->bTeam == ENEMY_TEAM)
 		{
@@ -2751,7 +2751,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 	// PICKUP A NEARBY ITEM THAT'S USEFUL
 	////////////////////////////////////////////////////////////////////////////
 
-	if ( ubCanMove && !pSoldier->bNeutral && (gfTurnBasedAI || pSoldier->bTeam == ENEMY_TEAM ) )
+	if ( ubCanMove && !pSoldier->bNeutral && pSoldier->bTeam == ENEMY_TEAM )
 	{
 		pSoldier->bAction = SearchForItems(*pSoldier, SEARCH_GENERAL_ITEMS, pSoldier->inv[HANDPOS].usItem);
 
@@ -3064,7 +3064,7 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 	// raising its weapon, or taking cover - otherwise it wastes its turn and ends
 	// up exposed. Enemies head for the map edge and traverse out; failing that (or
 	// for non-enemies allowed to retreat), run to the spot farthest from threats.
-	if (pSoldier->bLife < 50 && ubCanMove && !(pSoldier->uiStatusFlags & SOLDIER_BOXER))
+	if (0 && pSoldier->bLife < 50 && ubCanMove && !(pSoldier->uiStatusFlags & SOLDIER_BOXER))
 	{
 		if (pSoldier->bTeam == ENEMY_TEAM)
 		{

@@ -742,16 +742,6 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 
 	bool const fGonnaHit = uiDiceRoll <= uiHitChance;
 
-	// The cursor only shows the first round's chance to hit, so log each round of a burst
-	// to make the per-round falloff from ubBurstPenalty visible.
-	if ( pSoldier->bDoBurst )
-	{
-		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE,
-			ST::format("{}: bullet {}, chance {}, roll {} - {}",
-				pSoldier->name, int(pSoldier->bDoBurst), uiHitChance, uiDiceRoll,
-				fGonnaHit ? "hit" : "miss"));
-	}
-
 	// ATE; Moved a whole blotch if logic code for finding target positions to a function
 	// so other places can use it
 

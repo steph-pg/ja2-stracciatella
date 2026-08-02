@@ -2649,8 +2649,8 @@ static void CalculateAttackValues(void)
 static void DrawDebugText(SOLDIERCELL* pCell)
 {
 	INT32 xp, yp;
-	//if( !gpAR->fDebugInfo )
-	//	return;
+	if( !gpAR->fDebugInfo )
+		return;
 	SetFont( SMALLCOMPFONT );
 	SetFontForeground( FONT_WHITE );
 	xp = pCell->xp + 4;
