@@ -240,6 +240,14 @@
   //  vanilla setting: false
   "diagonally_interactable_doors": true,
 
+  //  A botched lock pick bends the picks, so every failed attempt wears the
+  //  locksmith kit down, the harder the lock the faster. The kit cannot be
+  //  repaired, but kits pool: before each attempt the merc's spare kits are
+  //  poured into the one being used, up to a full 100%, so carrying spares
+  //  is what keeps the picking chance up.
+  //  vanilla setting: false
+  "locksmith_kit_wear": false,
+
   //  IMP creation tweaks
   "imp": {
     //  IMP attribute point defaults:

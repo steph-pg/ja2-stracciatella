@@ -639,6 +639,23 @@ properties:
 
       Vanilla setting: `0`
 
+  locksmith_kit_wear:
+    type: boolean
+    title: Locksmith kits wear out
+    description: |
+      A botched lock pick bends the picks, so every failed attempt wears the
+      locksmith kit down by a random amount, and tougher locks chew through it
+      faster. A worn kit picks worse, because the lockpicking skill check scales
+      with the kit's status.
+
+      Kits pool instead of being spent one at a time: before each attempt the
+      merc's spare kits are poured into the one being used, up to a full 100%,
+      and whatever is left over stays in the spare. Carrying spares is what
+      keeps the picking chance up, without the player having to merge kits by
+      hand.
+
+      Vanilla setting: `false`
+
   campaign:
     type: object
     properties:

@@ -39,6 +39,7 @@
 #include "ContentManager.h"
 #include "GameInstance.h"
 #include "Logger.h"
+#include "policy/GamePolicy.h"
 
 #include <string_theory/string>
 
@@ -371,6 +372,50 @@ BOOLEAN AttemptToSmashDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	}
 }
 
+// Pour every spare locksmith kit the merc carries into the first one, up to a
+// full 100%, leaving any surplus behind in the spare. Both the lockpicking
+// skill check and the wear on a failed attempt look up the kit with FindObj(),
+// which returns that first kit, so this hands them the fullest kit the merc
+// has, and the player no longer has to merge kits by hand before a hard lock.
+// Kits pool by the same COMBINE_POINTS rule as dropping one onto another in
+// the inventory, which costs no action points either.
+static void PoolLocksmithKits( SOLDIERTYPE * pSoldier )
+{
+	INT8 const bTarget = FindObj( pSoldier, LOCKSMITHKIT );
+	if ( bTarget == NO_SLOT )
+	{
+		return;
+	}
+
+	OBJECTTYPE & pooled = pSoldier->inv[ bTarget ];
+	BOOLEAN fPooledAny = FALSE;
+
+	for ( INT8 bSlot = bTarget + 1; bSlot < NUM_INV_SLOTS && pooled.bStatus[0] < 100; ++bSlot )
+	{
+		OBJECTTYPE & spare = pSoldier->inv[ bSlot ];
+		if ( spare.usItem != LOCKSMITHKIT )
+		{
+			continue;
+		}
+
+		INT8 const bTransfer = std::min( spare.bStatus[0], (INT8) ( 100 - pooled.bStatus[0] ) );
+		pooled.bStatus[0] += bTransfer;
+		spare.bStatus[0]  -= bTransfer;
+		if ( spare.bStatus[0] == 0 )
+		{
+			// nothing left of the spare but the empty case
+			DeleteObj( &spare );
+		}
+		fPooledAny = TRUE;
+	}
+
+	if ( fPooledAny )
+	{
+		DirtyMercPanelInterface( pSoldier, DIRTYLEVEL2 );
+	}
+}
+
+
 BOOLEAN AttemptToPickLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 {
 	INT32 iResult;
@@ -381,6 +426,11 @@ BOOLEAN AttemptToPickLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	{
 		// auto failure!
 		return( FALSE );
+	}
+
+	if ( gamepolicy( locksmith_kit_wear ) )
+	{
+		PoolLocksmithKits( pSoldier );
 	}
 
 	pLock = &(LockTable[pDoor->ubLockID]);
@@ -426,6 +476,19 @@ BOOLEAN AttemptToPickLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	else
 	{
 		// NOTE: failures are not rewarded, since you can keep trying indefinitely...
+
+		// a botched attempt bends the picks, so wear the kit down - tougher locks
+		// chew through it faster
+		if ( gamepolicy( locksmith_kit_wear ) )
+		{
+			INT8 const bSlot = FindObj( pSoldier, LOCKSMITHKIT );
+			if ( bSlot != NO_SLOT )
+			{
+				int const bStress = std::min(100, pLock->ubPickDifficulty + 30);
+				// reduce kit status by a random % between 0 and 5%
+				DamageObj( &(pSoldier->inv[ bSlot ]), (INT8) PreRandom( bStress / 20 ) );
+			}
+		}
 
 		// check for traps
 		return( FALSE );
