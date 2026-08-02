@@ -223,19 +223,34 @@ static INT32 ReinforcementsAvailable(INT32 iGarrisonID)
 }
 
 
+//Rates the player's presence in a sector, for the queen's decision on whether an attack or a
+//reinforcement is worth staging.  Vanilla weights the militia tiers 1/2/3 and the mercs by
+//ubVanillaMercWeight, which undervalues the defenders next to the 2/4/6 the queen applies to her
+//own admins, troops and elites.  With improved_sector_evaluation on, the defenders are rated on
+//that same scale instead:  each militia tier is stat-equivalent to the matching enemy class, and a
+//merc is worth at least an elite.
+static UINT16 CalcSectorDefencePoints(const SGPSector& sSector, UINT8 ubVanillaMercWeight)
+{
+	SECTORINFO const& sector = SectorInfo[ sSector.AsByte() ];
+	if( saipolicy(improved_sector_evaluation) )
+	{
+		return sector.ubNumberOfCivsAtLevel[ GREEN_MILITIA ]		* 2 +
+					sector.ubNumberOfCivsAtLevel[ REGULAR_MILITIA ] * 4 +
+					sector.ubNumberOfCivsAtLevel[ ELITE_MILITIA ]		* 6 +
+					PlayerMercsInSector(sSector) * 6;
+	}
+	return sector.ubNumberOfCivsAtLevel[ GREEN_MILITIA ]		* 1 +
+				sector.ubNumberOfCivsAtLevel[ REGULAR_MILITIA ] * 2 +
+				sector.ubNumberOfCivsAtLevel[ ELITE_MILITIA ]		* 3 +
+				PlayerMercsInSector(sSector) * ubVanillaMercWeight;
+}
+
+
 static BOOLEAN PlayerForceTooStrong(UINT8 ubSectorID, UINT16 usOffensePoints, UINT16* pusDefencePoints)
 {
-	SECTORINFO *pSector;
 	SGPSector sSector(ubSectorID);
-	pSector = &SectorInfo[ ubSectorID ];
 
-	// Defenders are weighted with the same per-head multipliers as the queen's own
-	// troops (admin/troop/elite = 2/4/6), since each militia tier is stat-equivalent
-	// to the matching enemy class. Mercs are weighted as elites.
-	*pusDefencePoints = pSector->ubNumberOfCivsAtLevel[ GREEN_MILITIA ]		* 2 +
-											pSector->ubNumberOfCivsAtLevel[ REGULAR_MILITIA ] * 4 +
-											pSector->ubNumberOfCivsAtLevel[ ELITE_MILITIA ]		* 6 +
-											PlayerMercsInSector(sSector) * 6;
+	*pusDefencePoints = CalcSectorDefencePoints( sSector, 5 );
 	if( *pusDefencePoints > usOffensePoints )
 	{
 		return TRUE;
@@ -968,12 +983,7 @@ static BOOLEAN ReinforcementsApproved(INT32 iGarrisonID, UINT16* pusDefencePoint
 	SGPSector sSector(gGarrisonGroup[iGarrisonID].ubSectorID);
 	pSector = &SectorInfo[ gGarrisonGroup[ iGarrisonID ].ubSectorID ];
 
-	// Same per-head defender multipliers as PlayerForceTooStrong(), matching the
-	// queen's own troop weights (admin/troop/elite = 2/4/6). Mercs weighted as elites.
-	*pusDefencePoints = pSector->ubNumberOfCivsAtLevel[ GREEN_MILITIA ]		* 2 +
-										pSector->ubNumberOfCivsAtLevel[ REGULAR_MILITIA ] * 4 +
-										pSector->ubNumberOfCivsAtLevel[ ELITE_MILITIA ]		* 6 +
-										PlayerMercsInSector(sSector) * 6;
+	*pusDefencePoints = CalcSectorDefencePoints( sSector, 4 );
 	usOffensePoints = gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bAdminPercentage * 2 +
 										gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bTroopPercentage * 3 +
 										gArmyComp[ gGarrisonGroup[ iGarrisonID ].ubComposition ].bElitePercentage * 4 +
@@ -1495,14 +1505,17 @@ static void RecalculatePatrolWeight(PATROL_GROUP& p)
 	INT32 const prev_weight = p.bWeight;
 	if (prev_weight > 0) giRequestPoints -= prev_weight;
 
+	bool const fImproved = saipolicy(improved_sector_evaluation);
+	GROUP const* const g = p.ubGroupID != 0 ? GetGroup(p.ubGroupID) : NULL;
+
 	/* A group the queen cannot serve must not hold any request points.  She picks a weighted
 	 * slot first and only then checks whether the winner is eligible, so weight on an
 	 * ineligible group does nothing but dilute the lottery for the groups that can use it.
 	 * The conditions below mirror PatrolRequestingMinimumReinforcements(). */
-	GROUP const* const g = p.ubGroupID != 0 ? GetGroup(p.ubGroupID) : NULL;
-	if (p.ubPendingGroupID ||                                  // reinforcements already on the way
-		!PermittedToFillPatrolGroup(p) ||                      // still inside the post-defeat cooldown
-		(!g && !saipolicy(refill_defeated_patrol_groups)))     // wiped out, and refilling those is off
+	if (fImproved &&
+		(p.ubPendingGroupID ||                                 // reinforcements already on the way
+		 !PermittedToFillPatrolGroup(p) ||                     // still inside the post-defeat cooldown
+		 (!g && !saipolicy(refill_defeated_patrol_groups))))   // wiped out, and refilling those is off
 	{
 		p.bWeight = 0;
 		return;
@@ -1512,8 +1525,11 @@ static void RecalculatePatrolWeight(PATROL_GROUP& p)
 	if (g)
 	{
 		need_population = p.bSize - g->ubGroupSize;
-		if (need_population < gubMinEnemyGroupSize)
-		{ // Too small a shortfall to be worth sending a group for; she would refuse it anyway.
+		/* A shortfall below the minimum group size is not worth sending a group for; she would
+		 * refuse it at the request stage anyway.  Vanilla only skips patrols that are over
+		 * strength. */
+		if (need_population < (fImproved ? gubMinEnemyGroupSize : 0))
+		{
 			p.bWeight = 0;
 			return;
 		}
@@ -1522,16 +1538,27 @@ static void RecalculatePatrolWeight(PATROL_GROUP& p)
 	{
 		need_population = p.bSize;
 	}
-	// Same shape as the positive branch of RecalculateGarrisonWeight(): scale the shortfall
-	// by the group's priority, then apply a floor of 2 so that a small shortfall at low
-	// priority doesn't truncate away to nothing.  The floor only applies to groups that are
-	// actually short of troops; a full strength patrol must stay at 0, or it would sit in
-	// the request point total forever and take lottery bands from groups that need them.
+
 	INT32 weight = need_population * 3;
-	if (weight > 0)
+	if (fImproved)
+	{
+		/* Same shape as the positive branch of RecalculateGarrisonWeight(): scale the shortfall
+		 * by the group's priority, then apply a floor of 2 so that a small shortfall at low
+		 * priority doesn't truncate away to nothing.  Vanilla caps at 2 instead of flooring,
+		 * which holds every patrol in the lottery down to a nearly invisible weight.  The floor
+		 * only applies to groups that are actually short of troops; a full strength patrol must
+		 * stay at 0, or it would sit in the request point total forever and take lottery bands
+		 * from the groups that need them. */
+		if (weight > 0)
+		{
+			weight = weight * p.bPriority / 96;
+			weight = std::max(weight, 2);
+		}
+	}
+	else
 	{
 		weight = weight * p.bPriority / 96;
-		weight = std::max(weight, 2);
+		weight = std::min(weight, 2);
 	}
 	p.bWeight        = weight;
 	giRequestPoints += weight;
@@ -1573,9 +1600,10 @@ static void RecalculateGarrisonWeight(INT32 iGarrisonID)
 		 * tested here, deliberately: this runs on every weight recalculation, so it has to stay
 		 * cheap and must not emit the grace period log line on each call.  The scripted story
 		 * gates in EnemyPermittedToAttackSector() are therefore still able to dilute. */
-		if( gGarrisonGroup[ iGarrisonID ].ubPendingGroupID ||
-				iDesiredPop - iCurrentPop < gubMinEnemyGroupSize ||
-				!OkayForEnemyToMoveThroughSector( gGarrisonGroup[ iGarrisonID ].ubSectorID ) )
+		if( saipolicy(improved_sector_evaluation) &&
+				( gGarrisonGroup[ iGarrisonID ].ubPendingGroupID ||
+					iDesiredPop - iCurrentPop < gubMinEnemyGroupSize ||
+					!OkayForEnemyToMoveThroughSector( gGarrisonGroup[ iGarrisonID ].ubSectorID ) ) )
 		{
 			iWeight = 0;
 		}
@@ -1766,6 +1794,7 @@ static BOOLEAN SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefe
 	// Aim instead for the head count the decimation check below treats as viable
 	// (approved*3 >= usDefencePoints). Only ever grows the force, and stays bounded by
 	// MAX_STRATEGIC_TEAM_SIZE (and, further down, by the available reinforcement pool).
+	if( saipolicy(improved_sector_evaluation) )
 	{
 		INT32 const iDefenceDrivenForce = std::min<INT32>(MAX_STRATEGIC_TEAM_SIZE, (usDefencePoints + 2) / 3);
 		if( iDefenceDrivenForce > iMaxReinforcementsAllowed )
@@ -2186,11 +2215,7 @@ void EvaluateQueenSituation()
 							sMap, iWeight, (int)gubMinEnemyGroupSize);
 				}
 				else
-				{ /* This is the group that gets the reinforcements -- provided the queen is actually
-					 * willing and able to send them.  If she isn't, the only thing that happened is that
-					 * the garrison banked some denial credit for a later attempt, so let the lottery keep
-					 * looking for a target that can be served now instead of idling until the next
-					 * evaluation (which can be several hours of game time away). */
+				{ //This is the group that gets the reinforcements -- if the queen is willing and able.
 					if( ReinforcementsApproved( i, &usDefencePoints ) )
 					{
 						SLOGD("Garrison {} won the lottery (weight {}) and reinforcements were approved.", sMap, iWeight);
@@ -2199,14 +2224,24 @@ void EvaluateQueenSituation()
 							return;
 						}
 						fNothingDispatched = TRUE;
-						SLOGD("Nothing could be dispatched to {} after all.  Passing to the next requesting group.", sMap);
+						SLOGD("Nothing could be dispatched to {} after all.", sMap);
 					}
 					else
 					{
 						fNothingDispatched = TRUE;
-						SLOGD("Reinforcements were denied to go to {} because player forces too strong ({} defence points).  Passing to the next requesting group.",
+						SLOGD("Reinforcements were denied to go to {} because player forces too strong ({} defence points).",
 								sMap, usDefencePoints);
 					}
+
+					/* Nothing moved.  The only thing that happened is that the garrison banked some
+					 * denial credit for a later attempt, so let the lottery keep looking for a target
+					 * that can be served now instead of idling until the next evaluation, which can be
+					 * several hours of game time away.  Vanilla gives up here. */
+					if( !saipolicy(improved_sector_evaluation) )
+					{
+						return;
+					}
+					SLOGD("Passing to the next requesting group.");
 				}
 			}
 			iRandom -= iWeight;
@@ -3679,8 +3714,9 @@ static void ReassignAIGroup(GROUP** pGroup)
 						GarrisonRequestingMinimumReinforcements( i ) )
 				{ //This is the group that gets the reinforcements!
 					if( ReinforcementsApproved( i, &usDefencePoints ) &&
-							SendReinforcementsForGarrison( i, usDefencePoints, pGroup ) )
-					{
+							( SendReinforcementsForGarrison( i, usDefencePoints, pGroup ) ||
+								!saipolicy(improved_sector_evaluation) ) )
+					{ //Vanilla stops looking as soon as a garrison is approved, whether or not it got served.
 						return;
 					}
 				}
@@ -3709,8 +3745,9 @@ static void ReassignAIGroup(GROUP** pGroup)
 						GarrisonRequestingMinimumReinforcements( i ) )
 				{ //This is the group that gets the reinforcements!
 					if( ReinforcementsApproved( i, &usDefencePoints ) &&
-							SendReinforcementsForGarrison( i, usDefencePoints, pGroup ) )
-					{
+							( SendReinforcementsForGarrison( i, usDefencePoints, pGroup ) ||
+								!saipolicy(improved_sector_evaluation) ) )
+					{ //Vanilla stops looking as soon as a garrison is approved, whether or not it got served.
 						return;
 					}
 				}

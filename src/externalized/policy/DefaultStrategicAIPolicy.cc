@@ -38,5 +38,6 @@ DefaultStrategicAIPolicy::DefaultStrategicAIPolicy(const JsonValue& json)
 	num_aware_battles            = ReadSAIPolicyUInt(r, "num_aware_battles");
 
 	refill_defeated_patrol_groups = r.getOptionalBool("refill_defeated_patrol_groups", false);
+	improved_sector_evaluation    = r.getOptionalBool("improved_sector_evaluation", false);
 }
 
