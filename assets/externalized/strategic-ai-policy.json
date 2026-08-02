@@ -89,7 +89,7 @@
     //  one decision per evaluation.
     //
     //  vanilla value: false
-    "improved_sector_evaluation": false,
+    "improved_sector_evaluation": true,
 
     //  Defines how many days must pass before the queen is willing to refill a defeated patrol
     //  group.
