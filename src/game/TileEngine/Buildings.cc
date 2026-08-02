@@ -47,6 +47,7 @@ static BUILDING* GenerateBuilding(INT16 sDesiredSpot)
 	BOOLEAN	fFoundDir, fFoundWall;
 	UINT32	uiChanceIn = ROOF_LOCATION_CHANCE; // chance of a location being considered
 	INT16		sWallGridNo;
+	INT8		bDesiredOrientation;
 	INT8		bSkipSpots = 0;
 	SOLDIERTYPE 	FakeSoldier;
 	BUILDING *		pBuilding;
@@ -211,31 +212,30 @@ static BUILDING* GenerateBuilding(INT16 sDesiredSpot)
 			// if south or west, the wall would be in the gridno two clockwise
 			fFoundWall = FALSE;
 
-			Orientation	bDesiredOrientation;
 			switch( bDirection )
 			{
 				case NORTH:
 					sWallGridNo = sCurrGridNo;
-					bDesiredOrientation = ORIENT_OUTSIDE_RIGHT;
+					bDesiredOrientation = OUTSIDE_TOP_RIGHT;
 					break;
 				case EAST:
 					sWallGridNo = sCurrGridNo;
-					bDesiredOrientation = ORIENT_OUTSIDE_LEFT;
+					bDesiredOrientation = OUTSIDE_TOP_LEFT;
 					break;
 				case SOUTH:
 					sWallGridNo = (INT16)(sCurrGridNo + DirectionInc(TwoCDirection(bDirection)));
-					bDesiredOrientation = ORIENT_OUTSIDE_RIGHT;
+					bDesiredOrientation = OUTSIDE_TOP_RIGHT;
 					break;
 				case WEST:
 					sWallGridNo = (INT16)(sCurrGridNo + DirectionInc(TwoCDirection(bDirection)));
-					bDesiredOrientation = ORIENT_OUTSIDE_LEFT;
+					bDesiredOrientation = OUTSIDE_TOP_LEFT;
 					break;
 				default:
 					// what the heck?
 					return( NULL );
 			}
 
-			if (bDesiredOrientation == ORIENT_OUTSIDE_LEFT)
+			if (bDesiredOrientation == OUTSIDE_TOP_LEFT)
 			{
 				if (WallExistsOfTopLeftOrientation( sWallGridNo ))
 				{
