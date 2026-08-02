@@ -8185,17 +8185,24 @@ void PickPickupAnimation( SOLDIERTYPE *pSoldier, INT32 iItemIndex, INT16 sGridNo
 							fDoNormalPickup = FALSE;
 
 							// OK, look at orientation
-							if ( pStructure->ubWallOrientation & ORIENT_LEFT )
+							switch( pStructure->ubWallOrientation )
 							{
-								bDirection = (INT8)NORTH;
-							}
-							else if ( pStructure->ubWallOrientation & ORIENT_RIGHT )
-							{
-								bDirection = (INT8)WEST;
-							}
-							else
-							{
-								bDirection = pSoldier->bDirection;
+								case OUTSIDE_TOP_LEFT:
+								case INSIDE_TOP_LEFT:
+
+									bDirection = (INT8)NORTH;
+									break;
+
+								case OUTSIDE_TOP_RIGHT:
+								case INSIDE_TOP_RIGHT:
+
+									bDirection = (INT8)WEST;
+									break;
+
+								default:
+
+									bDirection = pSoldier->bDirection;
+									break;
 							}
 
 							//pSoldier->ubPendingDirection = bDirection;

@@ -92,13 +92,14 @@ void FindPanicBombsAndTriggers(void)
 			const STRUCTURE* const switch_ = FindStructure(sGridNo, STRUCTURE_SWITCH);
 			if (switch_)
 			{
-				if (switch_->ubWallOrientation & ORIENT_LEFT)
+				switch (switch_->ubWallOrientation)
 				{
-					sGridNo += DirectionInc(SOUTH);
-				}
-				else
-				{
-					sGridNo += DirectionInc(EAST);
+					case INSIDE_TOP_LEFT:
+					case OUTSIDE_TOP_LEFT:  sGridNo += DirectionInc(SOUTH); break;
+					case INSIDE_TOP_RIGHT:
+					case OUTSIDE_TOP_RIGHT: sGridNo += DirectionInc(EAST);  break;
+
+					default: break;
 				}
 			}
 

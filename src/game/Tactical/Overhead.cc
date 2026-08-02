@@ -3227,7 +3227,7 @@ GridNo FindAdjacentGridExAdvanced(SOLDIERTYPE* soldier, STRUCTURE& intStruct, Gr
 			}
 		}
 
-		wallRelDefs = tile.relativeTo[GetBitPositionIndex(intStruct.ubWallOrientation)];
+		wallRelDefs = tile.relativeTo[intStruct.ubWallOrientation - 1];
 		adjGridNo = baseGridNo + wallRelDefs.incRelToBase;
 		if (wallRelDefs.dirToTest != DIRECTION_IRRELEVANT) {
 			if (gubWorldMovementCosts[adjGridNo][wallRelDefs.dirToTest][soldier->bLevel] >= TRAVELCOST_BLOCKED) continue;
@@ -3311,7 +3311,7 @@ INT16 FindAdjacentGridEx(SOLDIERTYPE* pSoldier, INT16 sGridNo, UINT8* pubDirecti
 				// Get orinetation
 				ubWallOrientation = pDoor->ubWallOrientation;
 
-				if (ubWallOrientation & ORIENT_LEFT)
+				if (ubWallOrientation == OUTSIDE_TOP_LEFT || ubWallOrientation == INSIDE_TOP_LEFT)
 				{
 					// To the south!
 					sSpot = NewGridNo(sGridNo, DirectionInc(SOUTH));
@@ -3321,7 +3321,7 @@ INT16 FindAdjacentGridEx(SOLDIERTYPE* pSoldier, INT16 sGridNo, UINT8* pubDirecti
 					}
 				}
 
-				if (ubWallOrientation & ORIENT_RIGHT)
+				if (ubWallOrientation == OUTSIDE_TOP_RIGHT || ubWallOrientation == INSIDE_TOP_RIGHT)
 				{
 					// TO the east!
 					sSpot = NewGridNo(sGridNo, DirectionInc(EAST));
@@ -3437,14 +3437,14 @@ INT16 FindAdjacentGridEx(SOLDIERTYPE* pSoldier, INT16 sGridNo, UINT8* pubDirecti
 			ubWallOrientation = pDoor->ubWallOrientation;
 
 			// Refuse the south and north and west  directions if our orientation is top-right
-			if ( ubWallOrientation & ORIENT_RIGHT )
+			if ( ubWallOrientation == OUTSIDE_TOP_RIGHT || ubWallOrientation == INSIDE_TOP_RIGHT )
 			{
 				if ( sDirs[ cnt ] == NORTH || sDirs[ cnt ] == WEST || sDirs[ cnt ] == SOUTH )
 					continue;
 			}
 
 			// Refuse the north and west and east directions if our orientation is top-right
-			if ( ubWallOrientation & ORIENT_LEFT )
+			if ( ubWallOrientation == OUTSIDE_TOP_LEFT || ubWallOrientation == INSIDE_TOP_LEFT )
 			{
 				if ( sDirs[ cnt ] == NORTH || sDirs[ cnt ] == WEST || sDirs[ cnt ] == EAST )
 					continue;
@@ -3496,13 +3496,12 @@ INT16 FindAdjacentGridEx(SOLDIERTYPE* pSoldier, INT16 sGridNo, UINT8* pubDirecti
 			// ATE: Only if we have a valid door!
 			if (pDoor)
 			{
-				if (pDoor->pDBStructureRef->pDBStructure->ubWallOrientation & ORIENT_LEFT)
+				switch (pDoor->pDBStructureRef->pDBStructure->ubWallOrientation)
 				{
-					*pubDirection = SOUTH;
-				}
-				else
-				{
-					*pubDirection = EAST;
+					case OUTSIDE_TOP_LEFT:
+					case INSIDE_TOP_LEFT:   *pubDirection = SOUTH; break;
+					case OUTSIDE_TOP_RIGHT:
+					case INSIDE_TOP_RIGHT:  *pubDirection = EAST; break;
 				}
 			}
 		}
@@ -3633,14 +3632,14 @@ INT16 FindNextToAdjacentGridEx( SOLDIERTYPE *pSoldier, INT16 sGridNo, UINT8 *pub
 			ubWallOrientation = pDoor->ubWallOrientation;
 
 			// Refuse the south and north and west  directions if our orientation is top-right
-			if ( ubWallOrientation & ORIENT_RIGHT )
+			if ( ubWallOrientation == OUTSIDE_TOP_RIGHT || ubWallOrientation == INSIDE_TOP_RIGHT )
 			{
 				if ( sDirs[ cnt ] == NORTH || sDirs[ cnt ] == WEST || sDirs[ cnt ] == SOUTH )
 					continue;
 			}
 
 			// Refuse the north and west and east directions if our orientation is top-right
-			if ( ubWallOrientation & ORIENT_LEFT )
+			if ( ubWallOrientation == OUTSIDE_TOP_LEFT || ubWallOrientation == INSIDE_TOP_LEFT )
 			{
 				if ( sDirs[ cnt ] == NORTH || sDirs[ cnt ] == WEST || sDirs[ cnt ] == EAST )
 					continue;
@@ -3703,13 +3702,17 @@ INT16 FindNextToAdjacentGridEx( SOLDIERTYPE *pSoldier, INT16 sGridNo, UINT8 *pub
 			// ATE: Only if we have a valid door!
 			if (pDoor)
 			{
-				if (pDoor->pDBStructureRef->pDBStructure->ubWallOrientation & ORIENT_LEFT)
+				switch (pDoor->pDBStructureRef->pDBStructure->ubWallOrientation)
 				{
-					*pubDirection = SOUTH;
-				}
-				else
-				{
-					*pubDirection = EAST;
+					case OUTSIDE_TOP_LEFT:
+					case INSIDE_TOP_LEFT:
+						*pubDirection = SOUTH;
+						break;
+
+					case OUTSIDE_TOP_RIGHT:
+					case INSIDE_TOP_RIGHT:
+						*pubDirection = EAST;
+						break;
 				}
 			}
 		}
