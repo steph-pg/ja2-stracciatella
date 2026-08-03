@@ -2110,7 +2110,6 @@ void EvaluateQueenSituation()
 	INT32 iRandom, iWeight;
 	UINT32 uiOffset;
 	UINT16 usDefencePoints;
-	BOOLEAN fNothingDispatched = FALSE;
 
 	// figure out how long it shall be before we call this again
 
@@ -2219,29 +2218,23 @@ void EvaluateQueenSituation()
 					if( ReinforcementsApproved( i, &usDefencePoints ) )
 					{
 						SLOGD("Garrison {} won the lottery (weight {}) and reinforcements were approved.", sMap, iWeight);
-						if( SendReinforcementsForGarrison( i, usDefencePoints, NULL ) )
+						if( !SendReinforcementsForGarrison( i, usDefencePoints, NULL ) )
 						{
-							return;
+							SLOGD("Nothing could be dispatched to {} after all.", sMap);
 						}
-						fNothingDispatched = TRUE;
-						SLOGD("Nothing could be dispatched to {} after all.", sMap);
 					}
 					else
 					{
-						fNothingDispatched = TRUE;
 						SLOGD("Reinforcements were denied to go to {} because player forces too strong ({} defence points).",
 								sMap, usDefencePoints);
 					}
 
-					/* Nothing moved.  The only thing that happened is that the garrison banked some
-					 * denial credit for a later attempt, so let the lottery keep looking for a target
-					 * that can be served now instead of idling until the next evaluation, which can be
-					 * several hours of game time away.  Vanilla gives up here. */
-					if( !saipolicy(improved_sector_evaluation) )
-					{
-						return;
-					}
-					SLOGD("Passing to the next requesting group.");
+					/* Reaching this point spends the queen's one decision for this evaluation, whether
+					 * or not anything moved.  Looking for another target instead lets every contested
+					 * garrison the scan walks past bank denial credit in a single evaluation, and that
+					 * credit is what later inflates an ordinary reinforcement into a maximum size
+					 * staging force. */
+					return;
 				}
 			}
 			iRandom -= iWeight;
@@ -2279,15 +2272,8 @@ void EvaluateQueenSituation()
 		}
 	}
 
-	if( fNothingDispatched )
-	{
-		SLOGD("Queen made no reinforcement decision: every group the lottery reached either was denied or had nothing that could be dispatched.");
-	}
-	else
-	{
-		SLOGD("Queen made no reinforcement decision: the roll fell through every requesting group ({} left over).  Weights have changed since the request point total was last summed.",
-				iRandom);
-	}
+	SLOGD("Queen made no reinforcement decision: the roll fell through every requesting group ({} left over).  Weights have changed since the request point total was last summed.",
+			iRandom);
 }
 
 

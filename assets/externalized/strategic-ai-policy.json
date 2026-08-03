@@ -85,8 +85,9 @@
     //  at 2/4/6, so she attacks and reinforces defended sectors with forces that are far too
     //  small.  With this on, defenders are rated on the same scale, an assault is sized to the
     //  defenders actually present rather than to the desired garrison size, and groups that
-    //  cannot be served drop out of the reinforcement lottery instead of wasting the queen's
-    //  one decision per evaluation.
+    //  cannot be served hold no weight in the reinforcement lottery.  She draws a weighted slot
+    //  before checking whether its owner is eligible, so weight on a group she cannot serve only
+    //  hands the draw to whichever group happens to follow it in the list.
     //
     //  vanilla value: false
     "improved_sector_evaluation": true,
