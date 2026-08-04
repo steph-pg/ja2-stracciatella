@@ -7,6 +7,7 @@
 #include "Finances.h"
 #include "Font_Control.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "Game_Clock.h"
 #include "Game_Event_Hook.h"
 #include "Isometric_Utils.h"
@@ -34,6 +35,7 @@
 #include "Strategic_Event_Handler.h"
 #include "Strategic_Movement.h"
 #include "Strategic_Pathing.h"
+#include "Tactical_Save.h"
 #include "Text.h"
 #include "TileDat.h"
 #include "UILayout.h"
@@ -242,6 +244,14 @@ BOOLEAN HandleHeliEnteringSector(const SGPSector& sMap)
 				SectorInfo[sMap.AsByte()].uiFlags |= SF_SKYRIDER_NOTICED_ENEMIES_HERE;
 			}
 		}
+	}
+
+	/* Skyrider maps the sector from the air, so the player gets it revealed on the
+	 * strategic map without ever landing.  Done after the enemy spotting above,
+	 * which needs to know what the player knew before this flyover. */
+	if (gamepolicy(skyrider_explores_sectors))
+	{
+		SetSectorFlag(sMap, SF_ALREADY_VISITED);
 	}
 
 	// player pays for travel if Skyrider is NOT returning to base (even if empty while scouting/going for pickup)
