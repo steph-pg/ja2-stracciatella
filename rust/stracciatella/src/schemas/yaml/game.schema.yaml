@@ -31,6 +31,21 @@ properties:
       Enables middle mouse button to trigger a look into cursor direction.
 
       Vanilla setting: `false`
+  extra_mousewheel_actions:
+    type: boolean
+    title: Extra mouse wheel actions
+    description: |
+      Binds tactical actions to the mouse wheel.
+
+      Currently this covers raising and lowering the aim level in turn-based
+      mode, while the attack cursor is confirmed on a target. Rolling the wheel
+      up adds an aim click, rolling it down takes one away. The aim level stops
+      at the lowest and highest the merc can afford instead of wrapping around,
+      which is how repeated right clicks behave.
+
+      Right clicking to add aim clicks keeps working either way.
+
+      Vanilla setting: `false`
   draw_item_shadow:
     type: boolean
     title: Draw item shadow
@@ -508,6 +523,7 @@ required:
   - extra_hotkeys
   - can_enter_turnbased
   - middle_mouse_look
+  - extra_mousewheel_actions
   - draw_item_shadow
   - starting_cash_easy
   - starting_cash_medium
