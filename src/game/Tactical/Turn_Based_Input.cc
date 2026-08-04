@@ -1233,7 +1233,9 @@ void TacticalViewPortTouchCallbackTB(MOUSE_REGION* region, UINT32 reason) {
 			SOLDIERTYPE* const sel = GetSelectedMan();
 			if (sel)
 			{
-				INT8 const bDirection = (reason & MSYS_CALLBACK_REASON_WHEEL_UP) ? 1 : -1;
+				// Rolling the wheel towards yourself pulls the aim in, so wheel
+				// down raises the aim level and wheel up takes it back off
+				INT8 const bDirection = (reason & MSYS_CALLBACK_REASON_WHEEL_UP) ? -1 : 1;
 				HandleWheelAdjustCursor(sel, guiCurrentCursorGridNo, bDirection);
 			}
 		}

@@ -40,7 +40,7 @@ properties:
 
       Currently this covers raising and lowering the aim level in turn-based
       mode, while the attack cursor is confirmed on a target. Rolling the wheel
-      up adds an aim click, rolling it down takes one away. The aim level stops
+      down adds an aim click, rolling it up takes one away. The aim level stops
       at the lowest and highest the merc can afford instead of wrapping around,
       which is how repeated right clicks behave.
 
