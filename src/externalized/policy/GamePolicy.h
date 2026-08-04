@@ -117,6 +117,8 @@ public:
 
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
 
+	bool enable_enemy_ambushes;           // true: a roaming enemy group that outnumbers an arriving squad can ambush it. false: vanilla, where the KNOWS_NOTHING test can never pass, so the ambush never fires
+
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
 

@@ -484,6 +484,32 @@ properties:
 
       Vanilla setting: `false`
 
+  enable_enemy_ambushes:
+    type: boolean
+    title: Enable enemy ambushes
+    description: |
+      Selects whether a roaming enemy group can ambush a squad that walks in on
+      it.
+
+      When `true`, the ambush is rolled whenever mobile enemies outnumber the
+      arriving mercs and the campaign has passed the progress threshold. Walking
+      in blind raises the odds, as does a roadblock sector or being unable to
+      retreat.
+
+      When `false`, the vanilla behaviour is used. Note that this means enemies
+      never ambush at all: the vanilla code requires the player to know nothing
+      about the sector, but mercs are placed in the sector before the ambush is
+      rolled and therefore always count as scouting it, so the test can never
+      pass.
+
+      An ambush skips the deployment screen, inserts the squad at the centre of
+      the map with every enemy converging on that spot, and disables both
+      autoresolve and retreat.
+
+      Bloodcat ambushes use a separate mechanism and are not affected.
+
+      Vanilla setting: `false`
+
   campaign:
     type: object
     properties:

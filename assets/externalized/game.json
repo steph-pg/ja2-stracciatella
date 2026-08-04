@@ -226,6 +226,18 @@
 
   "enable_stat_healing": false,
 
+  //  Can a roaming enemy group ambush a squad that walks in on it?
+  //    true  - the ambush is rolled whenever mobile enemies outnumber the
+  //            arriving mercs. Walking in blind raises the odds; a roadblock
+  //            sector or being unable to retreat raises them further.
+  //    false - vanilla behaviour. The vanilla code demands the player know
+  //            nothing about the sector, but arriving mercs always count as
+  //            scouting it, so the test never passes and enemies never ambush.
+  //  An ambush skips the deployment screen, drops your squad in the middle of
+  //  the map with every enemy converging on it, and disables both autoresolve
+  //  and retreat. Bloodcat ambushes are separate and unaffected.
+  "enable_enemy_ambushes": false,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {
