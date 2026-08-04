@@ -132,6 +132,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	skyrider_explores_sectors = gp.getOptionalBool("skyrider_explores_sectors", false);
 
+	enable_enemy_ambushes = gp.getOptionalBool("enable_enemy_ambushes", false);
+
 	auto campaign = gp["campaign"].toObject();
 	ST::string sector_string = campaign.getOptionalString("start_sector");
 	start_sector = SGPSector::FromShortString(!sector_string.empty() ? sector_string : "A9").AsByte();

@@ -347,9 +347,21 @@
   //            uncovered on the strategic map and enemy presence shows up there
   //            from then on, even with nobody aboard.
   //    false - vanilla behaviour: only sectors a merc actually stands in count.
-  //  Note that explored sectors can no longer be ambushed, so aerial scouting
-  //  also buys safe passage.
+  //  With enable_enemy_ambushes on, an explored sector is also a little safer to
+  //  walk into, since the squad is no longer arriving blind.
   "skyrider_explores_sectors": true,
+
+  //  Can a roaming enemy group ambush a squad that walks in on it?
+  //    true  - the ambush is rolled whenever mobile enemies outnumber the
+  //            arriving mercs. Walking in blind raises the odds; a roadblock
+  //            sector or being unable to retreat raises them further.
+  //    false - vanilla behaviour. The vanilla code demands the player know
+  //            nothing about the sector, but arriving mercs always count as
+  //            scouting it, so the test never passes and enemies never ambush.
+  //  An ambush skips the deployment screen, drops your squad in the middle of
+  //  the map with every enemy converging on it, and disables both autoresolve
+  //  and retreat. Bloodcat ambushes are separate and unaffected.
+  "enable_enemy_ambushes": true,
 
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.

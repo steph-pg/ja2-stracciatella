@@ -54,6 +54,8 @@
 #include "Render_Dirty.h"
 #include "VSurface.h"
 #include "UILayout.h"
+#include "GameInstance.h"
+#include "GamePolicy.h"
 #include <optional>
 #include <utility>
 #include <string_theory/format>
@@ -322,7 +324,7 @@ void InitPreBattleInterface(GROUP* const battle_group, bool const persistent_pbi
 				 * the singular help text or plural version for the retreat button. */
 				group_id = s.ubGroupID;
 				if (!gpBattleGroup) gpBattleGroup = GetGroup(group_id);
-				if (best_exp_level > s.bExpLevel) best_exp_level = s.bExpLevel; // XXX Determines minimum, not maximum, i.e. stays at 0
+				if (best_exp_level < s.bExpLevel) best_exp_level = s.bExpLevel;
 				if (s.ubPrevSectorID == 255)
 				{ //Not able to retreat (calculate it for group)
 					GROUP* const g = GetGroup(group_id);
@@ -375,22 +377,29 @@ void InitPreBattleInterface(GROUP* const battle_group, bool const persistent_pbi
 						{
 							gubEnemyEncounterCode = ENEMY_AMBUSH_CODE;
 						}
-						else if (WhatPlayerKnowsAboutEnemiesInSector(sSector) == KNOWS_NOTHING &&
+						else if (gamepolicy(enable_enemy_ambushes) &&
 								CurrentPlayerProgressPercentage() >= 30 - gGameOptions.ubDifficultyLevel * 5)
 						{ /* If the enemy outnumbers the players, then there is a small chance
 							 * of the enemies ambushing the group */
 							if (n_mobile_enemies > n_mercs)
 							{
 								SECTORINFO const& sector = SectorInfo[sSector.AsByte()];
-								if (!(sector.uiFlags & SF_ALREADY_VISITED))
+								INT32 chance = 4 - best_exp_level + 2 * gGameOptions.ubDifficultyLevel + CurrentPlayerProgressPercentage() / 10;
+								/* Walking in blind is what makes an ambush possible, so what the
+								 * group already knows about the sector lowers the odds rather than
+								 * ruling it out.  Mercs arriving are always counted as scouting
+								 * the sector by then, so a hard KNOWS_NOTHING test never passes. */
+								switch (WhatPlayerKnowsAboutEnemiesInSector(sSector))
 								{
-									INT32 chance = (UINT8)(4 - best_exp_level + 2 * gGameOptions.ubDifficultyLevel + CurrentPlayerProgressPercentage() / 10);
-									if (sector.uiFlags & SF_ENEMY_AMBUSH_LOCATION) chance += 20;
-									if (gfCantRetreatInPBI)                        chance += 20;
-									if ((INT32)PreRandom(100) < chance)
-									{
-										gubEnemyEncounterCode = ENEMY_AMBUSH_CODE;
-									}
+									case KNOWS_NOTHING:      chance += 20; break;
+									case KNOWS_THEYRE_THERE: chance +=  5; break;
+									default:                               break;
+								}
+								if (sector.uiFlags & SF_ENEMY_AMBUSH_LOCATION) chance += 20;
+								if (gfCantRetreatInPBI)                        chance += 20;
+								if ((INT32)PreRandom(100) < chance)
+								{
+									gubEnemyEncounterCode = ENEMY_AMBUSH_CODE;
 								}
 							}
 						}
