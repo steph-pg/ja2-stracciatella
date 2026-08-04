@@ -27,6 +27,12 @@
   //  vanilla setting: false
   "middle_mouse_look": true,
 
+  //  Binds tactical actions to the mouse wheel. Currently this raises and
+  //  lowers the aim level in turn-based mode, while the attack cursor is
+  //  confirmed on a target. Right clicking to add aim clicks still works.
+  //  vanilla setting: false
+  "extra_mousewheel_actions": true,
+
   "reinforce_all_sam_sites": false,
 
 
