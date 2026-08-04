@@ -484,6 +484,26 @@ properties:
 
       Vanilla setting: `false`
 
+  skyrider_explores_sectors:
+    type: boolean
+    title: Skyrider explores the sectors the helicopter flies over
+    description: |
+      Selects whether Skyrider maps the ground the helicopter passes over.
+
+      When `true`, every sector the helicopter crosses counts as explored, with
+      or without passengers aboard. The sector is uncovered on the strategic map
+      and any enemy presence in it shows up from then on, the same as if a merc
+      had walked in.
+
+      When `false`, the vanilla behaviour is used: flying over a sector reveals
+      nothing lasting, and only sectors a merc actually stands in count as
+      explored.
+
+      Bear in mind that an explored sector can no longer be ambushed, so aerial
+      scouting also buys safe passage through the sectors it maps.
+
+      Vanilla setting: `false`
+
   campaign:
     type: object
     properties:

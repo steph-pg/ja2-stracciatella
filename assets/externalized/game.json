@@ -226,6 +226,15 @@
 
   "enable_stat_healing": false,
 
+  //  Does Skyrider map the sectors the helicopter flies over?
+  //    true  - every sector the helicopter crosses counts as explored, so it is
+  //            uncovered on the strategic map and enemy presence shows up there
+  //            from then on, even with nobody aboard.
+  //    false - vanilla behaviour: only sectors a merc actually stands in count.
+  //  Note that explored sectors can no longer be ambushed, so aerial scouting
+  //  also buys safe passage.
+  "skyrider_explores_sectors": false,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {
