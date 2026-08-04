@@ -130,6 +130,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	enemy_autoresolve_retreat_health_percent = gp.getOptionalUInt("enemy_autoresolve_retreat_health_percent", 40);
 
+	skyrider_explores_sectors = gp.getOptionalBool("skyrider_explores_sectors", false);
+
 	auto campaign = gp["campaign"].toObject();
 	ST::string sector_string = campaign.getOptionalString("start_sector");
 	start_sector = SGPSector::FromShortString(!sector_string.empty() ? sector_string : "A9").AsByte();
