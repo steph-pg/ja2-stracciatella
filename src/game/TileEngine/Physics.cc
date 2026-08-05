@@ -2138,13 +2138,10 @@ static void HandleArmedObjectImpact(REAL_OBJECT* pObject)
 
 		if (lightEffect)
 		{
-			// The lighting system can only place a light source at ground level, so a flare that
-			// came to rest a whole storey up (on a roof) just drops as an item. Anything resting
-			// lower than that - on top of a soldier, a crate, a fence - still lights its own tile:
-			// testing Position.z against a bare 0 meant a flare thrown at an occupied gridno came
-			// to rest on the target's shoulders and silently did nothing at all.
-			if (GET_OBJECT_LEVEL(pObject->Position.z) > 0)
+			//if the light object will be created OFF the ground
+			if (pObject->Position.z > 0)
 			{
+				//we cannot create the light source above the ground, or on a roof.  The system doesnt support it.
 				//if it causes any other type of effect we still make it explode, otherwise we just add the item
 				if (!causesExplosion) {
 					AddItemToPool(pObject->sGridNo, &(pObject->Obj), VISIBLE, 1, 0, -1);
