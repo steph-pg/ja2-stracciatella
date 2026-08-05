@@ -54,6 +54,7 @@
 #include "Render_Dirty.h"
 #include "VSurface.h"
 #include "UILayout.h"
+#include "ContentManager.h"
 #include "GameInstance.h"
 #include "GamePolicy.h"
 #include <optional>
