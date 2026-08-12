@@ -53,11 +53,14 @@
 #include "Video.h"
 #include "VObject.h"
 #include "VSurface.h"
+#include "WeaponModels.h"
 #include "WorldMan.h"
 
 #include <string_theory/format>
 #include <string_theory/string>
 
+#include <algorithm>
+#include <initializer_list>
 #include <stdexcept>
 
 
@@ -1092,6 +1095,165 @@ void DrawSelectedUIAboveGuy(SOLDIERTYPE& s)
 
 	SetFontForeground(FONT_MCOLOR_DKRED);
 	PrintAboveGuy(sXPos, sYPos, GetSoldierHealthString(&s));
+}
+
+
+// Name the type of the weapon in hand, never the exact model. Guns already have a localised type
+// name; everything else falls back to a coarse category.
+static const ST::string& GetEquipmentWeaponString(const SOLDIERTYPE& s)
+{
+	UINT16 const usItem = s.inv[HANDPOS].usItem;
+	if (!usItem) return *GCM->getNewString(NS_EQUIP_NO_WEAPON);
+
+	const ItemModel* const item = GCM->getItem(usItem);
+	switch (item->getItemClass())
+	{
+		case IC_GUN:
+		{
+			// LAWs, cannons and mortars are guns without a gun type of their own
+			UINT8 const ubType = item->asWeapon()->ubWeaponType;
+			if (ubType == NOT_GUN) return *GCM->getNewString(NS_EQUIP_HEAVY_WEAPON);
+			return WeaponType[ubType];
+		}
+
+		case IC_LAUNCHER:
+			return *GCM->getNewString(NS_EQUIP_HEAVY_WEAPON);
+
+		case IC_BLADE:
+		case IC_THROWING_KNIFE:
+		case IC_PUNCH:
+			return *GCM->getNewString(NS_EQUIP_MELEE_WEAPON);
+
+		default:
+			return *GCM->getNewString(NS_EQUIP_OTHER_ITEM);
+	}
+}
+
+
+// Name the armour pieces worn, never the exact models. The slot already tells us which piece it is,
+// so there is no need to look at the armour class.
+static ST::string GetEquipmentArmourString(const SOLDIERTYPE& s)
+{
+	static struct
+	{
+		InvSlotPos slot;
+		NewStrings name;
+	} const pieces[] =
+	{
+		{ HELMETPOS, NS_EQUIP_HELMET   },
+		{ VESTPOS,   NS_EQUIP_VEST     },
+		{ LEGPOS,    NS_EQUIP_LEGGINGS },
+	};
+
+	ST::string worn;
+	for (auto const& piece : pieces)
+	{
+		if (!s.inv[piece.slot].usItem) continue;
+
+		if (!worn.empty()) worn += ", ";
+		worn += *GCM->getNewString(piece.name);
+	}
+	return worn;
+}
+
+
+// Head gear is named exactly - whether they see in the dark or breathe through a filter decides how
+// you fight them, so a category would be useless here.
+static ST::string GetEquipmentHeadGearString(const SOLDIERTYPE& s)
+{
+	ST::string gear;
+	for (InvSlotPos const slot : { HEAD1POS, HEAD2POS })
+	{
+		UINT16 const usItem = s.inv[slot].usItem;
+		if (!usItem) continue;
+
+		if (!gear.empty()) gear += ", ";
+		gear += GCM->getItem(usItem)->getName();
+	}
+	return gear;
+}
+
+
+void DrawEnemyEquipmentBox(void)
+{
+	if (!gamepolicy(show_enemy_equipment)) return;
+
+	// only while we are the ones acting, so the box does not trail the enemy through their own turn
+	if (gTacticalStatus.ubCurrentTeam != OUR_TEAM) return;
+
+	SOLDIERTYPE const* const s = gSelectedGuy;
+	if (!s) return;
+
+	// our own people have an inventory panel, and soldiers we cannot see give nothing away
+	if (s->bTeam == OUR_TEAM || s->bTeam == MILITIA_TEAM) return;
+	if (s->bVisible == -1) return;
+	if (s->uiStatusFlags & SOLDIER_DEAD) return;
+	if (!IS_MERC_BODY_TYPE(s)) return;
+
+	struct
+	{
+		ST::string text;
+		UINT8      colour;
+	} const lines[] =
+	{
+		{ GetEquipmentWeaponString(*s),   FONT_ORANGE       },
+		{ GetEquipmentArmourString(*s),   FONT_YELLOW       },
+		{ GetEquipmentHeadGearString(*s), FONT_MCOLOR_WHITE },
+	};
+
+	INT16 sTextWidth = 0;
+	UINT8 ubNumLines = 0;
+	for (auto const& line : lines)
+	{
+		if (line.text.empty()) continue;
+
+		sTextWidth = std::max(sTextWidth, StringPixLength(line.text, TINYFONT1));
+		++ubNumLines;
+	}
+	if (ubNumLines == 0) return;
+
+	INT16 const sLineHeight = (INT16)(GetFontHeight(TINYFONT1) + 1);
+	INT16 const sWidth      = (INT16)(sTextWidth + 10);
+	INT16 const sHeight     = (INT16)(ubNumLines * sLineHeight + 8);
+
+	// hang the box off the enemy's shoulder, then keep it inside the viewport
+	INT16 sAnchorX;
+	INT16 sAnchorY;
+	GetSoldierAboveGuyPositions(s, &sAnchorX, &sAnchorY, FALSE);
+
+	INT16 sX = (INT16)(sAnchorX + 50);
+	if (sX + sWidth > gsVIEWPORT_END_X) sX = (INT16)(gsVIEWPORT_END_X - sWidth);
+	if (sX < gsVIEWPORT_START_X)        sX = gsVIEWPORT_START_X;
+
+	INT16 sY = (INT16)(sAnchorY - sHeight);
+	if (sY + sHeight > gsVIEWPORT_WINDOW_END_Y) sY = (INT16)(gsVIEWPORT_WINDOW_END_Y - sHeight);
+	if (sY < gsVIEWPORT_WINDOW_START_Y)         sY = gsVIEWPORT_WINDOW_START_Y;
+
+	// the box is rebuilt every frame, so save what it covers to have it restored again
+	RegisterBackgroundRectSingleFilled(sX, sY, sWidth, sHeight);
+
+	{
+		SGPVSurface::Lock l(FRAME_BUFFER);
+		UINT16* const pDestBuf = l.Buffer<UINT16>();
+		SetClippingRegionAndImageWidth(l.Pitch(), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+		RectangleDraw(TRUE, sX + 1, sY + 1, sX + sWidth - 1, sY + sHeight - 1, Get16BPPColor(FROMRGB( 65,  57, 15)), pDestBuf);
+		RectangleDraw(TRUE, sX,     sY,     sX + sWidth - 2, sY + sHeight - 2, Get16BPPColor(FROMRGB(227, 198, 88)), pDestBuf);
+	}
+	// twice, for the same dark backdrop the help text boxes use
+	FRAME_BUFFER->ShadowRect(sX + 2, sY + 2, sX + sWidth - 3, sY + sHeight - 3);
+	FRAME_BUFFER->ShadowRect(sX + 2, sY + 2, sX + sWidth - 3, sY + sHeight - 3);
+
+	INT16 sLineY = (INT16)(sY + 4);
+	for (auto const& line : lines)
+	{
+		if (line.text.empty()) continue;
+
+		SetFontAttributes(TINYFONT1, line.colour);
+		MPrint(sX + 5, sLineY, line.text);
+		sLineY += sLineHeight;
+	}
+
+	InvalidateRegion(sX, sY, sX + sWidth, sY + sHeight);
 }
 
 

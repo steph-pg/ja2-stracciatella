@@ -113,6 +113,11 @@
   //  vanilla_setting: false
   "gui_extras": true,
 
+  //  Hovering a visible enemy shows a box with their weapon type, armour pieces and head gear.
+  //  Weapon and armour are only named by type, head gear is named exactly.
+  //  vanilla_setting: false
+  "show_enemy_equipment": true,
+
   //  Displays modifiers in hover boxes revealing hidden mechanics.
   //  vanilla_setting: false
   "informative_tooltips": false,

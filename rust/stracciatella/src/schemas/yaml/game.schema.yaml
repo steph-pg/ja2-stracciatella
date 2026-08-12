@@ -192,6 +192,17 @@ properties:
       - Progress bars for the mercs stats in tactical mode.
 
       Vanilla setting: `false`
+  show_enemy_equipment:
+    type: boolean
+    title: Show enemy equipment
+    description: |
+      Hovering a visible enemy shows a box listing what they carry:
+
+      - the type of the weapon in their hands, e.g. `Sniper rifle`, not the exact model
+      - which armour pieces they wear, e.g. `Helmet, Vest`, not the exact models
+      - the exact name of anything in their head slots, e.g. `Gas Mask, Night Goggles`
+
+      Vanilla setting: `false`
   skip_sleep_explanation:
     type: boolean
     title: Skip sleep explanation
