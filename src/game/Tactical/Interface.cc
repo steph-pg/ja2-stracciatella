@@ -5,6 +5,7 @@
 #include "Cursor_Control.h"
 #include "Cursors.h"
 #include "Directories.h"
+#include "English.h"
 #include "Faces.h"
 #include "Font.h"
 #include "Font_Control.h"
@@ -1186,6 +1187,10 @@ static ST::string GetEquipmentHeadGearString(const SOLDIERTYPE& s)
 void DrawEnemyEquipmentBox(void)
 {
 	if (!gamepolicy(show_enemy_equipment)) return;
+
+	// on demand only - held ALT asks what the enemy carries, so the box stays out of the way
+	// the rest of the time
+	if (!_KeyDown(ALT)) return;
 
 	// only while we are the ones acting, so the box does not trail the enemy through their own turn
 	if (gTacticalStatus.ubCurrentTeam != OUR_TEAM) return;
