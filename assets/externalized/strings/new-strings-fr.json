@@ -4,6 +4,13 @@
         "There is someone else in the sector...",
         "New recruits cannot arrive there.",
         "Can't be done diagonally.",
+        "Melee weapon",
+        "Heavy weapon",
+        "Unarmed",
+        "Item",
+        "Helmet",
+        "Vest",
+        "Leggings",
 
         "__last_one"
 ]

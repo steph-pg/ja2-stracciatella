@@ -431,6 +431,9 @@ void RenderTopmostTacticalInterface()
 		GDirtyPrint(x, y, ST::format("-{}", s.sDamage));
 	}
 
+	// after the above-guy text, so the box is not printed over
+	DrawEnemyEquipmentBox();
+
 	// FOR THE MOST PART, DISABLE INTERFACE STUFF WHEN IT'S ENEMY'S TURN
 	if (gTacticalStatus.ubCurrentTeam == OUR_TEAM)
 	{
