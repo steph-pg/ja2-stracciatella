@@ -58,6 +58,7 @@ public:
 
 	bool gui_extras;                      /* graphical user interface cosmetic mod */
 	bool hide_terrorist_names;            // don't reveal a terrorist's name on the tactical selection UI
+	bool show_enemy_equipment;            // hovering a visible enemy shows a box listing their weapon type, armour pieces and head gear
 	bool informative_tooltips;            /* Reveal modifiers in hover boxes */
 	bool extra_attachments;               // allow more item attachments options
 	bool skip_sleep_explanation;          // skip annoying popups
