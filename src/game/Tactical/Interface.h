@@ -119,7 +119,7 @@ void HandleInterfaceBackgrounds(void);
 
 void DrawSelectedUIAboveGuy(SOLDIERTYPE&);
 
-// show what the enemy under the cursor carries, if show_enemy_equipment is on
+// show what the enemy under the cursor carries while ALT is held, if show_enemy_equipment is on
 void DrawEnemyEquipmentBox(void);
 
 void CreateCurrentTacticalPanelButtons(void);

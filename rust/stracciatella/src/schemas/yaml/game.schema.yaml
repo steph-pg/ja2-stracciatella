@@ -196,7 +196,7 @@ properties:
     type: boolean
     title: Show enemy equipment
     description: |
-      Hovering a visible enemy shows a box listing what they carry:
+      Holding ALT while the cursor is over a visible enemy shows a box listing what they carry:
 
       - the type of the weapon in their hands, e.g. `Sniper rifle`, not the exact model
       - which armour pieces they wear, e.g. `Helmet, Vest`, not the exact models
