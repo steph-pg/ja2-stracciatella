@@ -541,6 +541,24 @@ void ExecuteOverhead(void)
 					}
 				}
 
+				// Handle suppression AP loss counters
+				if (pSoldier->fDisplayAPLoss)
+				{
+					if (TIMECOUNTERDONE(pSoldier->APLossCounter, DAMAGE_DISPLAY_DELAY))
+					{
+						pSoldier->bDisplayAPLossCount++;
+						pSoldier->sAPLossX -= 1;
+						pSoldier->sAPLossY -= 1;
+					}
+
+					if (pSoldier->bDisplayAPLossCount >= 8)
+					{
+						pSoldier->bDisplayAPLossCount = 0;
+						pSoldier->sAPLoss             = 0;
+						pSoldier->fDisplayAPLoss      = FALSE;
+					}
+				}
+
 				// Checkout fading
 				if (pSoldier->fBeginFade &&
 						TIMECOUNTERDONE(pSoldier->FadeCounter, NEW_FADE_DELAY))
@@ -5173,6 +5191,8 @@ static void HandleSuppressionFire(const SOLDIERTYPE* const targeted_merc, SOLDIE
 	{
 		if (IS_MERC_BODY_TYPE(pSoldier) && pSoldier->bLife >= OKLIFE && pSoldier->ubSuppressionPoints > 0)
 		{
+			const INT8 bAPsBeforeSuppression = pSoldier->bActionPoints;
+
 			bTolerance = CalcSuppressionTolerance( pSoldier );
 
 			// multiply by 2, add 1 and divide by 2 to round off to nearest whole number
@@ -5288,6 +5308,27 @@ static void HandleSuppressionFire(const SOLDIERTYPE* const targeted_merc, SOLDIE
 			// Reduce action points!
 			pSoldier->bActionPoints -= ubPointsLost;
 			pSoldier->ubAPsLostToSuppression = ubTotalPointsLost;
+
+			// Float the APs actually lost above them. The stance-change branch above can
+			// hand points back, so use the net change rather than ubPointsLost.
+			const INT8 bAPsLostNow = bAPsBeforeSuppression - pSoldier->bActionPoints;
+			if (bAPsLostNow > 0 && pSoldier->bInSector && pSoldier->bVisible != -1)
+			{
+				pSoldier->sAPLoss += bAPsLostNow;
+				pSoldier->fDisplayAPLoss      = TRUE;
+				pSoldier->bDisplayAPLossCount = 0;
+
+				if (pSoldier->ubBodyType == QUEENMONSTER)
+				{
+					pSoldier->sAPLossX = 0;
+					pSoldier->sAPLossY = 0;
+				}
+				else
+				{
+					pSoldier->sAPLossX = pSoldier->sBoundingBoxOffsetX;
+					pSoldier->sAPLossY = pSoldier->sBoundingBoxOffsetY;
+				}
+			}
 
 			if (pSoldier->uiStatusFlags & SOLDIER_PC && pSoldier->ubSuppressionPoints > 8 && pSoldier == targeted_merc)
 			{

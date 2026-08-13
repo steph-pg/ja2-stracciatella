@@ -357,6 +357,38 @@ static void EndViewportOverlays(void);
 static void StartViewportOverlays(void);
 
 
+// Print a drifting number over a merc's head. sDriftX/sDriftY carry the drift the
+// timer applies, sBaseX is the horizontal offset that keeps different kinds of
+// numbers apart.
+static void PrintFloatingNumberAboveGuy(const SOLDIERTYPE& s, const INT16 sDriftX, const INT16 sDriftY, const INT16 sBaseX, const UINT8 ubColour, const ST::string& text)
+{
+	INT16 sMercScreenX;
+	INT16 sMercScreenY;
+	GetSoldierTRUEScreenPos(&s, &sMercScreenX, &sMercScreenY);
+
+	INT16 x = sMercScreenX + sDriftX;
+	INT16 y = sMercScreenY + sDriftY;
+	if (s.ubBodyType == QUEENMONSTER)
+	{
+		x += 25;
+		y += 10;
+	}
+	else
+	{
+		x += sBaseX;
+		y += -5;
+
+		if (y < gsVIEWPORT_WINDOW_START_Y)
+		{
+			y = sMercScreenY - s.sBoundingBoxOffsetY;
+		}
+	}
+
+	SetFontAttributes(TINYFONT1, ubColour);
+	GDirtyPrint(x, y, text);
+}
+
+
 void RenderTopmostTacticalInterface()
 {
 	if (gfRerenderInterfaceFromHelpText)
@@ -401,34 +433,23 @@ void RenderTopmostTacticalInterface()
 		SOLDIERTYPE& s = **i;
 		DrawSelectedUIAboveGuy(s);
 
-		if (!s.fDisplayDamage)    continue;
 		if (s.sGridNo == NOWHERE) continue;
 		if (s.bVisible == -1)     continue;
 
-		INT16 sMercScreenX;
-		INT16 sMercScreenY;
-		GetSoldierTRUEScreenPos(&s, &sMercScreenX, &sMercScreenY);
-
-		INT16 x = sMercScreenX + s.sDamageX;
-		INT16 y = sMercScreenY + s.sDamageY;
-		if (s.ubBodyType == QUEENMONSTER)
+		if (s.fDisplayDamage)
 		{
-			x += 25;
-			y += 10;
-		}
-		else
-		{
-			x += 2 * 30 / 3;
-			y += -5;
-
-			if (y < gsVIEWPORT_WINDOW_START_Y)
-			{
-				y = sMercScreenY - s.sBoundingBoxOffsetY;
-			}
+			// health lost, drifting up and to the right
+			PrintFloatingNumberAboveGuy(s, s.sDamageX, s.sDamageY, 2 * 30 / 3,
+							FONT_MCOLOR_WHITE, ST::format("-{}", s.sDamage));
 		}
 
-		SetFontAttributes(TINYFONT1, FONT_MCOLOR_WHITE);
-		GDirtyPrint(x, y, ST::format("-{}", s.sDamage));
+		if (s.fDisplayAPLoss)
+		{
+			// APs lost to suppression, drifting up and to the left so it does not
+			// collide with the damage number
+			PrintFloatingNumberAboveGuy(s, s.sAPLossX, s.sAPLossY, -30 / 3,
+							FONT_MCOLOR_LTBLUE, ST::format("-{}", s.sAPLoss));
+		}
 	}
 
 	// FOR THE MOST PART, DISABLE INTERFACE STUFF WHEN IT'S ENEMY'S TURN
