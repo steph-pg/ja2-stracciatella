@@ -26,6 +26,7 @@
 #include "Logger.h"
 #include "Map_Information.h"
 #include "Morale.h"
+#include "NPC.h"
 #include "OppList.h"
 #include "Overhead.h"
 #include "PathAI.h"
@@ -67,6 +68,10 @@ BOOLEAN                      gfExplosionQueueActive      = FALSE;
 
 static BOOLEAN      gfExplosionQueueMayHaveChangedSight = FALSE;
 static SOLDIERTYPE* gPersonToSetOffExplosions           = 0;
+
+// tile a merc just left through, remembered so Billy waits for it to clear
+// before stepping back into the brothel doorway
+static INT16        gsTempActionGridNo                  = NOWHERE;
 
 #define NUM_EXPLOSION_SLOTS 100
 static EXPLOSIONTYPE gExplosionData[NUM_EXPLOSION_SLOTS];
@@ -1545,6 +1550,27 @@ static BOOLEAN HookerInRoom(UINT8 ubRoom)
 	return FALSE;
 }
 
+
+static void BillyBlocksDoorCallback(void)
+{
+	TriggerNPCRecord( BILLY, 6 );
+}
+
+
+static void DelayedBillyTriggerToBlockOnExit(void)
+{
+	if (WhoIsThere2(gsTempActionGridNo, 0) == NULL)
+	{
+		TriggerNPCRecord( BILLY, 6 );
+	}
+	else
+	{
+		// delay further!
+		SetCustomizableTimerCallbackAndDelay( 1s, DelayedBillyTriggerToBlockOnExit, true );
+	}
+}
+
+
 static void PerformItemAction(INT16 sGridNo, OBJECTTYPE* pObj)
 {
 	STRUCTURE * pStructure;
@@ -1692,8 +1718,6 @@ static void PerformItemAction(INT16 sGridNo, OBJECTTYPE* pObj)
 			TogglePressureActionItemsInGridNo( sGridNo );
 			break;
 		case ACTION_ITEM_ENTER_BROTHEL:
-			// JA2Gold: Disable brothel tracking
-			/*
 			if ( ! (gTacticalStatus.uiFlags & INCOMBAT) )
 			{
 				const SOLDIERTYPE* const tgt = WhoIsThere2(sGridNo, 0);
@@ -1725,8 +1749,7 @@ static void PerformItemAction(INT16 sGridNo, OBJECTTYPE* pObj)
 						{
 							// full # of mercs who paid have entered brothel
 							// have Billy block the way again
-							SetCustomizableTimerCallbackAndDelay( 2000, BillyBlocksDoorCallback, FALSE );
-							//TriggerNPCRecord( BILLY, 6 );
+							SetCustomizableTimerCallbackAndDelay( 2s, BillyBlocksDoorCallback, false );
 						}
 						else if ( gMercProfiles[ MADAME ].bNPCData2 > gMercProfiles[ MADAME ].bNPCData )
 						{
@@ -1740,7 +1763,7 @@ static void PerformItemAction(INT16 sGridNo, OBJECTTYPE* pObj)
 							}
 							else
 							{
-								SetCustomizableTimerCallbackAndDelay( 2000, BillyBlocksDoorCallback, FALSE );
+								SetCustomizableTimerCallbackAndDelay( 2s, BillyBlocksDoorCallback, false );
 								SetFactTrue( FACT_PLAYER_FORCED_WAY_INTO_BROTHEL );
 								TriggerNPCRecord( MADAME, 34 );
 							}
@@ -1762,17 +1785,20 @@ static void PerformItemAction(INT16 sGridNo, OBJECTTYPE* pObj)
 				}
 
 			}
-			*/
 			break;
 		case ACTION_ITEM_EXIT_BROTHEL:
-			// JA2Gold: Disable brothel tracking
-			/*
 			if ( ! (gTacticalStatus.uiFlags & INCOMBAT) )
 			{
 				const SOLDIERTYPE* const tgt = WhoIsThere2(sGridNo, 0);
 				if (tgt != NULL && tgt->bTeam == OUR_TEAM && tgt->sOldGridNo == sGridNo + DirectionInc(NORTH))
 				{
-					gMercProfiles[ MADAME ].bNPCData2--;
+					// mercs can also get into the brothel without tripping the entry
+					// tile - during combat, or by being teleported back out of a
+					// room - so never let the count run negative
+					if ( gMercProfiles[ MADAME ].bNPCData2 > 0 )
+					{
+						gMercProfiles[ MADAME ].bNPCData2--;
+					}
 					if ( gMercProfiles[ MADAME ].bNPCData2 == 0 )
 					{
 						// reset paid #
@@ -1780,10 +1806,9 @@ static void PerformItemAction(INT16 sGridNo, OBJECTTYPE* pObj)
 					}
 					// Billy should move back to block the door again
 					gsTempActionGridNo = sGridNo;
-					SetCustomizableTimerCallbackAndDelay( 1000, DelayedBillyTriggerToBlockOnExit, TRUE );
+					SetCustomizableTimerCallbackAndDelay( 1s, DelayedBillyTriggerToBlockOnExit, true );
 				}
 			}
-			*/
 			break;
 		case ACTION_ITEM_KINGPIN_ALARM:
 			PlayLocationJA2Sample(sGridNo, KLAXON_ALARM, MIDVOLUME, 5);

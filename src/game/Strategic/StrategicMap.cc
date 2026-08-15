@@ -770,14 +770,13 @@ void HandleQuestCodeOnSectorEntry(const SGPSector& sNewSector)
 		DecideOnAssassin();
 	}
 
-/*
 	if (sector == SEC_C5)
 	{
-		// reset Madame Layla counters
+		// reset Madame Layla counters - nobody the player paid for is still
+		// inside once the sector has been reloaded
 		gMercProfiles[ MADAME ].bNPCData = 0;
 		gMercProfiles[ MADAME ].bNPCData2 = 0;
 	}
-	*/
 
 	if (sector == SEC_D5)
 	{
