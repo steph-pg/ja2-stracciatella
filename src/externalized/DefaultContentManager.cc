@@ -361,6 +361,18 @@ std::vector<std::unique_ptr<SGPFile>> DefaultContentManager::openGameResForReadi
 	return result;
 }
 
+size_t DefaultContentManager::getTopResourceLayer(const ST::string& filename) const
+{
+	RustPointer<VecUSize> layers(Vfs_readLayers(m_vfs.get(), filename.c_str()));
+	if (!layers)
+	{
+		RustPointer<char> err{getRustError()};
+		throw std::runtime_error(ST::format("getTopResourceLayer: {}", err.get()).to_std_string());
+	}
+	// read_layers reports the layers in priority order
+	return VecUSize_len(layers.get()) == 0 ? SIZE_MAX : VecUSize_get(layers.get(), 0);
+}
+
 /* Checks if a game resource exists. */
 bool DefaultContentManager::doesGameResExists(const ST::string& filename) const
 {
@@ -1373,7 +1385,7 @@ void DefaultContentManager::loadAllScriptRecords()
 	std::unique_ptr<SGPFile> file{ openGameResForReading(NPCDATADIR "/" + scriptsControllingPCsFileName) };
 	m_scriptRecordsRecruited = ExtractNPCQuoteInfoArrayFromFile(file.get());
 
-	bool jsonIsOnStraccLayer = (openGameResForReadingOnAllLayers("script-records-NPCs.json").size() == 1);
+	size_t const jsonLayer = getTopResourceLayer("script-records-NPCs.json");
 	auto json = readJsonDataFileWithSchema("script-records-NPCs.json");
 	for (auto& element : json.toVec()) {
 		auto reader = element.toObject();
@@ -1390,10 +1402,13 @@ void DefaultContentManager::loadAllScriptRecords()
 		if (std::isdigit(fileName[0])) {
 			auto binProfileId = fileName.left(3).trim_left("0").to_int();
 			if (binProfileId < NUM_PROFILES) {
-				auto binVersions = openGameResForReadingOnAllLayers(path);
-				bool binIsOnModLayer = (binVersions.size() > 1);
-				if (m_scriptRecords[binProfileId] == nullptr || (binIsOnModLayer && jsonIsOnStraccLayer)) {
-					m_scriptRecords[binProfileId] = ExtractNPCQuoteInfoArrayFromFile(binVersions[0].get());
+				// A binary file only takes precedence over the externalized records when it sits
+				// on a higher priority layer, i.e. when a mod supplies it. The stock game data
+				// keeps loose copies of a few .npc files that shadow the ones in Npcdata.slf, and
+				// those must not count as an override.
+				if (m_scriptRecords[binProfileId] == nullptr || getTopResourceLayer(path) < jsonLayer) {
+					std::unique_ptr<SGPFile> binFile{ openGameResForReading(path) };
+					m_scriptRecords[binProfileId] = ExtractNPCQuoteInfoArrayFromFile(binFile.get());
 				}
 			}
 		}

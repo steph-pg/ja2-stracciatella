@@ -324,6 +324,13 @@ protected:
 	void loadAllScriptRecords();
 	void loadMaxArmourPerClass();
 
+	/**
+	 * @param filename
+	 * @return index of the highest priority VFS layer holding the file, or SIZE_MAX if no layer has it.
+	 *         Lower indices mean higher priority.
+	 */
+	size_t getTopResourceLayer(const ST::string& filename) const;
+
 	JsonValue readJsonDataFileWithSchema(const ST::string& jsonPath) const;
 
 
