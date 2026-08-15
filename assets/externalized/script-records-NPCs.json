@@ -670,6 +670,349 @@
         ]
     },
     {
+        "profile": "MADAME",
+        "records": [
+            {
+                "index": 0,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 12, // "Just you wait until Kingpin hears about this."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 12, // "Just you wait until Kingpin hears about this."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 46, // "I'd rather live than deal with you! Take care of this mess first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 3,
+                "eraseOnceSaid": true,
+                "quest": {
+                    "name": "RESCUE_MARIA",
+                    "status": "DONE"
+                },
+                "quoteNum": 45, // "I'm not having a good day. Somebody kidnapped one of my girls. Poor Maria, I get goosebumps just thinking about what they might be doing to her."
+                "numQuotes": 1
+            },
+            {
+                "index": 4,
+                "requiredItem": "MONEY",
+                "requiredApproach": "GIVINGITEM",
+                "quoteNum": 10, // "I always appreciate someone who knows what they want."
+                "numQuotes": 1
+            },
+            {
+                "index": 5,
+                "factMustBeTrue": 87, // FACT_FEMALE_SPEAKING_TO_NPC
+                "quoteNum": 14, // "We don't cater to your type of needs, dear. Though there's a woman named Brenda Drake that might be interested. You'll probably find her browsing at the adult store."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 88, // FACT_PLAYER_USED_BROTHEL
+                "quoteNum": 17, // "I'm sure you will find something or, rather, someone here that will catch your fancy. My girls were all chosen with creating a wide selection in mind."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 125 // NPC_ACTION_SET_GIRLS_AVAILABLE
+                }
+            },
+            {
+                "index": 7,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 88, // FACT_PLAYER_USED_BROTHEL
+                "quoteNum": 18, // "I'm afraid I don't recall who you were interested in last time. Do you have a favorite, or are you looking to expand your horizons?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 125 // NPC_ACTION_SET_GIRLS_AVAILABLE
+                }
+            },
+            {
+                "index": 8,
+                "factMustBeTrue": 92, // FACT_NO_GIRLS_AVAILABLE
+                "quoteNum": 37, // "All my girls are busy right now. You can come back later, or you can wait if you like. Probably just be a couple minutes. Most men don't take very long."
+                "numQuotes": 1,
+                "triggerNPC": "MADAME",
+                "triggerRecord": 9,
+                "actionData": {
+                    "code": 126 // NPC_ACTION_SET_DELAY_TILL_GIRLS_AVAILABLE
+                }
+            },
+            {
+                "index": 9,
+                "factMustBeTrue": 92, // FACT_NO_GIRLS_AVAILABLE
+                "factMustBeFalse": 93, // FACT_PLAYER_WAITED_FOR_GIRL
+                "requiredApproach": "TRIGGER_NPC",
+                "setFactTrue": 93 // FACT_PLAYER_WAITED_FOR_GIRL
+            },
+            {
+                "index": 10,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 93, // FACT_PLAYER_WAITED_FOR_GIRL
+                "factMustBeFalse": 92, // FACT_NO_GIRLS_AVAILABLE
+                "quoteNum": 38, // "Yes, as a matter of fact, things have quieted down."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 127 // NPC_ACTION_SET_WAITED_FOR_GIRL_FALSE
+                }
+            },
+            {
+                "index": 11,
+                "sayOncePerConvo": true,
+                "quest": {
+                    "name": "RESCUE_MARIA",
+                    "status": "INPROGRESS"
+                },
+                "quoteNum": 28, // "Maria is one of our newer girls. She's four hundred dollars a head. A little shy, likes to pretend she doesn't like it. Her room is at the end of the hall. You can be forceful if you like. She likes that, too."
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "sayOncePerConvo": true,
+                "factMustBeFalse": 92, // FACT_NO_GIRLS_AVAILABLE
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 128 // NPC_ACTION_TRIGGER_LAYLA_13_14_OR_15
+                }
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 92, // FACT_NO_GIRLS_AVAILABLE
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 20, // "Carla would be ideal. She's my most experienced. You could visit with her for 100 dollars per person. Naturally, she's not my most youthful girl."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 133 // NPC_ACTION_POSSIBLY_ADVERTISE_CINDY
+                }
+            },
+            {
+                "index": 14,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 92, // FACT_NO_GIRLS_AVAILABLE
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 22, // "If you were looking for something really special, I have Cindy. She's five hundred per person. But you'd have to promise to be very gentle. We celebrated her eighteenth birthday last night."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 134 // NPC_ACTION_POSSIBLY_ADVERTISE_BAMBI
+                }
+            },
+            {
+                "index": 15,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 92, // FACT_NO_GIRLS_AVAILABLE
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 24, // "May I suggest Bambi for something really different. Mr. Klaus calls her a freak of nature. At 300 dollars apiece, she's someone that you'll be talking about for a long, long time."
+                "numQuotes": 1
+            },
+            {
+                "index": 16,
+                "sayOncePerConvo": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 21, // "Very good. You'll find Carla at the end of the hallway in the last room on your left. The door should be open."
+                "numQuotes": 1,
+                "triggerNPC": "BILLY",
+                "triggerRecord": 5,
+                "setFactTrue": 94, // FACT_PLAYER_PAID_RIGHT_AMOUNT
+                "actionData": {
+                    "code": 129 // NPC_ACTION_OPEN_CARLAS_DOOR
+                }
+            },
+            {
+                "index": 17,
+                "sayOncePerConvo": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 23, // "Cindy is in room four. That would be the third door on your right. It should be open."
+                "numQuotes": 1,
+                "triggerNPC": "BILLY",
+                "triggerRecord": 5,
+                "setFactTrue": 94, // FACT_PLAYER_PAID_RIGHT_AMOUNT
+                "actionData": {
+                    "code": 130 // NPC_ACTION_OPEN_CINDYS_DOOR
+                }
+            },
+            {
+                "index": 18,
+                "sayOncePerConvo": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 25, // "You'll find Bambi waiting for you at the end of the hall, last door on your right."
+                "numQuotes": 1,
+                "triggerNPC": "BILLY",
+                "triggerRecord": 5,
+                "setFactTrue": 94, // FACT_PLAYER_PAID_RIGHT_AMOUNT
+                "actionData": {
+                    "code": 131 // NPC_ACTION_OPEN_BAMBIS_DOOR
+                }
+            },
+            {
+                "index": 19,
+                "sayOncePerConvo": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 29, // "Fine. Oh... and by the way, ignore her screaming if it doesn't do anything for you. It's all part of Maria's role-playing side."
+                "numQuotes": 1,
+                "triggerNPC": "BILLY",
+                "triggerRecord": 5,
+                "setFactTrue": 94, // FACT_PLAYER_PAID_RIGHT_AMOUNT
+                "actionData": {
+                    "code": 132 // NPC_ACTION_OPEN_MARIAS_DOOR
+                }
+            },
+            {
+                "index": 20,
+                "sayOncePerConvo": true,
+                "factMustBeFalse": 94, // FACT_PLAYER_PAID_RIGHT_AMOUNT
+                "quoteNum": 33, // "I'll need to be paid in advance. That's how we do things around here."
+                "numQuotes": 1
+            },
+            {
+                "index": 21,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 94, // FACT_PLAYER_PAID_RIGHT_AMOUNT
+                "factMustBeFalse": 95, // FACT_PLAYER_PASSED_GOON
+                "quoteNum": 34, // "Have you had a change of heart?"
+                "numQuotes": 1
+            },
+            {
+                "index": 22,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 94, // FACT_PLAYER_PAID_RIGHT_AMOUNT
+                "factMustBeFalse": 95, // FACT_PLAYER_PASSED_GOON
+                "quoteNum": 32, // "That's okay, there will be other occasions. You'll come around. Everyone does."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 23,
+                "factMustBeTrue": 239, // FACT_PLAYER_PAID_FOR_TWO_IN_BROTHEL
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 35, // "The two of you may go now."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 24,
+                "factMustBeTrue": 97, // FACT_SOME_MERCS_CLOSE
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 30, // "Can I interest anyone else?"
+                "numQuotes": 1
+            },
+            {
+                "index": 25,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 39, // "I can't take that. I'm not sure who you want. Let me tell you who's available..."
+                "numQuotes": 1,
+                "triggerNPC": "MADAME",
+                "triggerRecord": 26,
+                "actionData": {
+                    "code": 1 // NPC_ACTION_DONT_ACCEPT_ITEM
+                }
+            },
+            {
+                "index": 26,
+                "requiredApproach": "TRIGGER_NPC",
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 124 // NPC_ACTION_LAYLA_GIVEN_WRONG_AMOUNT_OF_CASH
+                }
+            },
+            {
+                "index": 27,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 37, // "All my girls are busy right now. You can come back later, or you can wait if you like. Probably just be a couple minutes. Most men don't take very long."
+                "numQuotes": 1
+            },
+            {
+                "index": 28,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 40, // "Carla, I believe, is free. She's a hundred dollars."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 217 // NPC_ACTION_LAYLAS_NEXT_LINE_AFTER_CARLA
+                }
+            },
+            {
+                "index": 29,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 41, // "There's Cindy at five hundred dollars."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 218 // NPC_ACTION_LAYLAS_NEXT_LINE_AFTER_CINDY
+                }
+            },
+            {
+                "index": 30,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 42, // "There's Bambi, who's simply waiting for someone with three hundred dollars and the need for some loving."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 219 // NPC_ACTION_LAYLAS_NEXT_LINE_AFTER_BAMBI
+                }
+            },
+            {
+                "index": 31,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 44, // "We have Maria, who's not for everyone, but well worth the four hundred dollars if you like the resistant type."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 220 // NPC_ACTION_LAYLAS_NEXT_LINE_AFTER_MARIA
+                }
+            },
+            {
+                "index": 32,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 43, // "If two of you would like to split a room, just double up the amount."
+                "numQuotes": 1
+            },
+            {
+                "index": 33,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 31, // "Didn't I tell you about our no-girl policy? Oh, well. Maybe she won't say anything. It's probably a good time to think about expanding the business anyway."
+                "numQuotes": 1
+            },
+            {
+                "index": 34,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 26, // "Only people who have paid me for a girl's time are allowed back there."
+                "numQuotes": 1
+            },
+            {
+                "index": 35,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 27, // "You know what to do, Billy."
+                "numQuotes": 1,
+                "triggerNPC": "BILLY",
+                "triggerRecord": 7
+            }
+        ]
+    },
+    {
         "profile": "MARTHA",
         "records": [
             {
