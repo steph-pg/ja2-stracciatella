@@ -11,6 +11,8 @@
 #include "Animation_Data.h"
 #include "Buildings.h"
 #include "English.h"
+#include "Environment.h"
+#include "GamePolicy.h"
 #include "GameSettings.h"
 #include "GridSquare.h"
 #include "Handle_Doors.h"
@@ -18,13 +20,16 @@
 #include "Interface.h"
 #include "Isometric_Utils.h"
 #include "Keys.h"
+#include "Lighting.h"
 #include "Logger.h"
 #include "Overhead.h"
 #include "Overhead_Types.h"
 #include "PathAI.h"
 #include "Points.h"
 #include "Random.h"
+#include "Render_Fun.h"
 #include "Soldier_Control.h"
+#include "StrategicMap.h"
 #include "Structure.h"
 #include "TileDef.h"
 #include "WorldDef.h"
@@ -106,6 +111,22 @@ enum TrailFlags
 #define EASYWATERCOST				TRAVELCOST_FLAT / 2
 #define ISWATER(t)				(((t)==TRAVELCOST_KNEEDEEP) || ((t)==TRAVELCOST_DEEPWATER))
 #define NOPASS					(TRAVELCOST_BLOCKED)
+
+// Extra *search* cost (not AP cost) used to bias AI pathing away from lit tiles
+// at night so it routes through darkness. The night ambient level is treated as
+// "free" (we're already ~43% visible there and there's usually no darker open
+// ground), but any tile BRIGHTER than ambient exposes us and is penalized HARD
+// and linearly:
+//   cost = LIGHT_PATH_COST_FLAT + delta * LIGHT_PATH_COST_PER_LEVEL
+// where delta is how many light-levels brighter than ambient the tile is. The
+// flat term makes stepping into ANY light expensive (even a marginally-lit tile
+// gives the position away); the linear term adds a bit more for brighter tiles.
+// This is search-only and never changes AP cost, so it can be pushed high without
+// affecting how far a soldier can actually move. With TRAVELCOST_FLAT == 10 (one
+// tile): a lit tile 1 level over ambient costs ~42 (about 4 tiles of detour),
+// 3 levels ~66, a near-daylight spot ~138.
+#define LIGHT_PATH_COST_FLAT			30
+#define LIGHT_PATH_COST_PER_LEVEL		12
 
 static path_t *pathQ;
 static UINT16 gusPathShown,gusAPtsToMove;
@@ -728,6 +749,38 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 		}
 	}
 
+	// At night, AI-controlled characters should prefer routes through darkness
+	// rather than walk across brightly-lit tiles where they are easily spotted.
+	// We bias the search cost (NOT the AP cost) of lit tiles so the pathfinder
+	// naturally plots a darker route when one exists at a reasonable expense.
+	// This mirrors the "in light" definition used by InLightAtNight().
+	// Only avoid the light once the team knows opponents are in the sector
+	// (bAlertStatus > STATUS_YELLOW). While still unaware, soldiers should patrol
+	// normally rather than skulking through the dark.
+	BOOLEAN fAvoidLitTiles    = FALSE;
+	UINT8   ubAmbientLightLevel = 0;
+	if ( gamepolicy(ai_avoid_lit_tiles_at_night) && !fPathingForPlayer
+		&& gWorldSector.z == 0 && s->bAlertStatus > STATUS_YELLOW )
+	{
+		ubAmbientLightLevel = GetTimeOfDayAmbientLightLevel();
+		// only bother when it's dark enough for light to actually expose us
+		if ( ubAmbientLightLevel >= NORMAL_LIGHTLEVEL_DAY + 2 )
+		{
+			// Don't avoid light if we're already standing in it: when a soldier is
+			// caught in a large lit area (e.g. someone threw a BREAK_LIGHT) there may
+			// be no dark route out, and biasing the search would only fight the path
+			// toward its goal/escape spot. Staying-in-the-dark only makes sense while
+			// we still have darkness to keep to.
+			BOOLEAN const fAlreadyInLight =
+				GetRoom( s->sGridNo ) == NO_ROOM &&
+				LightTrueLevel( s->sGridNo, s->bLevel ) < ubAmbientLightLevel;
+			if ( !fAlreadyInLight )
+			{
+				fAvoidLitTiles = TRUE;
+			}
+		}
+	}
+
 	//setup Q and first path record
 
 	SETLOC( *pQueueHead, iOrigination );
@@ -1342,6 +1395,26 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 			{
 				// penalize moving backwards to encourage turning sooner
 				nextCost += 50;
+			}
+
+			// Bias the AI away from tiles lit brighter than the ambient night
+			// level so it routes through darkness. This also covers the
+			// destination tile, so a soldier won't pick a lit spot as the END of
+			// its move either. Tiles inside a room are skipped: a soldier may have
+			// been placed there, which matches the "ignore the light" rule in
+			// InLightAtNight().
+			if ( fAvoidLitTiles && GetRoom( (UINT16) newLoc ) == NO_ROOM )
+			{
+				// light levels are inverted: a LOWER level means a BRIGHTER tile
+				UINT8 const ubTileLightLevel = LightTrueLevel( (INT16) newLoc, ubLevel );
+				if ( ubTileLightLevel < ubAmbientLightLevel )
+				{
+					// ambient night is "free"; anything brighter is penalized
+					// hard and linearly, so the AI avoids lit tiles even when
+					// they're only slightly brighter than ambient.
+					UINT8 const ubDelta = ubAmbientLightLevel - ubTileLightLevel;
+					nextCost += LIGHT_PATH_COST_FLAT + ubDelta * LIGHT_PATH_COST_PER_LEVEL;
+				}
 			}
 
 			newTotCost = curCost + nextCost;
