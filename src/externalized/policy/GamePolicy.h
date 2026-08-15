@@ -73,6 +73,7 @@ public:
 	bool imp_load_saved_merc_by_nickname; // IMP merc is saved and can be loaded at IMP creation if has same nickname
 	bool imp_load_keep_inventory;         // IMP merc gets inventory from last save game
 	bool pablo_wont_steal;                // Packages not stolen
+	bool kingpin_avenges_maria;           // Kingpin also sends assassins over Maria's rescue
 
 	float critical_damage_head_multiplier;//Head damage multiplier. Vanilla 1.5
 	float critical_damage_legs_multiplier;//Legs damage multiplier. Vanilla 0.5

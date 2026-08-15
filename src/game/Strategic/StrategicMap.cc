@@ -763,12 +763,12 @@ void HandleQuestCodeOnSectorEntry(const SGPSector& sNewSector)
 	}
 
 	// Kingpin puts a price on the player's head while his money is still
-	// missing, and also once his men caught the player springing Maria out of
-	// the brothel - there is no way to make amends for that one, so it only
-	// stops when he dies
+	// missing, and with kingpin_avenges_maria also once his men caught the
+	// player springing Maria out of the brothel - there is no way to make
+	// amends for that one, so it only stops when he dies
 	BOOLEAN const fKingpinWantsRevenge =
 		(gubQuest[QUEST_KINGPIN_MONEY] == QUESTINPROGRESS && CheckFact(FACT_KINGPIN_CAN_SEND_ASSASSINS, 0)) ||
-		(CheckFact(FACT_MARIA_ESCAPE_NOTICED, 0) && !CheckFact(FACT_KINGPIN_DEAD, 0));
+		(gamepolicy(kingpin_avenges_maria) && CheckFact(FACT_MARIA_ESCAPE_NOTICED, 0) && !CheckFact(FACT_KINGPIN_DEAD, 0));
 
 	if (fKingpinWantsRevenge                             &&
 			GetTownIdForSector(sector) != BLANK_SECTOR       &&

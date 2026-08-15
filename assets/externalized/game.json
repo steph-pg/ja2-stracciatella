@@ -149,6 +149,11 @@
   //  vanilla_setting: false
   "pablo_wont_steal": false,
 
+  //  Kingpin also sends assassins after the player once his men caught them
+  //  breaking Maria out of the brothel, until he is dead.
+  //  vanilla_setting: false
+  "kingpin_avenges_maria": false,
+
   //  Min/max chance to hit and headshot damage multiplier.
   //  vanilla_setting: 1, 99, 1.5, 0.5
   "chance_to_hit_minimum": 1,
