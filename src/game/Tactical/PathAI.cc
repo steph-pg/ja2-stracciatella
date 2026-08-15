@@ -11,6 +11,7 @@
 #include "Animation_Data.h"
 #include "Buildings.h"
 #include "English.h"
+#include "Environment.h"
 #include "GameSettings.h"
 #include "GridSquare.h"
 #include "Handle_Doors.h"
@@ -18,13 +19,18 @@
 #include "Interface.h"
 #include "Isometric_Utils.h"
 #include "Keys.h"
+#include "LOS.h"
+#include "Lighting.h"
 #include "Logger.h"
+#include "OppList.h"
 #include "Overhead.h"
 #include "Overhead_Types.h"
 #include "PathAI.h"
 #include "Points.h"
 #include "Random.h"
+#include "Render_Fun.h"
 #include "Soldier_Control.h"
+#include "StrategicMap.h"
 #include "Structure.h"
 #include "TileDef.h"
 #include "WorldDef.h"
@@ -106,6 +112,74 @@ enum TrailFlags
 #define EASYWATERCOST				TRAVELCOST_FLAT / 2
 #define ISWATER(t)				(((t)==TRAVELCOST_KNEEDEEP) || ((t)==TRAVELCOST_DEEPWATER))
 #define NOPASS					(TRAVELCOST_BLOCKED)
+
+// --- AI night-light avoidance: exposed-tile snapshot -----------------------
+// The tiles that give an approaching soldier away at night are the ones that
+// are both lit AND currently visible to one of the player's mercs. We treat
+// exactly those as impassable for generic enemy soldiers. That is safe
+// *because* the set is small and localised (only what the player can presently
+// see), so a darker route around it almost always exists.
+//
+// Running an LOS test per candidate tile inside the pathfinder would be far too
+// slow, so the exposed set is snapshotted once at the start of the enemy turn
+// (BuildAIExposedTileMap, called from BeginTeamTurn) and just consulted here.
+// gfAIAvoidExposedTiles is TRUE only while that snapshot is valid - i.e. during
+// the enemy team's own turn - so player and out-of-combat pathing is unaffected.
+// It also implies "surface sector, dark enough for light to matter", since
+// BuildAIExposedTileMap bails out before setting it otherwise.
+static UINT8   gubAIExposedTile[WORLD_MAX];
+static BOOLEAN gfAIAvoidExposedTiles = FALSE;
+
+void ClearAIExposedTileMap(void)
+{
+	gfAIAvoidExposedTiles = FALSE;
+}
+
+void BuildAIExposedTileMap(void)
+{
+	gfAIAvoidExposedTiles = FALSE;
+	std::fill(std::begin(gubAIExposedTile), std::end(gubAIExposedTile), (UINT8)0);
+
+	// Only relevant on the surface at night - underground and in daylight there
+	// is no darkness to keep to (mirrors InLightAtNight()).
+	if (gWorldSector.z != 0) return;
+	const UINT8 ubAmbient = GetTimeOfDayAmbientLightLevel();
+	if (ubAmbient < NORMAL_LIGHTLEVEL_DAY + 2) return;
+
+	// Scan a box around each living, in-sector player merc and mark every lit
+	// tile it can actually see. DistanceVisible() bounds each LOS test to how
+	// far that merc really sees in the dark, so the marked set stays small.
+	const INT16 sScanRadius = MaxDistanceVisible();
+	CFOR_EACH_IN_TEAM(s, OUR_TEAM)
+	{
+		if (s->bLife < OKLIFE || s->sGridNo == NOWHERE || !s->bInSector) continue;
+
+		for (INT16 sYOff = -sScanRadius; sYOff <= sScanRadius; ++sYOff)
+		{
+			for (INT16 sXOff = -sScanRadius; sXOff <= sScanRadius; ++sXOff)
+			{
+				const INT32 iGridNo = s->sGridNo + sXOff + sYOff * WORLD_COLS;
+				if (iGridNo <= 0 || iGridNo >= WORLD_MAX) continue;
+				if (gubAIExposedTile[iGridNo]) continue;       // already marked by another merc
+
+				// lit brighter than ambient, and not inside a room: a soldier
+				// could have been placed in a lit room, so we ignore those
+				// (matches InLightAtNight()). NB light levels are inverted - a
+				// LOWER value means a BRIGHTER tile.
+				if (GetRoom((UINT16)iGridNo) != NO_ROOM) continue;
+				if (LightTrueLevel((INT16)iGridNo, s->bLevel) >= ubAmbient) continue;
+
+				const INT16 sDistVisible = DistanceVisible(s, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, (INT16)iGridNo, s->bLevel);
+				if (SoldierTo3DLocationLineOfSightTest(s, (INT16)iGridNo, s->bLevel, 3, sDistVisible, TRUE))
+				{
+					gubAIExposedTile[iGridNo] = TRUE;
+				}
+			}
+		}
+	}
+
+	gfAIAvoidExposedTiles = TRUE;
+}
 
 static path_t *pathQ;
 static UINT16 gusPathShown,gusAPtsToMove;
@@ -728,6 +802,23 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 		}
 	}
 
+	// At night, generic enemy soldiers refuse to cross tiles that are lit AND
+	// currently in a player merc's line of sight - those are what give an
+	// approaching soldier's position away. The exposed set is snapshotted once
+	// per enemy turn (see BuildAIExposedTileMap), so gfAIAvoidExposedTiles
+	// already implies "surface sector, dark enough to matter, enemy turn in
+	// progress"; the rest of the test is per-soldier and constant for the whole
+	// search, so it is done once here rather than per candidate tile.
+	// Skipped while the team is still unaware of opponents (bAlertStatus <=
+	// STATUS_YELLOW), so patrols walk normally instead of skulking, and skipped
+	// when we are already standing on an exposed tile: there every neighbour is
+	// likely exposed too, and forbidding them all could leave no route out.
+	BOOLEAN const fAvoidExposedTiles =
+		gfAIAvoidExposedTiles && !fPathingForPlayer &&
+		s->bTeam == ENEMY_TEAM && s->ubProfile == NO_PROFILE &&
+		s->bAlertStatus > STATUS_YELLOW &&
+		s->sGridNo != NOWHERE && !gubAIExposedTile[ s->sGridNo ];
+
 	//setup Q and first path record
 
 	SETLOC( *pQueueHead, iOrigination );
@@ -894,6 +985,13 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 			if ( newLoc < 0 || newLoc >= GRIDSIZE )
 			{
 				SLOGW("Path Finding algorithm tried to go out of bounds at {}, in an attempt to find path from {} to {}", newLoc, iOrigination, iDestination);
+				goto NEXTDIR;
+			}
+
+			// hard-avoid lit tiles the player can currently see (see above);
+			// GRIDSIZE == WORLD_MAX, so the bounds check just made this index safe
+			if ( fAvoidExposedTiles && gubAIExposedTile[ newLoc ] )
+			{
 				goto NEXTDIR;
 			}
 

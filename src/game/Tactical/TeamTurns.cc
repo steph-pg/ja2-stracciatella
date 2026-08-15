@@ -342,6 +342,10 @@ void BeginTeamTurn( UINT8 ubTeam )
 
 		if (ubTeam == OUR_TEAM )
 		{
+			// control is back with the player, so the enemy-turn exposed-tile
+			// snapshot is no longer valid (the player is about to move)
+			ClearAIExposedTileMap();
+
 			// ATE: Check if we are still in a valid battle...
 			// ( they could have blead to death above )
 			if ( ( gTacticalStatus.uiFlags & INCOMBAT ) )
@@ -352,6 +356,17 @@ void BeginTeamTurn( UINT8 ubTeam )
 		}
 		else
 		{
+			// Before the enemy starts moving, snapshot which lit tiles the player
+			// can currently see so the AI can route around them in the dark (see
+			// BuildAIExposedTileMap). Only the enemy team uses this, and only when
+			// the policy is enabled - otherwise the snapshot is never built, so
+			// the pathfinder's hard-avoid stays inactive and behaviour is unchanged.
+			if ( ubTeam == ENEMY_TEAM && ( gTacticalStatus.uiFlags & INCOMBAT )
+				&& gamepolicy(ai_avoid_lit_tiles_at_night) )
+			{
+				BuildAIExposedTileMap();
+			}
+
 			// Set First enemy merc to AI control
 			if ( BuildAIListForTeam( ubTeam ) )
 			{
