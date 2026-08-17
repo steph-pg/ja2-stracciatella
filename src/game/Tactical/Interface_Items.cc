@@ -5082,11 +5082,8 @@ ST::string GetHelpTextForItem(const OBJECTTYPE& obj)
 
 		if (gamepolicy(informative_tooltips))
 		{
-			// coolness, readying cost and, for burst-capable guns, the burst penalty
-			if (const WeaponModel* const weapon = GCM->getItem(usItem)->asWeapon())
-			{
-				dst += GetWeaponStatsForItemTooltip(weapon);
-			}
+			// condition, coolness, readying cost and, for burst-capable guns, the burst penalty
+			dst += GetItemStatsForTooltip(obj);
 		}
 	}
 	return dst;

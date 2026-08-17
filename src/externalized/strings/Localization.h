@@ -191,7 +191,7 @@ constexpr std::size_t attemptStrings_SIZE = 2;
 constexpr std::size_t commentStrings_SIZE = 10;
 constexpr std::size_t possessiveStrings_SIZE = 3;
 constexpr std::size_t drugStrings_SIZE = 4;
-constexpr std::size_t inventoryStrings_SIZE = 4;
+constexpr std::size_t inventoryStrings_SIZE = 5;
 constexpr std::size_t locationStrings_SIZE = 3;
 constexpr std::size_t dialogueStrings_SIZE = 12;
 

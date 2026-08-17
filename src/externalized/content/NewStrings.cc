@@ -143,6 +143,7 @@ enum
 enum
 {
 	INV_OVERBURDENED,
+	INV_STATUS,
 	INV_COOLNESS,
 	INV_READY_TIME,
 	INV_BURST_PENALTY,
@@ -866,16 +867,23 @@ const ST::string GetModifiersForDialogue(SOLDIERTYPE* const playerChar, SOLDIERT
 	return result;
 }
 
-const ST::string GetWeaponStatsForItemTooltip(const WeaponModel* const w)
+const ST::string GetItemStatsForTooltip(const OBJECTTYPE& obj)
 {
+	const ItemModel* const item = GCM->getItem(obj.usItem);
 	ST::string result;
 
-	result += st_format_printf("\n" + inventoryStrings[INV_COOLNESS], static_cast<int32_t>(w->getCoolness()));
-	if (w->ubReadyTime > 0) {
-		result += st_format_printf("\n" + inventoryStrings[INV_READY_TIME], static_cast<int32_t>(w->ubReadyTime));
+	// the condition of the first object of a stack, the one the slot's status bar shows;
+	// ammunition has a round count instead of a condition
+	if (!item->isAmmo()) {
+		result += st_format_printf("\n" + inventoryStrings[INV_STATUS], static_cast<int32_t>(obj.bStatus[0]));
 	}
-	if (w->ubShotsPerBurst > 0) {
-		result += st_format_printf("\n" + inventoryStrings[INV_BURST_PENALTY], static_cast<int32_t>(w->ubBurstPenalty));
+
+	if (const WeaponModel* const w = item->asWeapon()) {
+		result += st_format_printf("\n" + inventoryStrings[INV_COOLNESS], static_cast<int32_t>(w->getCoolness()));
+		result += st_format_printf("\n" + inventoryStrings[INV_READY_TIME], static_cast<int32_t>(w->ubReadyTime));
+		if (w->ubShotsPerBurst > 0) {
+			result += st_format_printf("\n" + inventoryStrings[INV_BURST_PENALTY], static_cast<int32_t>(w->ubBurstPenalty));
+		}
 	}
 
 	return result;

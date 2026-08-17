@@ -129,6 +129,7 @@
     ],
     "inventoryStrings": [
         "Overburdened: %s",
+        "Status: %d%%",
         "Coolness: %d",
         "Ready Time: %d AP",
         "Burst Penalty: %d%%"
