@@ -128,7 +128,10 @@
         "Regeneration booster: %s"
     ],
     "inventoryStrings": [
-        "Overburdened: %s"
+        "Overburdened: %s",
+        "Coolness: %d",
+        "Ready Time: %d AP",
+        "Burst Penalty: %d%%"
     ],
     "locationStrings": [
         "Underground: %s",

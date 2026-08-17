@@ -78,6 +78,7 @@
 #include "policy/GamePolicy.h"
 #include "Logger.h"
 #include "MercProfile.h"
+#include "NewStrings.h"
 
 #include <string_theory/format>
 #include <string_theory/string>
@@ -5077,6 +5078,15 @@ ST::string GetHelpTextForItem(const OBJECTTYPE& obj)
 		if (prefix != first_prefix)
 		{
 			dst += ST::format("{}", pMessageStrings[MSG_END_ATTACHMENT_LIST]);
+		}
+
+		if (gamepolicy(informative_tooltips))
+		{
+			// coolness, readying cost and, for burst-capable guns, the burst penalty
+			if (const WeaponModel* const weapon = GCM->getItem(usItem)->asWeapon())
+			{
+				dst += GetWeaponStatsForItemTooltip(weapon);
+			}
 		}
 	}
 	return dst;

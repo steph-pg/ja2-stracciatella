@@ -4,6 +4,8 @@
 #include "Soldier_Profile_Type.h"
 #include "NPC.h"
 
+struct WeaponModel;
+
 enum NewStrings
 {
 	NS_SOLDIER_EQUIPS_ITEM,
@@ -25,3 +27,5 @@ const ST::string GetModifiersForLockBlowUp(SOLDIERTYPE* const s);
 const ST::string GetModifiersForEffectiveAttributes(SOLDIERTYPE* const s, Attributes const attrName);
 // dialogue menu
 const ST::string GetModifiersForDialogue(SOLDIERTYPE* const playerChar, SOLDIERTYPE* const npcChar, Approach const apprName);
+// item hover tooltip
+const ST::string GetWeaponStatsForItemTooltip(const WeaponModel* const w);

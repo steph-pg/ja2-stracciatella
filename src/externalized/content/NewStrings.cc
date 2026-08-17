@@ -143,6 +143,9 @@ enum
 enum
 {
 	INV_OVERBURDENED,
+	INV_COOLNESS,
+	INV_READY_TIME,
+	INV_BURST_PENALTY,
 };
 
 enum
@@ -858,6 +861,21 @@ const ST::string GetModifiersForDialogue(SOLDIERTYPE* const playerChar, SOLDIERT
 			threatRange = "^0";
 		}
 		result += st_format_printf("\n" + tab + dialogueStrings[DIAL_THREATEN], threatRange);
+	}
+
+	return result;
+}
+
+const ST::string GetWeaponStatsForItemTooltip(const WeaponModel* const w)
+{
+	ST::string result;
+
+	result += st_format_printf("\n" + inventoryStrings[INV_COOLNESS], static_cast<int32_t>(w->getCoolness()));
+	if (w->ubReadyTime > 0) {
+		result += st_format_printf("\n" + inventoryStrings[INV_READY_TIME], static_cast<int32_t>(w->ubReadyTime));
+	}
+	if (w->ubShotsPerBurst > 0) {
+		result += st_format_printf("\n" + inventoryStrings[INV_BURST_PENALTY], static_cast<int32_t>(w->ubBurstPenalty));
 	}
 
 	return result;
