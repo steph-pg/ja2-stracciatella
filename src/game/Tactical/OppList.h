@@ -103,6 +103,9 @@ void DebugSoldierPage2(void);
 void DebugSoldierPage3(void);
 void DebugSoldierPage4(void);
 
+// how many points of hearing an extended ear in the given condition adds, one point per tile
+INT8 ExtendedEarHearingBonus(INT8 bStatus);
+
 UINT8 MovementNoise( SOLDIERTYPE const *pSoldier );
 UINT8 DoorOpeningNoise( SOLDIERTYPE *pSoldier );
 void MakeNoise(SOLDIERTYPE* noise_maker, INT16 sGridNo, INT8 bLevel, UINT8 ubVolume, NoiseKind);

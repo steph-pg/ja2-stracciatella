@@ -55,7 +55,6 @@
 #define BASIC_DEPRECIATE_CHANCE	15
 
 #define NORMAL_RANGE		90 // # world units considered an 'avg' shot
-#define MIN_SCOPE_RANGE	60 // # world units after which scope's useful
 
 #define MIN_TANK_RANGE		120 // range at which tank starts really having trouble aiming
 
@@ -69,9 +68,6 @@
 #define HTH_MODE_PUNCH		1
 #define HTH_MODE_STAB		2
 #define HTH_MODE_STEAL		3
-
-// JA2 GOLD: for weapons and attachments, give penalties only for status values below 85
-#define WEAPON_STATUS_MOD( x )	( (x) >= 85 ? 100 : (((x) * 100) / 85) )
 
 BOOLEAN gfNextFireJam      = FALSE;
 BOOLEAN gfNextShotKills    = FALSE;
@@ -100,6 +96,25 @@ UINT16 GunRange(OBJECTTYPE const& o)
 		range -= SILENCER_RANGE_PENALTY;
 	}
 	return range;
+}
+
+
+INT32 LaserScopeAimBonus(INT8 const bScopeStatus)
+{
+	INT32 const status = WEAPON_STATUS_MOD(bScopeStatus);
+
+	// laser scope isn't of much use in high light levels; add something for that
+	if (status > 50) return LASERSCOPE_BONUS * (status - 50) / 50;
+
+	// laser scope in bad condition creates aim penalty!
+	return -LASERSCOPE_BONUS * (50 - status) / 50;
+}
+
+
+INT32 BipodAimBonus(INT32 const iProneAimBonus, INT8 const bBipodStatus)
+{
+	// extra bonus to hit for a bipod, up to half the prone bonus itself
+	return (iProneAimBonus * WEAPON_STATUS_MOD(bBipodStatus) / 100) / 2;
 }
 
 
@@ -2069,8 +2084,7 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 			bAttachPos = FindAttachment( pInHand, BIPOD );
 			if (bAttachPos != ITEM_NOT_FOUND)
 			{
-				// extra bonus to hit for a bipod, up to half the prone bonus itself
-				iBonus += (iBonus * WEAPON_STATUS_MOD(pInHand->bAttachStatus[bAttachPos]) / 100) / 2;
+				iBonus += BipodAimBonus(iBonus, pInHand->bAttachStatus[bAttachPos]);
 			}
 			iChance += iBonus;
 		}
@@ -2269,27 +2283,11 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 		if (usInHand == ROCKET_RIFLE || usInHand == AUTO_ROCKET_RIFLE ||
 			bAttachPos != NO_SLOT) // rocket rifle has one built in
 		{
-			INT8 bLaserStatus;
+			INT8 const bLaserStatus =
+				usInHand == ROCKET_RIFLE || usInHand == AUTO_ROCKET_RIFLE ?
+				pInHand->bGunStatus : pInHand->bAttachStatus[ bAttachPos ];
 
-			if ( usInHand == ROCKET_RIFLE || usInHand == AUTO_ROCKET_RIFLE )
-			{
-				bLaserStatus = WEAPON_STATUS_MOD(pInHand->bGunStatus);
-			}
-			else
-			{
-				bLaserStatus = WEAPON_STATUS_MOD(pInHand->bAttachStatus[ bAttachPos ]);
-			}
-
-			// laser scope isn't of much use in high light levels; add something for that
-			if (bLaserStatus > 50)
-			{
-				iScopeBonus = LASERSCOPE_BONUS * (bLaserStatus - 50) / 50;
-			}
-			else
-			{
-				// laser scope in bad condition creates aim penalty!
-				iScopeBonus = - LASERSCOPE_BONUS * (50 - bLaserStatus) / 50;
-			}
+			iScopeBonus = LaserScopeAimBonus(bLaserStatus);
 
 			iChance += iScopeBonus;
 

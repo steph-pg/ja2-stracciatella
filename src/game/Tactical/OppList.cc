@@ -1090,6 +1090,14 @@ void TurnOffTeamsMuzzleFlashes( UINT8 ubTeam )
 }
 
 
+INT8 ExtendedEarHearingBonus(INT8 const bStatus)
+{
+	// one point of hearing carries a noise one more tile, so at 81-100% the ear
+	// adds +5 tiles, at 61-80% +4, at 41-60% +3, and so on
+	return bStatus / 20 + 1;
+}
+
+
 static INT8 DecideHearing(const SOLDIERTYPE* pSoldier)
 {
 	// calculate the hearing value for the merc...
@@ -1119,8 +1127,7 @@ static INT8 DecideHearing(const SOLDIERTYPE* pSoldier)
 	bSlot = FindObj( pSoldier, EXTENDEDEAR );
 	if ( bSlot == HEAD1POS || bSlot == HEAD2POS)
 	{
-		// at 81-100% adds +5, at 61-80% adds +4, at 41-60% adds +3, etc.
-		bHearing += pSoldier->inv[bSlot].bStatus[0] / 20 + 1;
+		bHearing += ExtendedEarHearingBonus(pSoldier->inv[bSlot].bStatus[0]);
 	}
 
 	// adjust for dark conditions

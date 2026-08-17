@@ -31,6 +31,12 @@ struct CalibreModel;
 // short range at which being prone provides to hit penalty when shooting standing people
 #define MIN_PRONE_RANGE				50
 
+// # world units after which a sniper scope is useful
+#define MIN_SCOPE_RANGE				60
+
+// JA2 GOLD: for weapons and attachments, give penalties only for status values below 85
+#define WEAPON_STATUS_MOD( x )	( (x) >= 85 ? 100 : (((x) * 100) / 85) )
+
 // can't miss at this range?
 #define POINT_BLANK_RANGE				16
 
@@ -175,6 +181,11 @@ void DishoutQueenSwipeDamage( SOLDIERTYPE *pQueenSoldier );
 INT32 HTHImpact(const SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT32 iHitBy, BOOLEAN fBladeAttack);
 
 UINT16 GunRange(OBJECTTYPE const&);
+
+// chance-to-hit bonus of a laser scope in the given condition; negative for a scope in bad shape
+INT32 LaserScopeAimBonus(INT8 bScopeStatus);
+// extra chance-to-hit a bipod in the given condition adds to a prone aim bonus
+INT32 BipodAimBonus(INT32 iProneAimBonus, INT8 bBipodStatus);
 
 extern BOOLEAN gfNextFireJam;
 extern BOOLEAN gfNextShotKills;

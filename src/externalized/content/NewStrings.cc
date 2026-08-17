@@ -1,17 +1,22 @@
 #include "NewStrings.h"
 
+#include "ArmourModel.h"
 #include "Cheats.h"
+#include "ExplosiveModel.h"
 #include "GameInstance.h"
 #include "Drugs_And_Alcohol.h"
 #include "Items.h"
 #include "MercProfile.h"
 #include "Morale.h"
+#include "OppList.h"
 #include "SkillCheck.h"
 #include "Soldier_Control.h"
 #include "Soldier_Profile.h"
 #include "Strategic_Town_Loyalty.h"
 #include "Text.h"
 #include "WeaponModels.h"
+#include "Weapons.h"
+#include "WorldDef.h"
 
 #define demarcationStrings                                  (g_tooltipsRes->demarcationStrings)
 #define booleanStrings                                      (g_tooltipsRes->booleanStrings)
@@ -147,6 +152,15 @@ enum
 	INV_COOLNESS,
 	INV_READY_TIME,
 	INV_BURST_PENALTY,
+	INV_NOISE,
+	INV_BLAST_DAMAGE,
+	INV_BREATH_DAMAGE,
+	INV_PROTECTION,
+	INV_EXPLOSIVES_PROTECTION,
+	INV_USEFUL_BEYOND,
+	INV_AIM_BONUS,
+	INV_PRONE_AIM_BONUS,
+	INV_HEARING,
 };
 
 enum
@@ -870,12 +884,13 @@ const ST::string GetModifiersForDialogue(SOLDIERTYPE* const playerChar, SOLDIERT
 const ST::string GetItemStatsForTooltip(const OBJECTTYPE& obj)
 {
 	const ItemModel* const item = GCM->getItem(obj.usItem);
+	const int8_t status = obj.bStatus[0];
 	ST::string result;
 
 	// the condition of the first object of a stack, the one the slot's status bar shows;
 	// ammunition has a round count instead of a condition
 	if (!item->isAmmo()) {
-		result += st_format_printf("\n" + inventoryStrings[INV_STATUS], static_cast<int32_t>(obj.bStatus[0]));
+		result += st_format_printf("\n" + inventoryStrings[INV_STATUS], static_cast<int32_t>(status));
 	}
 
 	if (const WeaponModel* const w = item->asWeapon()) {
@@ -884,6 +899,39 @@ const ST::string GetItemStatsForTooltip(const OBJECTTYPE& obj)
 		if (w->ubShotsPerBurst > 0) {
 			result += st_format_printf("\n" + inventoryStrings[INV_BURST_PENALTY], static_cast<int32_t>(w->ubBurstPenalty));
 		}
+	}
+
+	if (const ExplosiveModel* const e = item->asExplosive()) {
+		result += st_format_printf("\n" + inventoryStrings[INV_NOISE], static_cast<int32_t>(e->getNoise()));
+		if (const ExplosiveBlastEffect* const blast = e->getBlastEffect()) {
+			result += st_format_printf("\n" + inventoryStrings[INV_BLAST_DAMAGE], static_cast<int32_t>(blast->damage));
+		}
+		if (const ExplosiveStunEffect* const stun = e->getStunEffect()) {
+			result += st_format_printf("\n" + inventoryStrings[INV_BREATH_DAMAGE], static_cast<int32_t>(stun->breathDamage));
+		}
+	}
+
+	if (const ArmourModel* const a = item->asArmour()) {
+		result += st_format_printf("\n" + inventoryStrings[INV_PROTECTION], static_cast<int32_t>(a->getProtection()));
+		result += st_format_printf("\n" + inventoryStrings[INV_EXPLOSIVES_PROTECTION], static_cast<int32_t>(a->getExplosivesProtection()));
+	}
+
+	// attachments carrying their effect in the code instead of in their item data
+	switch (obj.usItem) {
+		case SNIPERSCOPE:
+			result += st_format_printf("\n" + inventoryStrings[INV_USEFUL_BEYOND], MIN_SCOPE_RANGE / CELL_X_SIZE);
+			break;
+		case LASERSCOPE:
+			result += st_format_printf("\n" + inventoryStrings[INV_AIM_BONUS], LaserScopeAimBonus(status));
+			break;
+		case BIPOD:
+			result += st_format_printf("\n" + inventoryStrings[INV_PRONE_AIM_BONUS], BipodAimBonus(AIM_BONUS_PRONE, status));
+			break;
+		case EXTENDEDEAR:
+			result += st_format_printf("\n" + inventoryStrings[INV_HEARING], static_cast<int32_t>(ExtendedEarHearingBonus(status)));
+			break;
+		default:
+			break;
 	}
 
 	return result;

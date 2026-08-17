@@ -132,7 +132,16 @@
         "Status: %d%%",
         "Coolness: %d",
         "Ready Time: %d AP",
-        "Burst Penalty: %d%%"
+        "Burst Penalty: %d%%",
+        "Noise: %d",
+        "Blast Damage: %d",
+        "Breath Damage: %d",
+        "Protection: %d",
+        "Explosives Protection: %d",
+        "Useful Beyond: %d tiles",
+        "Aim Bonus: %+d%%",
+        "Prone Aim Bonus: up to %+d%%",
+        "Hearing: %+d tiles"
     ],
     "locationStrings": [
         "Underground: %s",
