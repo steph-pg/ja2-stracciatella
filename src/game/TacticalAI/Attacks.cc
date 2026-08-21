@@ -354,6 +354,49 @@ static BOOLEAN CloseEnoughForGrenadeToss(INT16 sGridNo, INT16 sGridNo2)
 static INT32 EstimateThrowDamage(SOLDIERTYPE* pSoldier, UINT8 ubItemPos, SOLDIERTYPE* pOpponent, INT16 sGridno);
 
 
+// opponents standing this close to each other count as bunched up, i.e. close
+// enough that one explosive stands a chance of catching more than one of them
+#define BUNCHED_UP_RADIUS	2
+
+// a rocket fired at someone this close is as likely to fly straight past them
+#define MIN_LAW_RANGE		20
+
+
+// How willing is this soldier to spend a tossed explosive on a target with
+// ubTargetsBunched opponents around it (the target included)? Grenades,
+// shells and rockets are scarce, so the crowd has to be worth it - except for
+// elites, who will happily spend one on a lone merc.
+static UINT8 ChanceToTossAtBunch(const SOLDIERTYPE* pSoldier, UINT16 usInHand, UINT8 ubTargetsBunched)
+{
+	BOOLEAN const fElite = pSoldier->ubSoldierClass == SOLDIER_CLASS_ELITE ||
+				pSoldier->ubSoldierClass == SOLDIER_CLASS_ELITE_MILITIA;
+
+	UINT8 ubChance;
+	switch (ubTargetsBunched)
+	{
+		case 0:  return 0;	// nobody worth hitting there
+		case 1:  ubChance = fElite ? 75 : 20; break;
+		case 2:  ubChance = fElite ? 95 : 60; break;
+		case 3:  ubChance = fElite ? 100 : 85; break;
+		default: ubChance = 100; break;
+	}
+
+	// the greener the troops, the longer they hang on to their explosives
+	if (SoldierDifficultyLevel(pSoldier) < 2)
+	{
+		ubChance = ubChance * 2 / 3;
+	}
+
+	// mortar shells and rockets are far scarcer than a grenade
+	if (usInHand == MORTAR || usInHand == ROCKET_LAUNCHER)
+	{
+		ubChance /= 2;
+	}
+
+	return ubChance;
+}
+
+
 static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 {
 	// September 9, 1998: added code for LAWs (CJC)
@@ -570,31 +613,12 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 		ubOpponentCnt++;
 	}
 
-	// this is try to minimize enemies wasting their (limited) toss attacks, with the exception of break lights
-	if (usGrenade != BREAK_LIGHT)
-	{
-		switch( ubDiff )
-		{
-			case 0:
-			case 1:
-				// they won't use them until they have 2+ opponents as long as half life left
-				if ((ubOpponentCnt < 2) && (pSoldier->bLife > (pSoldier->bLifeMax / 2)))
-				{
-					return;
-				}
-				break;
-			case 2:
-				// they won't use them until they have 2+ opponents as long as 3/4 life left
-				if ((ubOpponentCnt < 2) && (pSoldier->bLife > (pSoldier->bLifeMax / 4) * 3 ))
-				{
-					return;
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
+	// Enemies used to hold on to their explosives until they were hurt, which meant
+	// the AI threw when it was losing rather than when throwing paid off. What decides
+	// it now is how tightly the mercs are standing together - see ChanceToTossAtBunch.
+	// Roll the willingness once here rather than per target, so a soldier who is not
+	// in the mood does not get a fresh chance at every opponent they look at.
+	UINT8 const ubTossRoll = (UINT8) PreRandom(100);
 
 	InitAttackType(pBestThrow);     // set all structure fields to defaults
 
@@ -603,6 +627,30 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 	// while avoiding one's friends
 	for (UINT8 ubLoop = 0; ubLoop < ubOpponentCnt; ++ubLoop)
 	{
+		// How bunched up is this target? Count the opponents we know of that stand
+		// close enough to them to share a blast, the target included. Only the ones on
+		// the same level, since an explosion does not carry between roof and ground.
+		UINT8 ubTargetsBunched = 0;
+		for (ubLoop2 = 0; ubLoop2 < ubOpponentCnt; ubLoop2++)
+		{
+			if (opponents[ubLoop2]->bLife < OKLIFE)
+			{
+				continue;          // not worth an explosive
+			}
+			if ((bOpponentLevel[ubLoop2] == bOpponentLevel[ubLoop]) &&
+				(PythSpacesAway(sOpponentTile[ubLoop2], sOpponentTile[ubLoop]) <= BUNCHED_UP_RADIUS))
+			{
+				ubTargetsBunched++;
+			}
+		}
+
+		// break lights are cheap and thrown for the light, not the damage
+		if ((usGrenade != BREAK_LIGHT) &&
+			(ubTossRoll >= ChanceToTossAtBunch(pSoldier, usInHand, ubTargetsBunched)))
+		{
+			continue;          // next opponent
+		}
+
 		// search all tiles within 2 squares of this opponent
 		constexpr INT8 ubSearchRange = MAX_TOSS_SEARCH_DIST;
 
@@ -633,6 +681,12 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 				if ( PythSpacesAway( pSoldier->sGridNo, sGridNo ) > iTossRange )
 				{
 					// can't throw there!
+					continue;
+				}
+
+				if ( (usInHand == ROCKET_LAUNCHER) && (PythSpacesAway( pSoldier->sGridNo, sGridNo ) < MIN_LAW_RANGE) )
+				{
+					// too close to bother with a rocket
 					continue;
 				}
 
@@ -820,13 +874,9 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 					}
 				}
 
-				// this is try to minimize enemies wasting their (few) mortar shells or LAWs
-				// they won't use them on less than 2 targets as long as half life left
-				if ((usInHand == MORTAR || usInHand == ROCKET_LAUNCHER) && (ubOppsInRange < 2) &&
-					(pSoldier->bLife > (pSoldier->bLifeMax / 2)))
-				{
-					continue;              // next gridno
-				}
+				// mortar shells and LAWs are scarce, but what makes them worth spending is
+				// a bunch of mercs to spend them on, not the state of our own health -
+				// ChanceToTossAtBunch has already had its say on that.
 
 				// calculate the maximum possible aiming time
 				ubMaxPossibleAimTime = std::min(AP_MAX_AIM_ATTACK,pSoldier->bActionPoints - ubMinAPcost);
