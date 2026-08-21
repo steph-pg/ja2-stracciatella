@@ -62,6 +62,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	always_show_cursor_in_tactical = gp.getOptionalBool("always_show_cursor_in_tactical", false);
 	show_hit_chance = gp.getOptionalBool("show_hit_chance", false);
+	show_ap_above_head = gp.getOptionalBool("show_ap_above_head", false);
 	website_loading_time_scale = gp.getOptionalDouble("website_loading_time_scale", 1.0);
 	diagonally_interactable_doors = gp.getOptionalBool("diagonally_interactable_doors", false);
 

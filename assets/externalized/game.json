@@ -175,6 +175,10 @@
   //  vanilla setting: false
   "show_hit_chance": false,
 
+  //  Show a soldier's remaining action points above their nameplate, while it is our turn in combat
+  //  vanilla setting: false
+  "show_ap_above_head": false,
+
   //  Scales the loading time of websites on the laptop. Lower value means faster loading. Setting this to 0.0 removes the loading entirely.
   //  vanilla setting: 1.0
   "website_loading_time_scale": 1.0,

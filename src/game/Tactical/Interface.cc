@@ -67,6 +67,10 @@
 #define UPARROW_Y_OFFSET					-30
 #define DOWNARROW_Y_OFFSET					-10
 
+// Action point counter above a soldier's nameplate: enough points left to act, and nearly spent
+#define AP_ABOVE_HEAD_PLENTY					10
+#define AP_ABOVE_HEAD_LOW					4
+
 #define BUTTON_PANEL_WIDTH					78
 #define BUTTON_PANEL_HEIGHT					76
 
@@ -1068,6 +1072,22 @@ void DrawSelectedUIAboveGuy(SOLDIERTYPE& s)
 			RegisterBackgroundRectSingleFilled(sXPos, sYPos, 34, 11);
 			TILE_ELEMENT const& TileElem = gTileDatabase[usGraphicToUse];
 			BltVideoObject(FRAME_BUFFER, TileElem.hTileSurface, TileElem.usRegionIndex, sXPos, sYPos);
+
+			// With show_ap_above_head, write the action points left of the bars. Only for our own
+			// soldiers, and only while our team is acting - the number means nothing otherwise.
+			if (gamepolicy(show_ap_above_head) &&
+				s.bTeam == OUR_TEAM &&
+				gTacticalStatus.uiFlags & INCOMBAT &&
+				gTacticalStatus.ubCurrentTeam == OUR_TEAM)
+			{
+				ST::string const ap = ST::format("{}", static_cast<int>(s.bActionPoints));
+				UINT8 const colour =
+					s.bActionPoints > AP_ABOVE_HEAD_PLENTY ? FONT_MCOLOR_LTGRAY :
+					s.bActionPoints > AP_ABOVE_HEAD_LOW    ? FONT_YELLOW :
+					FONT_MCOLOR_DKRED;
+				SetFontAttributes(TINYFONT1, colour);
+				GDirtyPrint(sXPos - 2 - StringPixLength(ap, TINYFONT1), sYPos + 2, ap);
+			}
 
 			// Draw life, breath
 			if (&s == sel)
