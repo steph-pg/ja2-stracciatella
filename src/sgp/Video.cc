@@ -452,7 +452,12 @@ void RefreshScreen(void)
 		void operator+=(SDL_Rect const& r) { SDL_GetRectUnion(this, &r, this); }
 	} ScreenTextureUpdateRect{ MouseBackground };
 
-	if (gfForceFullScreenRefresh || guiDirtyRegionCount > 0 || guiDirtyRegionExCount > 0)
+	// A pending scroll has to be applied even when nothing else dirtied the screen. The
+	// increments accumulate until they are consumed, so skipping a frame here does not lose
+	// the scroll, it defers it, and the view then jumps by everything that piled up. Parts
+	// of the tactical interface redraw every frame and keep the screen dirty, which is why a
+	// completely still screen is rare enough for this to go unnoticed.
+	if (gfForceFullScreenRefresh || guiDirtyRegionCount > 0 || guiDirtyRegionExCount > 0 || scrolling)
 	{
 		if (gfForceFullScreenRefresh)
 		{
@@ -492,8 +497,10 @@ void RefreshScreen(void)
 				gsVIEWPORT_END_X - gsVIEWPORT_START_X,
 				gsVIEWPORT_WINDOW_END_Y - gsVIEWPORT_WINDOW_START_Y };
 		}
-		gfIgnoreScrollDueToCenterAdjust = FALSE;
 	}
+
+	// the guard set by the last re-centering only covers the frame right after it
+	gfIgnoreScrollDueToCenterAdjust = FALSE;
 
 	auto const cursorPos{ GetCursorPos() };
 	SDL_Rect src;
