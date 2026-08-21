@@ -144,7 +144,7 @@ INT32 GetSkillCheckPenaltyForFatigue( const SOLDIERTYPE *pSoldier, INT32 iSkill 
 	return( ( (iSkill * GetPenaltyForFatigue( pSoldier ) ) / 100) / 2 );
 }
 
-INT32 SkillCheck( SOLDIERTYPE * pSoldier, INT8 bReason, INT8 bChanceMod )
+INT32 SkillCheck( SOLDIERTYPE * pSoldier, INT8 bReason, INT8 bChanceMod, bool * pfImpossible )
 {
 	INT32   iSkill;
 	INT32   iChance;
@@ -338,6 +338,13 @@ INT32 SkillCheck( SOLDIERTYPE * pSoldier, INT8 bReason, INT8 bChanceMod )
 	else if (iChance < 0)
 	{
 		iChance = 0;
+	}
+
+	if (pfImpossible)
+	{
+		// no chance at all means repeating the attempt is pointless; this is the same
+		// condition that eventually produces the 'I can't do this' quote below
+		*pfImpossible = (iChance == 0);
 	}
 
 	iRoll = PreRandom( 100 );

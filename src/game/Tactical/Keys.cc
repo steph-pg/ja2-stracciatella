@@ -244,6 +244,8 @@ BOOLEAN AttemptToCrowbarLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 		return( FALSE );
 	}
 
+	bool fImpossible = false;
+
 	// possibly damage crowbar
 	int bStress = std::min(int(EffectiveStrength(pSoldier)), LockTable[pDoor->ubLockID].ubSmashDifficulty + 30);
 	// reduce crowbar status by random % between 0 and 5%
@@ -254,12 +256,12 @@ BOOLEAN AttemptToCrowbarLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	if ( LockTable[pDoor->ubLockID].ubSmashDifficulty == OPENING_NOT_POSSIBLE )
 	{
 		// do this to get 'can't do this' messages
-		iResult = SkillCheck( pSoldier, OPEN_WITH_CROWBAR, (INT8) ( -100 ) );
+		iResult = SkillCheck( pSoldier, OPEN_WITH_CROWBAR, (INT8) ( -100 ), &fImpossible );
 		iResult = -100;
 	}
 	else
 	{
-		iResult = SkillCheck( pSoldier, OPEN_WITH_CROWBAR, (INT8) ( - (INT8) (LockTable[pDoor->ubLockID].ubSmashDifficulty - pDoor->bLockDamage) ) );
+		iResult = SkillCheck( pSoldier, OPEN_WITH_CROWBAR, (INT8) ( - (INT8) (LockTable[pDoor->ubLockID].ubSmashDifficulty - pDoor->bLockDamage) ), &fImpossible );
 	}
 
 	if (iResult > 0)
@@ -277,18 +279,22 @@ BOOLEAN AttemptToCrowbarLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	}
 	else
 	{
+		// a lock we have no chance against teaches us nothing, however often we try it
 		if (iResult > -10)
 		{
-			// STR GAIN - Damaged a lock by prying
-			StatChange(*pSoldier, STRAMT, 5, FROM_SUCCESS);
+			if (!fImpossible)
+			{
+				// STR GAIN - Damaged a lock by prying
+				StatChange(*pSoldier, STRAMT, 5, FROM_FAILURE);
+			}
 
 			// we came close... so do some damage to the lock
 			pDoor->bLockDamage += (INT8) (10 + iResult);
 		}
-		else if ( iResult > -40 && pSoldier->sGridNo != pSoldier->sSkillCheckGridNo )
+		else if ( iResult > -40 && pSoldier->sGridNo != pSoldier->sSkillCheckGridNo && !fImpossible )
 		{
 			// give token point for effort :-)
-			StatChange(*pSoldier, STRAMT, 1, FROM_SUCCESS);
+			StatChange(*pSoldier, STRAMT, 1, FROM_FAILURE);
 		}
 
 		return( FALSE );
@@ -301,6 +307,7 @@ BOOLEAN AttemptToSmashDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 {
 	INT32 iResult;
 	LOCK  *pLock;
+	bool  fImpossible = false;
 
 	// generate a noise for thumping on the door
 	MakeNoise(pSoldier, pSoldier->sGridNo, pSoldier->bLevel, SMASHING_DOOR_VOLUME, NOISE_DOOR_SMASHING);
@@ -331,12 +338,12 @@ BOOLEAN AttemptToSmashDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	if ( pLock->ubSmashDifficulty == OPENING_NOT_POSSIBLE )
 	{
 		// do this to get 'can't do this' messages
-		iResult = SkillCheck( pSoldier, SMASH_DOOR_CHECK, (INT8) ( -100 ) );
+		iResult = SkillCheck( pSoldier, SMASH_DOOR_CHECK, (INT8) ( -100 ), &fImpossible );
 		iResult = -100;
 	}
 	else
 	{
-		iResult = SkillCheck( pSoldier, SMASH_DOOR_CHECK, (INT8) ( - (INT8) (LockTable[pDoor->ubLockID].ubSmashDifficulty - pDoor->bLockDamage) ) );
+		iResult = SkillCheck( pSoldier, SMASH_DOOR_CHECK, (INT8) ( - (INT8) (LockTable[pDoor->ubLockID].ubSmashDifficulty - pDoor->bLockDamage) ), &fImpossible );
 	}
 	if (iResult > 0)
 	{
@@ -354,18 +361,22 @@ BOOLEAN AttemptToSmashDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	}
 	else
 	{
+		// a lock we have no chance against teaches us nothing, however often we try it
 		if (iResult > -10)
 		{
-			// STR GAIN - Damaged a lock by prying
-			StatChange(*pSoldier, STRAMT, 5, FROM_SUCCESS);
+			if (!fImpossible)
+			{
+				// STR GAIN - Damaged a lock by prying
+				StatChange(*pSoldier, STRAMT, 5, FROM_FAILURE);
+			}
 
 			// we came close... so do some damage to the lock
 			pDoor->bLockDamage += (INT8) (10 + iResult);
 		}
-		else if ( iResult > -40 && pSoldier->sGridNo != pSoldier->sSkillCheckGridNo )
+		else if ( iResult > -40 && pSoldier->sGridNo != pSoldier->sSkillCheckGridNo && !fImpossible )
 		{
 			// give token point for effort :-)
-			StatChange(*pSoldier, STRAMT, 1, FROM_SUCCESS);
+			StatChange(*pSoldier, STRAMT, 1, FROM_FAILURE);
 		}
 		return( FALSE );
 	}

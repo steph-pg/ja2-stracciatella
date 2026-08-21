@@ -6,7 +6,9 @@
 
 void ReducePointsForFatigue(const SOLDIERTYPE* s, UINT16* pusPoints);
 extern INT32 GetSkillCheckPenaltyForFatigue( const SOLDIERTYPE *pSoldier, INT32 iSkill );
-extern INT32 SkillCheck( SOLDIERTYPE *pSoldier, INT8 bReason, INT8 bDifficulty );
+// If pfImpossible is given, it is set to true when the chance of success was 0,
+// i.e. this soldier can never pass this check, no matter how often they try.
+extern INT32 SkillCheck( SOLDIERTYPE *pSoldier, INT8 bReason, INT8 bDifficulty, bool *pfImpossible = nullptr );
 extern INT8 CalcTrapDetectLevel( const SOLDIERTYPE *pSoldier, BOOLEAN fExamining );
 
 
