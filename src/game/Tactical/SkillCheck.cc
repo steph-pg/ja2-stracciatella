@@ -9,6 +9,8 @@
 #include "Morale.h"
 #include "Drugs_And_Alcohol.h"
 #include "StrategicMap.h"
+#include "ContentManager.h"
+#include "GameInstance.h"
 #include "policy/GamePolicy.h"
 
 
