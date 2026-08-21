@@ -361,6 +361,32 @@ static INT32 EstimateThrowDamage(SOLDIERTYPE* pSoldier, UINT8 ubItemPos, SOLDIER
 // a rocket fired at someone this close is as likely to fly straight past them
 #define MIN_LAW_RANGE		20
 
+// a rocket is for a target a bullet cannot reach; if a regular gun has at least
+// this much chance of getting through the cover, use the gun and keep the rocket
+#define MAX_GUN_CTGT_FOR_LAW	30
+
+
+// The plain gun this soldier could shoot with instead of spending a rocket, so we
+// can ask how much good a bullet would do. Launchers are no help answering that.
+static UINT16 FindAIGunForCoverCheck(const SOLDIERTYPE* pSoldier)
+{
+	for (INT8 bSlot = HANDPOS; bSlot < NUM_INV_SLOTS; ++bSlot)
+	{
+		UINT16 const usItem = pSoldier->inv[bSlot].usItem;
+
+		if (usItem == NOTHING || EXPLOSIVE_GUN(usItem))
+		{
+			continue;
+		}
+		if (GCM->getItem(usItem)->getItemClass() == IC_GUN)
+		{
+			return usItem;
+		}
+	}
+
+	return NOTHING;
+}
+
 
 // How willing is this soldier to spend a tossed explosive on a target with
 // ubTargetsBunched opponents around it (the target included)? Grenades,
@@ -404,6 +430,7 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 	INT32 iOppThreatValue[MAXMERCS];
 	INT16 sEndGridNo, sFriendTile[MAXMERCS], sOpponentTile[MAXMERCS];
 	INT8  bFriendLevel[MAXMERCS], bOpponentLevel[MAXMERCS];
+	BOOLEAN fOpponentHeardOnly[MAXMERCS];
 	UINT8 ubFriendCnt = 0;
 	UINT8 ubOpponentCnt = 0;
 	SOLDIERTYPE* opponents[MAXMERCS];
@@ -607,6 +634,9 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 		// also remember who he is (which soldier #)
 		opponents[ubOpponentCnt] = pOpponent;
 
+		// a noise is all we have on this one - no eyes on them at all
+		fOpponentHeardOnly[ubOpponentCnt] = (bPersOL == HEARD_LAST_TURN);
+
 		// remember how relatively dangerous this opponent is (ignore my cover)
 		iOppThreatValue[ubOpponentCnt] = CalcManThreatValue(pOpponent,pSoldier->sGridNo,FALSE,pSoldier);
 
@@ -644,11 +674,45 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 			}
 		}
 
-		// break lights are cheap and thrown for the light, not the damage
-		if ((usGrenade != BREAK_LIGHT) &&
-			(ubTossRoll >= ChanceToTossAtBunch(pSoldier, usInHand, ubTargetsBunched)))
+		// break lights are cheap and thrown for the light, not for the damage
+		if (usGrenade != BREAK_LIGHT)
 		{
-			continue;          // next opponent
+			// Lobbing a grenade at a noise is worth it even against a lone merc: the
+			// throw is only allowed while the sound is fresh (see the HEARD_LAST_TURN
+			// cheat above), so waiting for a crowd would mean never throwing at all.
+			// Rockets and shells are too scarce to spend on a guess, though.
+			BOOLEAN const fThrowingAtNoise = fOpponentHeardOnly[ubLoop] &&
+						(usInHand != MORTAR) && (usInHand != ROCKET_LAUNCHER);
+
+			UINT8 const ubChance = ChanceToTossAtBunch(pSoldier, usInHand, ubTargetsBunched);
+
+			if (ubChance == 0 || (!fThrowingAtNoise && (ubTossRoll >= ubChance)))
+			{
+				continue;          // next opponent
+			}
+		}
+
+		// A rocket is what you reach for when a bullet will not do. If a plain gun
+		// stands a fair chance of getting through to this target, shoot them with
+		// that instead and keep the rocket for someone properly dug in.
+		if (usInHand == ROCKET_LAUNCHER)
+		{
+			UINT16 const usGun = FindAIGunForCoverCheck(pSoldier);
+
+			if (usGun != NOTHING)
+			{
+				UINT16 const usTrueWeapon = pSoldier->usAttackingWeapon;
+
+				pSoldier->usAttackingWeapon = usGun;
+				UINT8 const ubGunChanceToGetThrough = AISoldierToLocationChanceToGetThrough(
+							pSoldier, sOpponentTile[ubLoop], bOpponentLevel[ubLoop], 0);
+				pSoldier->usAttackingWeapon = usTrueWeapon;
+
+				if (ubGunChanceToGetThrough >= MAX_GUN_CTGT_FOR_LAW)
+				{
+					continue;          // next opponent, a bullet will do
+				}
+			}
 		}
 
 		// search all tiles within 2 squares of this opponent
