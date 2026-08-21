@@ -264,6 +264,9 @@ static void EditModeInit(void)
 
 	fHelpScreen = FALSE;
 
+	// the editor has its own bar at the bottom of the screen
+	g_ui.setBottomBarHidden(false);
+
 	gfEditMode = TRUE;
 	fNewMap = FALSE;
 

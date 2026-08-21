@@ -123,6 +123,7 @@ public:
 	SGPPoint              m_teamPanelPosition;              // offset position of the bottom bar
 	UINT16                m_teamPanelSlotsTotalWidth;       // total width of all team slots in the bottom team panel
 	UINT16                m_teamPanelWidth;                 // width of the entire team panel including slots and buttons
+	bool                  m_bottomBarHidden;                // the bottom bar is toggled off, the viewport covers the whole screen
 
 	UINT16                m_stdScreenOffsetX;             /** Offset of the standard (640x480) window */
 	UINT16                m_stdScreenOffsetY;             /** Offset of the standard (640x480) window */
@@ -134,6 +135,10 @@ public:
 
 	/** Set new screen size. Element positions should be recalculated after setting this. @see UILayout::recalculatePositions */
 	void setScreenSize(UINT16 width, UINT16 height);
+
+	/** Hide or show the tactical bottom bar. The element positions are recalculated, so the
+	 *  viewport grows over the bar while it is hidden. */
+	void setBottomBarHidden(bool hidden);
 
 	/** Check if the screen is bigger than original 640x480. */
 	bool isBigScreen() const;

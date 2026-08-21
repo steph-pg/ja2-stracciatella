@@ -22,7 +22,7 @@ UILayout g_ui(MIN_INTERFACE_WIDTH, MIN_INTERFACE_HEIGHT);
 /** Constructor. */
 UILayout::UILayout(UINT16 screenWidth, UINT16 screenHeight)
 	:m_mapScreenWidth(MIN_INTERFACE_WIDTH), m_mapScreenHeight(MIN_INTERFACE_HEIGHT),
-	m_screenWidth(screenWidth), m_screenHeight(screenHeight)
+	m_screenWidth(screenWidth), m_screenHeight(screenHeight), m_bottomBarHidden(false)
 {
 }
 
@@ -36,6 +36,15 @@ void UILayout::setScreenSize(UINT16 width, UINT16 height)
 	}
 	m_screenWidth = width;
 	m_screenHeight = height;
+}
+
+
+void UILayout::setBottomBarHidden(bool hidden)
+{
+	if (m_bottomBarHidden == hidden) return;
+
+	m_bottomBarHidden = hidden;
+	recalculatePositions();
 }
 
 
@@ -116,16 +125,19 @@ void UILayout::recalculatePositions()
 	m_moneyButtonLoc.set(startX + 343, startInvY + 11);
 	m_MoneyButtonLocMap.set(m_stdScreenOffsetX + 174, m_stdScreenOffsetY + 115);
 
+	// the bottom bar can be toggled off, in which case the viewport gets the whole screen
+	UINT16 const bottomBarHeight  = m_bottomBarHidden ? 0 : TEAMPANEL_HEIGHT;
+
 	m_VIEWPORT_START_X            = 0;
 	m_VIEWPORT_START_Y            = 0;
 	m_VIEWPORT_WINDOW_START_Y     = 0;
 	m_VIEWPORT_END_X              = m_screenWidth;
-	m_VIEWPORT_END_Y              = m_screenHeight - 120;
-	m_VIEWPORT_WINDOW_END_Y       = m_screenHeight - 120;
+	m_VIEWPORT_END_Y              = m_screenHeight - bottomBarHeight;
+	m_VIEWPORT_WINDOW_END_Y       = m_screenHeight - bottomBarHeight;
 	m_tacticalMapCenterX          = (m_VIEWPORT_END_X - m_VIEWPORT_START_X) / 2;
 	m_tacticalMapCenterY          = (m_VIEWPORT_END_Y - m_VIEWPORT_START_Y) / 2;
 
-	m_worldClippingRect.set(0, 0, m_screenWidth, m_screenHeight - 120);
+	m_worldClippingRect.set(0, 0, m_screenWidth, m_screenHeight - bottomBarHeight);
 
 	m_contractPosition.set(       m_stdScreenOffsetX + 120, m_stdScreenOffsetY +  50);
 	m_attributePosition.set(      m_stdScreenOffsetX + 220, m_stdScreenOffsetY + 150);

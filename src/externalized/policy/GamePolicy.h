@@ -49,6 +49,7 @@ public:
 	int8_t enemy_weapon_minimal_status;   /**< Minimal status of the enemy weapon (0 - 100). */
 
 	bool gui_extras;                      /* graphical user interface cosmetic mod */
+	bool hide_bottom_bar;                 // tactical starts without the bottom bar, leaving the whole screen to the map; alt+` toggles it during play
 	bool informative_tooltips;            /* Reveal modifiers in hover boxes */
 	bool extra_attachments;               // allow more item attachments options
 	bool skip_sleep_explanation;          // skip annoying popups

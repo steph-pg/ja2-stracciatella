@@ -19,6 +19,7 @@
 #include "Points.h"
 #include "Interactive_Tiles.h"
 #include "Interface_Cursors.h"
+#include "Interface_Control.h"
 #include "Weapons.h"
 #include "Music_Control.h"
 #include "AI.h"
@@ -1897,6 +1898,15 @@ static void HandleModAlt(UINT32 const key, UIEventKind* const new_event)
 		{
 			UINT32 const vol = MusicGetVolume();
 			MusicSetVolume(vol > 20 ? vol - 20 : 0);
+			break;
+		}
+
+		case '`':
+		{
+			if (gamepolicy(isHotkeyEnabled(UI_Tactical, HKMOD_ALT, '`')))
+			{
+				ToggleTacticalBottomBar();
+			}
 			break;
 		}
 

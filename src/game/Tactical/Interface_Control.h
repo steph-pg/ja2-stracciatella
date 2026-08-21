@@ -19,6 +19,11 @@ bool AreWeInAUIMenu();
 
 void HandleTacticalPanelSwitch();
 
+// Hide or show the tactical bottom bar, giving its space to the viewport. The toggle is
+// deferred to the next HandleTacticalPanelSwitch(), so it is safe to call from a callback.
+void ToggleTacticalBottomBar();
+void SetTacticalBottomBarHidden(bool hide);
+
 bool InterfaceOKForMeanwhilePopup();
 
 extern BOOLEAN gfRerenderInterfaceFromHelpText;

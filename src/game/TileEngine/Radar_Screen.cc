@@ -192,6 +192,9 @@ void RenderRadarScreen()
 	// create / destroy squad list regions as nessacary
 	CreateDestroyMouseRegionsForSquadList();
 
+	// the radar map and the squad list live in the bottom bar, which the player can hide
+	if (g_ui.m_bottomBarHidden && guiCurrentScreen == GAME_SCREEN) return;
+
 	// check if we are allowed to do anything?
 	if (!fRenderRadarScreen)
 	{

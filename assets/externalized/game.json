@@ -13,6 +13,7 @@
   //  Press 'alt+r' to reload
   //  Press 'ctrl+q' to swap hand items
   //  Press 'shift+j' to climb through open window
+  //  Press 'alt+`' in tactical view to hide or show the bottom bar.
   "extra_hotkeys": true,
 
   //  Press d in realtime mode to manually start turn based mode.
@@ -132,6 +133,12 @@
   //  Progress Bars for the Mercs stats in tactical Mode.
   //  vanilla_setting: false
   "gui_extras": true,
+
+  //  Starts tactical view with the bottom bar (merc list, buttons, minimap and clock) hidden,
+  //  leaving the whole screen to the map. Press 'alt+`' to hide or show it during play; opening
+  //  a merc's inventory brings it back.
+  //  vanilla setting: false
+  "hide_bottom_bar": false,
 
   //  Displays modifiers in hover boxes revealing hidden mechanics.
   //  vanilla_setting: false

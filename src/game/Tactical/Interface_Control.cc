@@ -20,6 +20,7 @@
 #include "WorldMan.h"
 #include "Font_Control.h"
 #include "Render_Dirty.h"
+#include "Video.h"
 #include "Interface_Cursors.h"
 #include "Interface_Panels.h"
 #include "VObject_Blitters.h"
@@ -57,6 +58,7 @@ BOOLEAN    gfPausedTacticalRenderFlags          = FALSE;
 
 static bool         g_switch_panel      = false;
 static SOLDIERTYPE* g_new_panel_soldier = 0;
+static bool         g_toggle_bottom_bar = false;
 
 
 void SetNewPanel(SOLDIERTYPE* const s)
@@ -66,8 +68,40 @@ void SetNewPanel(SOLDIERTYPE* const s)
 }
 
 
+void ToggleTacticalBottomBar()
+{
+	// deferred, the panel must not be rebuilt from within a mouse or key callback
+	g_toggle_bottom_bar = true;
+}
+
+
+void SetTacticalBottomBarHidden(bool const hide)
+{
+	if (g_ui.m_bottomBarHidden == hide) return;
+
+	// the single merc panel needs its slots and buttons on screen, it always comes with the bar
+	if (hide && gsCurInterfacePanel != TEAM_PANEL) return;
+
+	// rebuild the panel around the new viewport size
+	ShutdownCurrentPanel();
+	g_ui.setBottomBarHidden(hide);
+	InitializeCurrentPanel();
+
+	// keep the scroll position inside the map now that the viewport is taller, and redraw all
+	SetRenderCenter(gsRenderCenterX, gsRenderCenterY);
+	fInterfacePanelDirty = DIRTYLEVEL2;
+	InvalidateScreen();
+}
+
+
 void HandleTacticalPanelSwitch()
 {
+	if (g_toggle_bottom_bar)
+	{
+		g_toggle_bottom_bar = false;
+		SetTacticalBottomBarHidden(!g_ui.m_bottomBarHidden);
+	}
+
 	if (!g_switch_panel) return;
 	g_switch_panel = false;
 
@@ -496,7 +530,8 @@ void RenderTopmostTacticalInterface()
 
 	if (gfInSectorExitMenu) RenderSectorExitMenu();
 
-	if (fRenderRadarScreen)
+	// the clock and the town name sit in the bottom bar, which the player can hide
+	if (fRenderRadarScreen && !g_ui.m_bottomBarHidden)
 	{
 		RenderClock();
 		RenderTownIDString();

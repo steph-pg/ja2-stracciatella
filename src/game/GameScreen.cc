@@ -142,7 +142,8 @@ void EnterTacticalScreen(void)
 		SetCurrentInterfacePanel(TEAM_PANEL);
 	}
 
-	if (!gfTacticalPlacementGUIActive) gRadarRegion.Enable();
+	// the radar map is part of the bottom bar, which the player can hide
+	if (!gfTacticalPlacementGUIActive && !g_ui.m_bottomBarHidden) gRadarRegion.Enable();
 	gViewportRegion.Enable();
 
 	// set default squad on sector entry

@@ -244,6 +244,9 @@ void InitializeCurrentPanel()
 	switch( gsCurInterfacePanel )
 	{
 		case SM_PANEL:
+			// the single merc panel needs its slots and buttons on screen, so it comes with the bar
+			g_ui.setBottomBarHidden(false);
+
 			// Set new viewport
 			gsVIEWPORT_WINDOW_END_Y = INV_INTERFACE_START_Y;
 
@@ -253,7 +256,8 @@ void InitializeCurrentPanel()
 			break;
 
 		case TEAM_PANEL:
-			gsVIEWPORT_WINDOW_END_Y = INTERFACE_START_Y;
+			// with the bar hidden the viewport reaches the bottom of the screen
+			gsVIEWPORT_WINDOW_END_Y = g_ui.m_bottomBarHidden ? SCREEN_HEIGHT : INTERFACE_START_Y;
 			// Render full
 			SetRenderFlags(RENDER_FLAG_FULL);
 			InitializeTEAMPanel();

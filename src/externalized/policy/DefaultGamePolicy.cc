@@ -43,6 +43,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	enemy_elite_maximum_level = gp.getOptionalInt("enemy_elite_maximum_level", 10);
 
 	gui_extras = gp.getOptionalBool("gui_extras", true);
+	hide_bottom_bar = gp.getOptionalBool("hide_bottom_bar");
 	informative_tooltips = gp.getOptionalBool("informative_tooltips", false);
 	extra_attachments = gp.getOptionalBool("extra_attachments");
 	skip_sleep_explanation = gp.getOptionalBool("skip_sleep_explanation");
@@ -138,6 +139,7 @@ bool DefaultGamePolicy::isHotkeyEnabled(UIMode mode, HotkeyModifier modifier, ui
 		{
 			switch(key)
 			{
+				case '`':         return extra_hotkeys;
 				case 'r':         return extra_hotkeys;
 			}
 		}

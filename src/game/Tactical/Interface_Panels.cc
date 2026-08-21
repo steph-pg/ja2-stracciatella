@@ -2275,6 +2275,33 @@ static void TMClickSecondHandInvCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iR
 static void TMClickSecondHandInvCallbackSecondary(MOUSE_REGION* pRegion, UINT32 iReason);
 
 
+/** Take the team panel's buttons, mouse regions and faces off screen, so that the viewport can
+ *  use the space the bottom bar would otherwise occupy. */
+static void HideTEAMPanelElements()
+{
+	for (UINT32 i = 0; i < NUM_TEAM_BUTTONS; ++i)
+	{
+		HideButton(iTEAMPanelButtons[i]);
+	}
+
+	gTEAM_PanelRegion.Disable();
+	gRadarRegion.Disable();
+
+	for (TeamPanelSlot& tp : gTeamPanel)
+	{
+		tp.face.Disable();
+		tp.enemy_indicator.Disable();
+		tp.bars.Disable();
+		tp.left_bars.Disable();
+		tp.first_hand.Disable();
+		tp.second_hand.Disable();
+	}
+
+	// nothing renders the panel now, so keep the faces from drawing over the map
+	SetAllAutoFacesInactive();
+}
+
+
 void InitializeTEAMPanel()
 {
 	// INit viewport region
@@ -2297,7 +2324,8 @@ void InitializeTEAMPanel()
 	guiTEAMObjects = AddVideoObjectFromFile(INTERFACEDIR "/gold_front.sti");
 	guiVEHINV      = AddVideoObjectFromFile(INTERFACEDIR "/inventor.sti");
 
-	FillEmptySpaceAtBottom();
+	// the empty space beside the bar is only visible while the bar is drawn
+	if (!g_ui.m_bottomBarHidden) FillEmptySpaceAtBottom();
 
 	// Create buttons
 	CreateTEAMPanelButtons();
@@ -2339,6 +2367,8 @@ void InitializeTEAMPanel()
 
 		dx += TM_INV_HAND_SEP;
 	}
+
+	if (g_ui.m_bottomBarHidden) HideTEAMPanelElements();
 }
 
 
@@ -2392,6 +2422,13 @@ static void UpdateTEAMPanel(void);
 
 void RenderTEAMPanel(DirtyLevel const dirty_level)
 {
+	if (g_ui.m_bottomBarHidden)
+	{
+		// nothing to draw, but the keyboard shortcuts test the state of the panel's buttons
+		UpdateTEAMPanel();
+		return;
+	}
+
 	if (dirty_level == DIRTYLEVEL2)
 	{
 		MarkAButtonDirty(iTEAMPanelButtons[TEAM_DONE_BUTTON]);
@@ -2647,14 +2684,18 @@ static void UpdateTEAMPanel(void)
 	{
 		EnableButton(iTEAMPanelButtons[CHANGE_SQUAD_BUTTON]);
 
-		for (TeamPanelSlot& i : gTeamPanel)
+		// while the bar is hidden its regions stay disabled, the map has that space
+		if (!g_ui.m_bottomBarHidden)
 		{
-			i.enemy_indicator.Enable();
-			i.first_hand.Enable();
-			i.second_hand.Enable();
-		}
+			for (TeamPanelSlot& i : gTeamPanel)
+			{
+				i.enemy_indicator.Enable();
+				i.first_hand.Enable();
+				i.second_hand.Enable();
+			}
 
-		gRadarRegion.Enable();
+			gRadarRegion.Enable();
+		}
 	}
 }
 

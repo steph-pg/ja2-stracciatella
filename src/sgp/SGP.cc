@@ -403,6 +403,8 @@ int main(int argc, char* argv[])
 
 		GCM = cm;
 
+		// the bottom bar may start hidden, which makes the tactical viewport taller
+		g_ui.m_bottomBarHidden = cm->getGamePolicy()->hide_bottom_bar;
 		g_ui.recalculatePositions();
 
 		SLOGD("Initializing Video Manager");
