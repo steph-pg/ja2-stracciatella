@@ -184,6 +184,17 @@
   //  vanilla setting: false
   "diagonally_interactable_doors": false,
 
+  //  A botched lock pick bends the picks, so every failed attempt wears the
+  //  locksmith kit down, the harder the lock the faster. A worn kit picks no
+  //  worse than a fresh one, it is simply spent: once the last point is gone
+  //  the kit is used up and disappears, so carrying spares is what keeps a
+  //  merc picking locks.
+  //  For this to mean anything, set "bRepairable": false on LOCKSMITHKIT in
+  //  items.json - a repairable kit can be topped back up by a mechanic and
+  //  is never really spent.
+  //  vanilla setting: false
+  "locksmith_kit_wear": false,
+
   //  IMP creation tweaks
   "imp": {
     //  IMP attribute point defaults:

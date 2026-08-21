@@ -9,6 +9,7 @@
 #include "Morale.h"
 #include "Drugs_And_Alcohol.h"
 #include "StrategicMap.h"
+#include "policy/GamePolicy.h"
 
 
 INT8 EffectiveStrength(const SOLDIERTYPE* s)
@@ -184,8 +185,10 @@ INT32 SkillCheck( SOLDIERTYPE * pSoldier, INT8 bReason, INT8 bChanceMod )
 				// this should never happen, but might as well check...
 				iSkill = 0;
 			}
-			else
+			else if (!gamepolicy( locksmith_kit_wear ))
 			{
+				// with kit wear on, a kit is either usable or used up - the picks
+				// that are left work as well as new ones, so status does not count
 				iSkill = iSkill * pSoldier->inv[bSlot].bStatus[0] / 100;
 			}
 			break;

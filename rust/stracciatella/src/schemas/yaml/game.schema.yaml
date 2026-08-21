@@ -539,6 +539,23 @@ properties:
 
       Vanilla setting: `false`
 
+  locksmith_kit_wear:
+    type: boolean
+    title: Locksmith kits wear out
+    description: |
+      A botched lock pick bends the picks, so every failed attempt wears the locksmith kit down by
+      a random amount. Tougher locks chew through it faster.
+
+      A worn kit is no worse at picking than a fresh one - the lockpicking skill check ignores the
+      kit's status while this is on - the kit is simply being spent. When a failed attempt takes
+      the last of it, the kit is used up and disappears from the merc's inventory, so carrying
+      spares is what keeps a merc picking locks.
+
+      For this to mean anything, `LOCKSMITHKIT` in `items.json` should have `bRepairable` set to
+      `false`, otherwise a mechanic can top the kit back up and it is never really spent.
+
+      Vanilla setting: `false`
+
   campaign:
     type: object
     properties:

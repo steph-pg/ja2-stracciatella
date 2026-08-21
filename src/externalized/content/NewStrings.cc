@@ -12,6 +12,7 @@
 #include "Strategic_Town_Loyalty.h"
 #include "Text.h"
 #include "WeaponModels.h"
+#include "policy/GamePolicy.h"
 
 #define demarcationStrings                                  (g_tooltipsRes->demarcationStrings)
 #define booleanStrings                                      (g_tooltipsRes->booleanStrings)
@@ -267,7 +268,10 @@ static void GetToolModifier(TOOLINFO& reqTool, SOLDIERTYPE* const soldier)
 		}
 	}
 	if (toolSlot != NO_SLOT) {
-		if (reqTool.name == LOCKSMITHKIT) {
+		// with kit wear on the status is not a modifier at all - the kit either
+		// works or is used up - so the chance is left alone, and the tooltip drops
+		// the line further down
+		if (reqTool.name == LOCKSMITHKIT && !gamepolicy(locksmith_kit_wear)) {
 			int32_t baseMod = reqTool.modifier;
 			reqTool.modifier = baseMod * soldier->inv[toolSlot].bStatus[0] / 100;
 			reqTool.coloredModifier = ColorCodeModifier("{d}%", reqTool.modifier - baseMod);
@@ -593,7 +597,9 @@ const ST::string GetModifiersForLockPicking(SOLDIERTYPE* const s, DOOR* const d)
 	result += st_format_printf("\n" + tab + tab + effectiveStatStrings[ATTR_DEXTERITY], ColorCodeModifier("{d}%", dextMod - wisdMod));
 	result += st_format_printf("\n" + tab + tab + skillPossessionStrings[ELECTRONICS], electrTraitInf.possession, electrTraitInf.coloredModifier);
 	result += st_format_printf("\n" + tab + tab + tab + lockStrings[LOCK_IS_ELECTRONIC], isLockElectronic ? booleanStrings[STR_BOOL_RED_YES] : booleanStrings[STR_BOOL_GREEN_NO]);
-	result += st_format_printf("\n" + tab + tab + toolModifierStrings[MOD_LOCKSMITH_STATUS], requiredTool.coloredModifier);
+	if (!gamepolicy(locksmith_kit_wear)) {
+		result += st_format_printf("\n" + tab + tab + toolModifierStrings[MOD_LOCKSMITH_STATUS], requiredTool.coloredModifier);
+	}
 	result += st_format_printf("\n" + tab + tab + vitalSignStrings[VITAL_FATIGUE], ColorCodeModifier("{d}%", fatigueMod - requiredTool.modifier));
 
 	result += GetModifiersForSkillAttempts(skillCheckInf);
