@@ -43,6 +43,7 @@
 #include "ItemModel.h"
 #include "MagazineModel.h"
 #include "WeaponModels.h"
+#include <algorithm>
 #include <array>
 #include <initializer_list>
 #include <map>
@@ -987,6 +988,16 @@ void StackObjs(OBJECTTYPE* pSourceObj, OBJECTTYPE* pTargetObj, UINT8 ubNumberToC
 }
 
 
+/* Order a stack so its least-full item comes first. Only index 0 is drawn on
+ * the inventory status bar, so keeping the odd partial item at the front is
+ * what makes a stack that is not quite topped off visible at a glance. */
+static void SortStackLeastFullFirst(OBJECTTYPE* const o)
+{
+	UINT8 const count = std::min(o->ubNumberOfObjects, (UINT8)MAX_OBJECTS_PER_SLOT);
+	std::sort(o->bStatus, o->bStatus + count);
+}
+
+
 void CleanUpStack(OBJECTTYPE* const o, OBJECTTYPE* const cursor_o)
 {
 	const ItemModel * item = GCM->getItem(o->usItem);
@@ -1046,6 +1057,9 @@ void CleanUpStack(OBJECTTYPE* const o, OBJECTTYPE* const cursor_o)
 			break;
 		}
 	}
+
+	SortStackLeastFullFirst(o);
+	if (cursor_o && cursor_o->ubNumberOfObjects > 0) SortStackLeastFullFirst(cursor_o);
 }
 
 
@@ -1166,6 +1180,21 @@ BOOLEAN ReloadGun( SOLDIERTYPE * pSoldier, OBJECTTYPE * pGun, OBJECTTYPE * pAmmo
 					bReloadType = RELOAD_AUTOPLACE_OLD;
 				}
 			}
+		}
+
+		// A whole magazine is about to go into the gun, so use the fullest one in
+		// the stack: stacks keep their least-full magazine first, which would
+		// otherwise hand the gun the leftovers. Topping off is deliberately left
+		// alone, since drawing those few bullets from the partial magazine is what
+		// empties it out.
+		if (fReloadingWithStack && bReloadType != RELOAD_TOPOFF)
+		{
+			UINT8 ubFullest = 0;
+			for (UINT8 ubLoop = 1; ubLoop < pAmmo->ubNumberOfObjects; ++ubLoop)
+			{
+				if (pAmmo->ubShotsLeft[ubLoop] > pAmmo->ubShotsLeft[ubFullest]) ubFullest = ubLoop;
+			}
+			std::swap(pAmmo->ubShotsLeft[0], pAmmo->ubShotsLeft[ubFullest]);
 		}
 
 		if (fSameMagazineSize)
