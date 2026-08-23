@@ -128,6 +128,16 @@
   "enemy_elite_minimum_level": 6,
   "enemy_elite_maximum_level": 10,
 
+  //  Should support stats vary independently of experience level?
+  //  Vanilla rolls every stat in a narrow band just above the floor the level
+  //  sets, so everyone of a given rank is uniformly capable. This rolls
+  //  strength, wisdom, leadership, medical and explosives from a flat floor up
+  //  to the same ceiling instead, which widens the spread downwards. Affects
+  //  regular army troops and regular militia; administrators, elites and the
+  //  green and elite militia keep the vanilla roll.
+  //  vanilla_setting: false
+  "regular_soldier_stat_spread": false,
+
   //  Enables extra GUI features. Currently includes:
   //  Progress Bars for the Mercs stats in tactical Mode.
   //  vanilla_setting: false
