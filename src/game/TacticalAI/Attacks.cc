@@ -199,6 +199,10 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			ubMaxPossibleAimTime = std::min(AP_MAX_AIM_ATTACK,pSoldier->bActionPoints - ubMinAPcost);
 		}
 
+		// chance to hit without spending any aim APs - what a burst gets, whatever the
+		// aim time we settle on below
+		UINT8 ubUnaimedChanceToHit = 0;
+
 		// consider the various aiming times
 		for (ubAimTime = AP_MIN_AIM_ATTACK; ubAimTime <= ubMaxPossibleAimTime; ubAimTime++)
 		{
@@ -207,6 +211,9 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 				target = pSoldier->bAimShotLocation;
 			}
 			ubChanceToHit = (UINT8) AICalcChanceToHitGun(pSoldier, pOpponent->sGridNo, ubAimTime, target);
+
+			if (ubAimTime == AP_MIN_AIM_ATTACK)
+				ubUnaimedChanceToHit = ubChanceToHit;
 
 			iHitRate = (pSoldier->bActionPoints * ubChanceToHit) / (ubRawAPCost + ubAimTime);
 
@@ -283,6 +290,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			pBestShot->opponent            = pOpponent;
 			pBestShot->ubAimTime           = ubBestAimTime;
 			pBestShot->ubChanceToReallyHit = ubChanceToReallyHit;
+			pBestShot->ubChanceToReallyHitUnaimed = (ubUnaimedChanceToHit * ubChanceToGetThrough) / 100;
 			pBestShot->sTarget             = pOpponent->sGridNo;
 			pBestShot->bTargetLevel        = pOpponent->bLevel;
 			pBestShot->iAttackValue        = iAttackValue;

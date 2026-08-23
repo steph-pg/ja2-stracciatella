@@ -1891,6 +1891,7 @@ void InitAttackType(ATTACKTYPE *pAttack)
 	pAttack->opponent            = NULL;
 	pAttack->ubAimTime           = 0;
 	pAttack->ubChanceToReallyHit = 0;
+	pAttack->ubChanceToReallyHitUnaimed = 0;
 	pAttack->sTarget             = NOWHERE;
 	pAttack->iAttackValue        = 0;
 	pAttack->ubAPCost            = 0;

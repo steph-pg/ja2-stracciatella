@@ -95,6 +95,7 @@ struct ATTACKTYPE
 	UINT8 ubPossible;          // is this attack form possible?  T/F
 	UINT8 ubAimTime;           // how many extra APs to spend on aiming
 	UINT8 ubChanceToReallyHit; // chance to hit * chance to get through cover
+	UINT8 ubChanceToReallyHitUnaimed; // same, but for a shot with no aim clicks (what a burst gets)
 	INT32 iAttackValue;        // relative worthiness of this type of attack
 	INT16 sTarget;             // target gridno of this attack
 	INT8  bTargetLevel;        // target level of this attack
