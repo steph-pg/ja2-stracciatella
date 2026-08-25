@@ -79,14 +79,14 @@ void HandleRPCDescription()
 
 void HandleTacticalEndTurn()
 {
-	static UINT32 uiTimeSinceLastStrategicUpdate = 0;
+	static UINT32 uiLastStrategicUpdate = 0;
 
 	UINT32 const now = GetWorldTotalSeconds();
 
-	if (uiTimeSinceLastStrategicUpdate - now > 1200)
+	if (now - uiLastStrategicUpdate > 1200)
 	{
 		HandleRottingCorpses();
-		uiTimeSinceLastStrategicUpdate = now;
+		uiLastStrategicUpdate = now;
 	}
 
 	DecayBombTimers();

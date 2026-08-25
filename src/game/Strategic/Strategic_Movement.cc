@@ -1177,8 +1177,7 @@ void GroupArrivedAtSector(GROUP& g, BOOLEAN const check_for_battle, BOOLEAN cons
 	g.uiTraverseTime      = 0;
 	g.setArrivalTime(0);
 	g.fBetweenSectors     = FALSE;
-	fMapPanelDirty        = TRUE;
-	fMapScreenBottomDirty = TRUE;
+	MarkMapDirtyForStrategicMovement();
 
 	bool group_destroyed = false;
 	if (g.fPlayer)

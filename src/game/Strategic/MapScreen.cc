@@ -4118,8 +4118,48 @@ void AbortMovementPlottingMode( void )
 static void RenderCharacterInfoBackground(void);
 
 
+/* Group movement dirties both map panels on every single arrival.  Under time
+ * compression, with many groups on the move, arrivals come in far faster than
+ * the map can usefully be redrawn - and a bottom panel redraw even reloads the
+ * radar bitmap for a sector that hasn't changed.  Coalesce those bursts into
+ * at most one redraw per MAP_MOVEMENT_REDRAW_DELAY milliseconds. */
+#define MAP_MOVEMENT_REDRAW_DELAY 100
+static BOOLEAN fMapDirtyFromMovementPending = FALSE;
+static UINT32  guiLastMovementRedrawTime    = 0;
+
+
+void MarkMapDirtyForStrategicMovement(void)
+{
+	if (!IsTimeBeingCompressed())
+	{
+		fMapPanelDirty        = TRUE;
+		fMapScreenBottomDirty = TRUE;
+		return;
+	}
+
+	fMapDirtyFromMovementPending = TRUE;
+}
+
+
+static void FlushDeferredMovementRedraw(void)
+{
+	if (!fMapDirtyFromMovementPending) return;
+
+	UINT32 const uiNow = GetJA2Clock();
+	if (uiNow - guiLastMovementRedrawTime < MAP_MOVEMENT_REDRAW_DELAY) return;
+
+	guiLastMovementRedrawTime    = uiNow;
+	fMapDirtyFromMovementPending = FALSE;
+	fMapPanelDirty               = TRUE;
+	fMapScreenBottomDirty        = TRUE;
+}
+
+
 static void BlitBackgroundToSaveBuffer(void)
 {
+	// pick up any map changes deferred while time was being compressed
+	FlushDeferredMovementRedraw( );
+
 	// render map
 	RenderMapRegionBackground( );
 

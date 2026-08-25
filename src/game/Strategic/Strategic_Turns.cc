@@ -7,6 +7,8 @@
 #include "JAScreens.h"
 #include "ScreenIDs.h"
 
+#include <algorithm>
+
 
 #define NUM_SEC_PER_STRATEGIC_TURN ( NUM_SEC_IN_MIN * 15 )	// Every fifteen minutes
 
@@ -68,7 +70,11 @@ void HandleStrategicTurn(void)
 				// OK, if we have compressed time...., adjust our check value to be faster....
 				if( giTimeCompressSpeeds[ giTimeCompressMode ] > 0 )
 				{
-					uiCheckTime = NUM_REAL_SEC_PER_TACTICAL_TURN / ( giTimeCompressSpeeds[ giTimeCompressMode ] * RT_COMPRESSION_TACTICAL_TURN_MODIFIER );
+					/* Integer division: at 30 and 60 minute compression this otherwise
+					 * truncates to 0, which turns the check below into "every time we
+					 * get here".  Note that the STRATEGIC_OVERHEAD counter already caps
+					 * us at one pass every 20ms, so this interval only bites above that. */
+					uiCheckTime = std::max(1, NUM_REAL_SEC_PER_TACTICAL_TURN / ( giTimeCompressSpeeds[ giTimeCompressMode ] * RT_COMPRESSION_TACTICAL_TURN_MODIFIER ));
 				}
 				else
 				{

@@ -34,6 +34,11 @@ extern BOOLEAN fCharacterInfoPanelDirty;
 extern BOOLEAN fTeamPanelDirty;
 extern BOOLEAN fMapPanelDirty;
 
+/* Mark the map panels as needing a redraw because a group moved.  Coalesces
+ * redraws while time is being compressed; use the flags directly for changes
+ * the player triggered and expects to see immediately. */
+void MarkMapDirtyForStrategicMovement(void);
+
 extern BOOLEAN fMapInventoryItem;
 extern BOOLEAN gfInConfirmMapMoveMode;
 extern BOOLEAN gfInChangeArrivalSectorMode;
