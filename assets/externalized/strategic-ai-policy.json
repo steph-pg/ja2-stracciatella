@@ -87,7 +87,10 @@
     //  defenders actually present rather than to the desired garrison size, and groups that
     //  cannot be served hold no weight in the reinforcement lottery.  She draws a weighted slot
     //  before checking whether its owner is eligible, so weight on a group she cannot serve only
-    //  hands the draw to whichever group happens to follow it in the list.
+    //  hands the draw to whichever group happens to follow it in the list.  A group that happens
+    //  to be free is only handed an assault it can actually win, and a group that staged next to
+    //  its target is weighed against the sector once more before it walks in, so militia raised
+    //  while it was on the road still counts.
     //
     //  vanilla value: false
     "improved_sector_evaluation": false,

@@ -246,6 +246,17 @@ static UINT16 CalcSectorDefencePoints(const SGPSector& sSector, UINT8 ubVanillaM
 }
 
 
+//Rates an enemy group that already exists on the same 2/4/6 scale the queen applies to her own
+//admins, troops and elites, so a group's actual strength can be weighed against a sector's
+//defence points.
+static UINT16 EnemyGroupOffensePoints(const GROUP* pGroup)
+{
+	return pGroup->pEnemyGroup->ubNumAdmins * 2 +
+				pGroup->pEnemyGroup->ubNumTroops * 4 +
+				pGroup->pEnemyGroup->ubNumElites * 6;
+}
+
+
 static BOOLEAN PlayerForceTooStrong(UINT8 ubSectorID, UINT16 usOffensePoints, UINT16* pusDefencePoints)
 {
 	SGPSector sSector(ubSectorID);
@@ -715,9 +726,7 @@ static BOOLEAN HandlePlayerGroupNoticedByPatrolGroup(const GROUP* const pPlayerG
 	UINT16 usOffensePoints;
 
 	UINT8 const ubSectorID = pPlayerGroup->ubSector.AsByte();
-	usOffensePoints = pEnemyGroup->pEnemyGroup->ubNumAdmins * 2 +
-										pEnemyGroup->pEnemyGroup->ubNumTroops * 4 +
-										pEnemyGroup->pEnemyGroup->ubNumElites * 6;
+	usOffensePoints = EnemyGroupOffensePoints( pEnemyGroup );
 
 	const UINT8 playerSector = pPlayerGroup->ubNext.x
 			? pPlayerGroup->ubNext.AsByte()
@@ -833,9 +842,7 @@ static BOOLEAN HandleMilitiaNoticedByPatrolGroup(UINT8 ubSectorID, GROUP* pEnemy
 	UINT16 usDefencePoints;
 
 	SGPSector sSector(ubSectorID);
-	UINT16 usOffensePoints = pEnemyGroup->pEnemyGroup->ubNumAdmins * 2 +
-										pEnemyGroup->pEnemyGroup->ubNumTroops * 4 +
-										pEnemyGroup->pEnemyGroup->ubNumElites * 6;
+	UINT16 usOffensePoints = EnemyGroupOffensePoints( pEnemyGroup );
 	if( PlayerForceTooStrong( ubSectorID, usOffensePoints, &usDefencePoints ) )
 	{
 		SLOGD("Enemy group at {} spotted militia at {} but will not attack (offense {} vs defence {}); requesting a garrison attack instead.",
@@ -1407,7 +1414,25 @@ void CheckEnemyControlledSector( UINT8 ubSectorID )
 					}
 					else if (pGroup->ubSector.AsByte() != gGarrisonGroup[pSector->ubGarrisonID].ubSectorID)
 					{
-						MoveSAIGroupToSector( &pGroup, gGarrisonGroup[ pSector->ubGarrisonID ].ubSectorID, DIRECT, pGroup->pEnemyGroup->ubIntention );
+						/* The group staged next to the target when the order was given, and the sector may have
+						 * gained militia since.  Weigh it again before it walks in, or a handful of troops
+						 * assaults a town that has long outgrown them.  A group that no longer measures up is
+						 * reassigned, which also frees the garrison's pending slot so a force of the right size
+						 * can be requested in its place. */
+						SGPSector const sTarget(gGarrisonGroup[ pSector->ubGarrisonID ].ubSectorID);
+						UINT16 const usDefencePoints = CalcSectorDefencePoints( sTarget, 5 );
+						UINT16 const usOffensePoints = EnemyGroupOffensePoints( pGroup );
+						if( saipolicy(improved_sector_evaluation) && usOffensePoints <= usDefencePoints )
+						{
+							SLOGD("Staged group #{} at {} calls off its assault on {}: offense {} does not beat defence {}.  Reassigning it.",
+									(int)pGroup->ubGroupID, pGroup->ubSector, sTarget,
+									usOffensePoints, usDefencePoints);
+							ReassignAIGroup( &pGroup );
+						}
+						else
+						{
+							MoveSAIGroupToSector( &pGroup, gGarrisonGroup[ pSector->ubGarrisonID ].ubSectorID, DIRECT, pGroup->pEnemyGroup->ubIntention );
+						}
 					}
 				}
 				//else the group is on route to stage hopefully...
@@ -1827,6 +1852,20 @@ static BOOLEAN SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefe
 	if( pOptionalGroup && *pOptionalGroup )
 	{ //This group will provide the reinforcements
 		pGroup = *pOptionalGroup;
+
+		/* Whichever group happens to be free is not necessarily strong enough for the job.  The pool
+		 * and source garrison branches below both refuse a force that would be decimated, but this one
+		 * used to send the group whatever the odds:  the approval upstream rates the garrison's desired
+		 * composition, not the group actually at hand.  Returning FALSE lets the caller carry on
+		 * looking for somewhere this group can be useful. */
+		if( saipolicy(improved_sector_evaluation) &&
+				EnemyGroupOffensePoints( pGroup ) <= usDefencePoints )
+		{
+			SLOGD("Group #{} at {} was not reassigned to {}: its offense {} does not beat the sector's defence {}.",
+					(int)pGroup->ubGroupID, pGroup->ubSector, dstSector,
+					EnemyGroupOffensePoints( pGroup ), usDefencePoints);
+			return FALSE;
+		}
 
 		SLOGD("{} troops have been reassigned from {} to garrison sector {}",
 				Enemies(*pGroup->pEnemyGroup),
