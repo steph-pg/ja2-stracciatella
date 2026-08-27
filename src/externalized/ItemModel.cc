@@ -108,7 +108,12 @@ uint32_t        ItemModel::getItemClass() const        { return usItemClass;    
 uint8_t         ItemModel::getClassIndex() const       { return ubClassIndex;          }
 ItemCursor      ItemModel::getCursor() const           { return ubCursor;              }
 uint8_t         ItemModel::getWeight() const           { return ubWeight;              }
-uint8_t         ItemModel::getPerPocket() const        { return ubPerPocket;           }
+uint8_t         ItemModel::getPerPocket() const
+{
+	// keys cannot stack deeper than their status array
+	if (isKey() && ubPerPocket > MAX_KEYS_PER_STACK) return MAX_KEYS_PER_STACK;
+	return ubPerPocket;
+}
 uint16_t        ItemModel::getPrice() const            { return usPrice;               }
 uint8_t         ItemModel::getCoolness() const         { return ubCoolness;            }
 int8_t          ItemModel::getReliability() const      { return bReliability;          }

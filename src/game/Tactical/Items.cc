@@ -43,6 +43,7 @@
 #include "ItemModel.h"
 #include "MagazineModel.h"
 #include "WeaponModels.h"
+#include <algorithm>
 #include <array>
 #include <initializer_list>
 #include <map>
@@ -945,9 +946,12 @@ void GetObjFrom( OBJECTTYPE * pObj, UINT8 ubGetIndex, OBJECTTYPE * pDest )
 	}
 	else
 	{
-		pDest->usItem = pObj->usItem;
-		pDest->bStatus[0] = pObj->bStatus[ubGetIndex];
+		// copy the whole object so a key's ID, traps and imprinting travel
+		// with the item taken
+		INT8 const bStatus = pObj->bStatus[ubGetIndex];
+		*pDest = *pObj;
 		pDest->ubNumberOfObjects = 1;
+		pDest->bStatus[0] = bStatus;
 		RemoveObjFrom( pObj, ubGetIndex );
 	}
 }
@@ -2344,8 +2348,9 @@ UINT8 AddKeysToSlot(SOLDIERTYPE& s, INT8 const key_ring_pos, OBJECTTYPE const& k
 
 	KEY_ON_RING& keyring = s.pKeyRing[key_ring_pos];
 	if (keyring.ubNumber == 0) keyring.ubKeyID = key.ubKeyID;
-	// Only take what we can
-	UINT8 const n_added = std::min(int(key.ubNumberOfObjects), GCM->getItem(key.usItem)->getPerPocket() - keyring.ubNumber);
+	// only take what we can; an old save may already be over the limit
+	INT32 const room = GCM->getItem(key.usItem)->getPerPocket() - keyring.ubNumber;
+	UINT8 const n_added = std::max(0, std::min(int(key.ubNumberOfObjects), room));
 	keyring.ubNumber += n_added;
 	return n_added;
 }
