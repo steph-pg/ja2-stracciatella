@@ -775,22 +775,13 @@ static BOOLEAN GetObjFromInventoryStashSlot(OBJECTTYPE* pInventorySlot, OBJECTTY
 		return( FALSE );
 	}
 
-	// if there are only one item in slot, just copy
-	if (pInventorySlot->ubNumberOfObjects == 1)
+	if (pInventorySlot->ubNumberOfObjects == 0)
 	{
-		*pItemPtr = *pInventorySlot;
-		DeleteObj( pInventorySlot );
+		return( FALSE );
 	}
-	else
-	{
-		// take one item
-		pItemPtr->usItem = pInventorySlot->usItem;
 
-		// find first unempty slot
-		pItemPtr->bStatus[0] = pInventorySlot->bStatus[0];
-		pItemPtr->ubNumberOfObjects = 1;
-		RemoveObjFrom( pInventorySlot, 0 );
-	}
+	// take one item, with everything that identifies it
+	GetObjFrom( pInventorySlot, 0, pItemPtr );
 
 	return ( TRUE );
 }
@@ -817,7 +808,7 @@ static BOOLEAN PlaceObjectInInventoryStash(OBJECTTYPE* pInventorySlot, OBJECTTYP
 
 	// if there is something there, swap it, if they are of the same type and stackable then add to the count
 
-	ubSlotLimit = GCM->getItem(pItemPtr -> usItem)->getPerPocket();
+	ubSlotLimit = ItemSlotLimit( pItemPtr->usItem, BIGPOCK1POS );
 
 	if (pInventorySlot->ubNumberOfObjects == 0)
 	{
@@ -854,7 +845,9 @@ static BOOLEAN PlaceObjectInInventoryStash(OBJECTTYPE* pInventorySlot, OBJECTTYP
 		// placement in an empty slot
 		ubNumberToDrop = pItemPtr->ubNumberOfObjects;
 
-		if (pItemPtr->usItem == pInventorySlot->usItem)
+		// keys have an additional check for key ID being the same
+		if (pItemPtr->usItem == pInventorySlot->usItem &&
+			(!GCM->getItem(pItemPtr->usItem)->isKey() || pItemPtr->ubKeyID == pInventorySlot->ubKeyID))
 		{
 			if (GCM->getItem(pItemPtr->usItem)->isMoney())
 			{

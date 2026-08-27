@@ -43,6 +43,7 @@
 #include "ItemModel.h"
 #include "MagazineModel.h"
 #include "WeaponModels.h"
+#include <algorithm>
 #include <array>
 #include <initializer_list>
 #include <map>
@@ -280,11 +281,13 @@ UINT8 ItemSlotLimit( UINT16 usItem, INT8 bSlot )
 	}
 	else
 	{
-		ubSlotLimit = GCM->getItem(usItem)->getPerPocket();
+		ItemModel const * const item = GCM->getItem(usItem);
+		ubSlotLimit = item->getPerPocket();
 		if (bSlot >= SMALLPOCK1POS && ubSlotLimit > 1)
 		{
 			ubSlotLimit /= 2;
 		}
+		if (item->isKey()) ubSlotLimit = std::min<UINT8>(ubSlotLimit, MAX_KEYS_PER_STACK);
 		return( ubSlotLimit );
 	}
 }
@@ -945,9 +948,11 @@ void GetObjFrom( OBJECTTYPE * pObj, UINT8 ubGetIndex, OBJECTTYPE * pDest )
 	}
 	else
 	{
-		pDest->usItem = pObj->usItem;
-		pDest->bStatus[0] = pObj->bStatus[ubGetIndex];
+		// copy the whole object so a key's ID, traps and imprinting travel with it
+		INT8 const bStatus = pObj->bStatus[ubGetIndex];
+		*pDest = *pObj;
 		pDest->ubNumberOfObjects = 1;
+		pDest->bStatus[0] = bStatus;
 		RemoveObjFrom( pObj, ubGetIndex );
 	}
 }
@@ -1054,6 +1059,11 @@ BOOLEAN PlaceObjectAtObjectIndex( OBJECTTYPE * pSourceObj, OBJECTTYPE * pTargetO
 	INT8 bTemp;
 
 	if (pSourceObj->usItem != pTargetObj->usItem)
+	{
+		return( TRUE );
+	}
+	// keys have an additional check for key ID being the same
+	if (GCM->getItem(pSourceObj->usItem)->isKey() && pSourceObj->ubKeyID != pTargetObj->ubKeyID)
 	{
 		return( TRUE );
 	}
@@ -2344,8 +2354,9 @@ UINT8 AddKeysToSlot(SOLDIERTYPE& s, INT8 const key_ring_pos, OBJECTTYPE const& k
 
 	KEY_ON_RING& keyring = s.pKeyRing[key_ring_pos];
 	if (keyring.ubNumber == 0) keyring.ubKeyID = key.ubKeyID;
-	// Only take what we can
-	UINT8 const n_added = std::min(int(key.ubNumberOfObjects), GCM->getItem(key.usItem)->getPerPocket() - keyring.ubNumber);
+	// only take what we can
+	INT32 const room = GCM->getItem(key.usItem)->getPerPocket() - keyring.ubNumber;
+	UINT8 const n_added = std::max(0, std::min(int(key.ubNumberOfObjects), room));
 	keyring.ubNumber += n_added;
 	return n_added;
 }

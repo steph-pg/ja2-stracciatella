@@ -36,6 +36,8 @@ enum ItemCursor
 #define USABLE				10 // minimum work% of items to still be usable
 
 #define MAX_OBJECTS_PER_SLOT		8
+// a key's ID sits where a 7th item's status would go
+#define MAX_KEYS_PER_STACK		6
 #define MAX_ATTACHMENTS		4
 #define MAX_MONEY_PER_SLOT		20000
 
