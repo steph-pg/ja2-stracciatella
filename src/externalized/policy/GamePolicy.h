@@ -123,6 +123,7 @@ public:
 
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
+	bool bloodcat_lair_night_only; // true: the lair's pack is out hunting by day, so the sector is only populated at night. false: vanilla, the bloodcats are always home
 
 	uint8_t suppression_fire_modifier; // Scales AP loss from suppression (numerator of the AP-loss formula); vanilla 6, 0 disables AP loss
 	uint16_t suppression_fire_reaction_threshold; // Numerator of the stance-reaction threshold; vanilla 130, 0 = always react (1.13 behaviour), higher = more resistant

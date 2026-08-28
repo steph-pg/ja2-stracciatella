@@ -556,6 +556,15 @@ properties:
           Whether the start sector is revealed
 
           Vanilla setting: `true`
+      bloodcat_lair_night_only:
+        type: boolean
+        title: Bloodcats only home at night
+        description: |
+          Whether the bloodcats of the lair sector are only there at night. When enabled, the pack is out
+          hunting between 7am and 9pm and the lair is found empty; their numbers are left untouched, so the
+          quest to clear the lair is unaffected.
+
+          Vanilla setting: `false`
     required:
       - start_sector
       - start_sector_revealed

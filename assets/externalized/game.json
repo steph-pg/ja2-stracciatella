@@ -264,7 +264,13 @@
 
     //  Is the start sector revealed at game start?
     //  vanilla settings: true
-    "start_sector_revealed": true
+    "start_sector_revealed": true,
+
+    //  Do the bloodcats of the lair sector only stay home at night?
+    //  When true, the pack is out hunting between 7am and 9pm and the lair is
+    //  empty; their numbers are untouched, so the quest to clear it is unaffected.
+    //  vanilla settings: false
+    "bloodcat_lair_night_only": false
   },
 
   //  Scales AP loss from suppression fire (numerator of the AP-loss formula); set to 0 if you want to disable suppression completely.
