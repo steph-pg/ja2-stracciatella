@@ -14,6 +14,7 @@
 #include "Items.h"
 #include "RT_Time_Defines.h"
 #include "AI.h"
+#include "Campaign.h"
 #include "Handle_UI.h"
 #include "Text.h"
 #include "SkillCheck.h"
@@ -24,6 +25,7 @@
 #include "WorldMan.h"
 #include "Interface_Items.h"
 #include "Debug.h"
+#include "Random.h"
 
 #include "ContentManager.h"
 #include "GameInstance.h"
@@ -485,7 +487,7 @@ BOOLEAN EnoughPoints(const SOLDIERTYPE* pSoldier, INT16 sAPCost, INT16 sBPCost, 
 static INT16 AdjustBreathPts(SOLDIERTYPE* pSold, INT16 sBPCost);
 
 
-void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT16 sBPCost )
+void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT16 sBPCost, BOOLEAN fExertion )
 {
 	INT16 sNewAP = 0;
 	INT8  bNewBreath;
@@ -534,6 +536,20 @@ void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT16 sBPCost )
 	{
 		// Adjust breath changes due to spending or regaining of energy
 		sBPCost = AdjustBreathPts(pSoldier,sBPCost);
+
+		// Exertion trains the body. Award health and strength chances for the breath a
+		// merc spends through their own effort - one award per 10 breath points spent,
+		// on average. The roll uses the adjusted cost, so someone who is winded,
+		// wounded or heavily loaded pays more breath per step and trains faster.
+		if ( fExertion && IsOnOurTeam( *pSoldier ) &&
+			!( pSoldier->uiStatusFlags & SOLDIER_VEHICLE ) &&
+			sBPCost >= BP_MOVEMENT_GRASS &&
+			PreRandom( 10 * BP_RATIO_RED_PTS_TO_NORMAL ) < (UINT32)sBPCost )
+		{
+			StatChange( *pSoldier, HEALTHAMT, 4, FROM_SUCCESS );
+			StatChange( *pSoldier, STRAMT,    2, FROM_SUCCESS );
+		}
+
 		sBPCost *= -1;
 
 		pSoldier->sBreathRed -= sBPCost;

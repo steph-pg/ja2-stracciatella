@@ -1561,12 +1561,12 @@ void EVENT_InitNewSoldierAnim(SOLDIERTYPE* const pSoldier, UINT16 usNewState, UI
 		case FALLBACK_HIT_STAND:
 		case FALLFORWARD_FROMHIT_STAND:
 
-			DeductPoints( pSoldier, AP_FALL_DOWN, BP_FALL_DOWN );
+			DeductPoints( pSoldier, AP_FALL_DOWN, BP_FALL_DOWN, FALSE );
 			break;
 
 		case FALLFORWARD_FROMHIT_CROUCH:
 
-			DeductPoints( pSoldier, (AP_FALL_DOWN/2), (BP_FALL_DOWN/2) );
+			DeductPoints( pSoldier, (AP_FALL_DOWN/2), (BP_FALL_DOWN/2), FALSE );
 			break;
 
 		case QUEEN_SWIPE:
@@ -5335,7 +5335,7 @@ void BeginSoldierGetup( SOLDIERTYPE *pSoldier )
 		if ( PreRandom( 100 ) < uiChance )
 		{
 			// succumb to the drug!
-			DeductPoints( pSoldier, 0, (INT16)( pSoldier->bBreathMax * 100 ) );
+			DeductPoints( pSoldier, 0, (INT16)( pSoldier->bBreathMax * 100 ), FALSE );
 			SoldierCollapse( pSoldier );
 		}
 	}
@@ -5669,7 +5669,7 @@ UINT8 SoldierTakeDamage(SOLDIERTYPE* const pSoldier, INT16 sLifeDeduct, INT16 sB
 	// ATE: if the robot, do not deduct
 	if ( !AM_A_ROBOT( pSoldier ) )
 	{
-		DeductPoints( pSoldier, sAPCost, sBreathLoss );
+		DeductPoints( pSoldier, sAPCost, sBreathLoss, FALSE );
 	}
 
 	ubCombinedLoss = (UINT8) sLifeDeduct / 10 + sBreathLoss / 2000;
