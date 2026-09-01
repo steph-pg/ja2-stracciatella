@@ -2157,7 +2157,7 @@ static void HandleTrainingInSector(const SGPSector& sector)
 	}
 
 	// init trainer list
-	const SOLDIERTYPE* pStatTrainerList[NUM_TRAINABLE_STATS]; // can't have more "best" trainers than trainable stats
+	SOLDIERTYPE* pStatTrainerList[NUM_TRAINABLE_STATS]; // can't have more "best" trainers than trainable stats
 	std::fill(std::begin(pStatTrainerList), std::end(pStatTrainerList), nullptr);
 
 	// build list of teammate trainers in this sector.
@@ -2171,7 +2171,7 @@ static void HandleTrainingInSector(const SGPSector& sector)
 		sBestTrainingPts = -1;
 
 		// search team for active instructors in this sector
-		CFOR_EACH_IN_TEAM(pTrainer, OUR_TEAM)
+		FOR_EACH_IN_TEAM(pTrainer, OUR_TEAM)
 		{
 			if (pTrainer->sSector == sector)
 			{
@@ -2219,7 +2219,7 @@ static void HandleTrainingInSector(const SGPSector& sector)
 					if ( pStudent -> bAssignment == TRAIN_BY_OTHER )
 					{
 						// grab the pointer to the (potential) trainer for this stat
-						const SOLDIERTYPE* const pTrainer = pStatTrainerList[pStudent->bTrainStat];
+						SOLDIERTYPE* const pTrainer = pStatTrainerList[pStudent->bTrainStat];
 
 						// if this stat HAS a trainer in sector at all
 						if (pTrainer != NULL)
@@ -2235,6 +2235,11 @@ static void HandleTrainingInSector(const SGPSector& sector)
 							{
 								// valid trainer is available, this gives the student a large training bonus!
 								sTrainingPtsDueToInstructor = GetBonusTrainingPtsDueToInstructor( pTrainer, pStudent, pStudent -> bTrainStat, fAtGunRange, &usMaxPts );
+
+								// teaching sharpens the instructor too - FROM_SUCCESS, because
+								// the instructor is not the one being trained
+								StatChange(*pTrainer, LDRAMT,    sTrainingPtsDueToInstructor, FROM_SUCCESS);
+								StatChange(*pTrainer, WISDOMAMT, sTrainingPtsDueToInstructor, FROM_SUCCESS);
 
 								// add the bonus to what merc can learn on his own
 								sTotalTrainingPts += sTrainingPtsDueToInstructor;
@@ -2594,12 +2599,14 @@ static void TrainSoldierWithPts(SOLDIERTYPE* const s, const INT16 train_pts)
 
 	// which stat to modify?
 	StatKind stat;
+	// studying a mental skill sharpens the mind along with it; the physical stats do not
+	bool fSharpensWisdom = true;
 	switch (s->bTrainStat)
 	{
-		case STRENGTH:         stat = STRAMT;     break;
-		case DEXTERITY:        stat = DEXTAMT;    break;
-		case AGILITY:          stat = AGILAMT;    break;
-		case HEALTH:           stat = HEALTHAMT;  break;
+		case STRENGTH:         stat = STRAMT;     fSharpensWisdom = false; break;
+		case DEXTERITY:        stat = DEXTAMT;    fSharpensWisdom = false; break;
+		case AGILITY:          stat = AGILAMT;    fSharpensWisdom = false; break;
+		case HEALTH:           stat = HEALTHAMT;  fSharpensWisdom = false; break;
 		case LEADERSHIP:       stat = LDRAMT;     break;
 		case MARKSMANSHIP:     stat = MARKAMT;    break;
 		case EXPLOSIVE_ASSIGN: stat = EXPLODEAMT; break;
@@ -2614,6 +2621,9 @@ static void TrainSoldierWithPts(SOLDIERTYPE* const s, const INT16 train_pts)
 
 	// give this merc a few chances to increase a stat (TRUE means it's training, reverse evolution doesn't apply)
 	StatChange(*s, stat, train_pts, FROM_TRAINING);
+
+	// wisdom improves at half the rate of the skill being studied
+	if (fSharpensWisdom) StatChange(*s, WISDOMAMT, train_pts / 2, FROM_TRAINING);
 }
 
 
@@ -2624,8 +2634,9 @@ static BOOLEAN TrainTownInSector(SOLDIERTYPE* pTrainer, const SGPSector& sector,
 
 	SECTORINFO *pSectorInfo = &(SectorInfo[sector.AsByte()]);
 
-	// trainer gains leadership - training argument is FROM_SUCCESS, because the trainer is not the one training!
-	StatChange(*pTrainer, LDRAMT, 1 + sTrainingPts / 200, FROM_SUCCESS);
+	// trainer gains leadership and wisdom - training argument is FROM_SUCCESS, because the trainer is not the one training!
+	StatChange(*pTrainer, LDRAMT,    1 + sTrainingPts / 200, FROM_SUCCESS);
+	StatChange(*pTrainer, WISDOMAMT, 1 + sTrainingPts / 400, FROM_SUCCESS);
 
 	// increase town's training completed percentage
 	pSectorInfo -> ubMilitiaTrainingPercentDone += (sTrainingPts / 100);
