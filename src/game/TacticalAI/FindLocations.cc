@@ -287,6 +287,15 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 	}
 
 
+	// Judge his ability to hit us as if he were standing, whatever stance he is in
+	// right now. An opponent who is currently crouched or prone behind cover has no
+	// line of fire at all, so he scores bHisCTGT ~ 0 against every candidate tile:
+	// cover stops telling the tiles apart and we settle for a spot that only suits
+	// our own shot. Meanwhile he stands up next turn, fires, and drops back down.
+	// Assuming his most dangerous stance picks a spot that still protects us then.
+	const UINT16 usHisRealAnimState = pHim->usAnimState;
+	pHim->usAnimState = STANDING;
+
 	if (InWaterOrGas(pHim,sHisGridNo))
 	{
 		bHisActualCTGT = 0;
@@ -325,6 +334,9 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 		}
 	}
 
+	// done weighing his threat - give him his stance back
+	pHim->usAnimState = usHisRealAnimState;
+
 	// if my intended gridno is in water or gas, I can't attack at all from there
 	// here, for smoke, consider bad
 	if (InWaterGasOrSmoke(pMe,sMyGridNo))
@@ -344,9 +356,18 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 		// bMyCTGT = ChanceToGetThrough(pMe,sHisGridNo,FAKE,ACTUAL,TESTWALLS,9999,M9PISTOL,NOT_FOR_LOS); // assume a gunshot
 		// bMyCTGT = SoldierToLocationChanceToGetThrough( pMe, sHisGridNo, pMe->bTargetLevel, pMe->bTargetCubeLevel );
 
+		// Judge our own shot from this spot as if we were standing too, the way the
+		// attack code itself does (see AISoldierToSoldierChanceToGetThrough). Otherwise
+		// a soldier lying behind an obstacle writes off every spot it could fire from
+		// after simply getting up.
+		const UINT16 usMyRealAnimState = pMe->usAnimState;
+		pMe->usAnimState = STANDING;
+
 		// let's not assume anything about the stance the enemy might take, so take an average
 		// value... no cover give a higher value than partial cover
 		bMyCTGT = CalcAverageCTGTForPosition(pMe, pHim, sHisGridNo, pHim->bLevel, iMyAPsLeft);
+
+		pMe->usAnimState = usMyRealAnimState;
 
 		// since NPCs are too dumb to shoot "blind", ie. at opponents that they
 		// themselves can't see (mercs can, using another as a spotter!), if the
