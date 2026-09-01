@@ -601,10 +601,14 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 	}*/
 
 
-	// maximum search range is 1 tile / 8 pts of wisdom
-	if (iSearchRange > (pSoldier->bWisdom / 8))
+	// Everyone looks for cover as though they had 100 Wisdom. The cap of 1 tile per
+	// 8 points of Wisdom left the average soldier searching four or five tiles and
+	// walking past the wall two steps beyond that, which reads as stupidity rather
+	// than as the low Wisdom it is meant to model.
+	INT32 const iCoverSearchWisdom = 100;
+	if (iSearchRange > (iCoverSearchWisdom / 8))
 	{
-		iSearchRange = (pSoldier->bWisdom / 8);
+		iSearchRange = (iCoverSearchWisdom / 8);
 	}
 
 	if (!gfTurnBasedAI)
@@ -629,6 +633,12 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 			iSearchRange = iMaxMoveTilesLeft;
 		}
 	}
+
+	// FindBestPath only fills gubAIPathCosts for a square of AI_PATHCOST_RADIUS
+	// tiles, and clamps gubNPCDistLimit to match, so tiles past that never come
+	// back flagged reachable. Stop here rather than scan a ring we always skip -
+	// and keep the offsets below inside the array they index.
+	iSearchRange = std::min<INT32>(iSearchRange, AI_PATHCOST_RADIUS);
 
 	if (iSearchRange <= 0)
 	{
