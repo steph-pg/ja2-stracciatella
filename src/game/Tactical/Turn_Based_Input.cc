@@ -1224,6 +1224,20 @@ void TacticalViewPortTouchCallbackTB(MOUSE_REGION* region, UINT32 reason) {
 		if (gCurrentUIMode == PAN_MODE) {
 			TogglePanMode();
 		}
+	} else if (reason & (MSYS_CALLBACK_REASON_WHEEL_UP | MSYS_CALLBACK_REASON_WHEEL_DOWN)) {
+		if (gCurrentUIMode == CONFIRM_ACTION_MODE &&
+			gpItemPointer == NULL &&
+			guiCurrentCursorGridNo != NOWHERE)
+		{
+			SOLDIERTYPE* const sel = GetSelectedMan();
+			if (sel)
+			{
+				// Rolling the wheel towards yourself pulls the aim in, so wheel
+				// down raises the aim level and wheel up takes it back off
+				INT8 const bDirection = (reason & MSYS_CALLBACK_REASON_WHEEL_UP) ? -1 : 1;
+				HandleWheelAdjustCursor(sel, guiCurrentCursorGridNo, bDirection);
+			}
+		}
 	} else if (reason & MSYS_CALLBACK_REASON_TFINGER_UP) {
 		auto selected = GetSelectedMan();
 
