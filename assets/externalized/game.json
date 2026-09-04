@@ -110,7 +110,17 @@
 
     //  Enemy guards on rooftop are disallowed to climb down
     //  vanilla value: false
-    "stay_on_rooftop": false
+    "stay_on_rooftop": false,
+
+    //  The AI treats cover as something worth going out of its way for.
+    //  It weighs a tile against opponents who could stand up and shoot from
+    //  where they are, not just against the stance they happen to be in;
+    //  every soldier searches its whole cover radius instead of one tile per
+    //  8 points of Wisdom; and an enemy that is either shaken or more than a
+    //  dozen tiles from the nearest merc it knows about reaches for cover
+    //  before it goes looking for a fight or settles for turning to face one.
+    //  vanilla value: false
+    "prioritize_cover": true
   },
 
   //  How much variation should there be in elite soldier xp level?

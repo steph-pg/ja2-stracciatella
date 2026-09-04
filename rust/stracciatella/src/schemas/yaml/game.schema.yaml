@@ -183,6 +183,27 @@ properties:
           Enemy guards on rooftop are disallowed to climb down
           
           Vanilla setting: `false`
+      prioritize_cover:
+        type: boolean
+        title: Prioritize cover
+        description: |
+          Makes the AI treat cover as something worth going out of its way for, in three ways.
+
+          When it sizes up a tile it asks how exposed that tile would be to an opponent who stood
+          up and fired, rather than to the stance that opponent happens to be in. A merc crouched
+          behind a wall threatens nothing right now, so in the original game no tile scored better
+          than any other and the soldier settled wherever its own shot looked best - then the merc
+          stood up, fired, and dropped back down.
+
+          Every soldier searches its whole cover radius. The original limit of one tile per 8 points
+          of Wisdom left an average soldier looking four or five tiles out and walking straight past
+          the wall two steps beyond that, which reads as stupidity rather than as low Wisdom.
+
+          An enemy that is either shaken or more than a dozen tiles from the nearest merc it knows
+          about takes cover before it seeks a fight or settles for turning to face one. Closer in it
+          still prefers to keep its action points for a reaction shot.
+
+          Vanilla setting: `false`
     required:
       - better_aiming_choice
       - threshold_cth_head

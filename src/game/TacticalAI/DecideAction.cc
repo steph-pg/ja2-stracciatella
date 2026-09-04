@@ -1884,6 +1884,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 		// MAIN RED AI: Decide soldier's preference between SEEKING,HELPING & HIDING
 		////////////////////////////////////////////////////////////////////////////
 
+		// weigh cover ahead of the other reactions rather than last
+		bool const fCoverFirst = gamepolicy(ai_prioritize_cover);
+
 		// if we can move at least 1 square's worth
 		// and have more APs than we want to reserve
 		if (ubCanMove && pSoldier->bActionPoints > MAX_AP_CARRIED && !fCivilian)
@@ -1941,6 +1944,37 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 					case AGGRESSIVE:    bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts +=  0; break;
 					case ATTACKSLAYONLY:bSeekPts += +1; bHelpPts +=  0; bHidePts += -1; bWatchPts +=  0; break;
 				}
+
+				// Prefer taking cover over seeking or watching where it makes sense.
+				// WATCH's base score (GetHighestWatchedLocPoints) easily outweighs the
+				// small morale/orders/attitude nudges hiding gets, so without this an
+				// enemy turns to face (AI_ACTION_CHANGE_FACING) or walks up on us
+				// instead of getting behind something. Force HIDE strictly above
+				// SEEK/HELP/WATCH in two cases:
+				//   (1) a low-morale enemy should break contact and hunker down;
+				//   (2) beyond COVER_PREF_MIN_RANGE the danger is an opponent who
+				//       changes stance and shoots next turn, so an enemy that far from
+				//       the nearest one it knows about should grab cover if any is
+				//       reachable. Closer in it does better to bank APs and react.
+				// Safe to force: with no cover reachable the HIDE branch sets bHidePts
+				// to -99 and watching is still there to fall back on.
+				if (fCoverFirst && pSoldier->bTeam == ENEMY_TEAM && bHidePts > -90)
+				{
+					INT16 const COVER_PREF_MIN_RANGE = 12;
+					INT16 const sCoverPrefOpponent = ClosestKnownOpponent(pSoldier, NULL, NULL);
+					bool  const fLowMorale = (pSoldier->bAIMorale < MORALE_NORMAL);
+					bool  const fLongRange = (sCoverPrefOpponent != NOWHERE &&
+						SpacesAway(pSoldier->sGridNo, sCoverPrefOpponent) > COVER_PREF_MIN_RANGE);
+
+					if (fLowMorale || fLongRange)
+					{
+						INT8 const bTopOther = std::max(bSeekPts, std::max(bHelpPts, bWatchPts));
+						if (bTopOther >= bHidePts)
+						{
+							bHidePts = bTopOther + 1;
+						}
+					}
+				}
 			}
 
 			if (!gfTurnBasedAI)
@@ -1949,9 +1983,68 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 				bHidePts = -99;
 			}
 
-			// while one of the three main RED REACTIONS remains viable
-			while ((bSeekPts > -90) || (bHelpPts > -90) || (bHidePts > -90))
+			// While one of the main RED REACTIONS remains viable. With cover a
+			// priority, WATCHING counts as one of them: vanilla left it out of this
+			// test, so a watch that scored below the other three was dropped without
+			// ever being tried once they had each failed and knocked themselves out -
+			// which is now the common case, since hiding is forced to the top and
+			// gives up as soon as it finds no cover.
+			while ((bSeekPts > -90) || (bHelpPts > -90) || (bHidePts > -90) ||
+				(fCoverFirst && bWatchPts > -90))
 			{
+				// If HIDING is possible, weigh it first. With cover a priority it also
+				// wins ties; vanilla weighs hiding last, after seeking, watching and
+				// helping have each been tried, so a tie goes to them - hence the strict
+				// comparisons when the policy is off.
+				if ((bHidePts > -90) &&
+					(fCoverFirst ?
+						((bHidePts >= bSeekPts) && (bHidePts >= bHelpPts) && (bHidePts >= bWatchPts)) :
+						((bHidePts >  bSeekPts) && (bHidePts >  bHelpPts) && (bHidePts >  bWatchPts))))
+				{
+					sClosestOpponent = ClosestKnownOpponent( pSoldier, NULL, NULL );
+					// if an opponent is known (not necessarily reachable or conscious)
+					if (!SkipCoverCheck && sClosestOpponent != NOWHERE )
+					{
+						//////////////////////////////////////////////////////////////////////
+						// TAKE BEST NEARBY COVER FROM ALL KNOWN OPPONENTS
+						//////////////////////////////////////////////////////////////////////
+						#ifdef AI_TIMING_TESTS
+						uiStartTime = GetJA2Clock();
+						#endif
+
+						pSoldier->usActionData = FindBestNearbyCover(pSoldier,pSoldier->bAIMorale,&iDummy);
+						#ifdef AI_TIMING_TESTS
+						uiEndTime = GetJA2Clock();
+
+						guiRedHideTimeTotal += (uiEndTime - uiStartTime);
+						guiRedHideCounter++;
+						#endif
+
+						// let's be a bit cautious about going right up to a location without enough APs to shoot
+						if ( pSoldier->usActionData != NOWHERE )
+						{
+							sClosestDisturbance = ClosestReachableDisturbance(pSoldier, ubUnconsciousOK, &fClimb);
+							if ( sClosestDisturbance != NOWHERE && ( SpacesAway( pSoldier->usActionData, sClosestDisturbance ) < 5 || SpacesAway( pSoldier->usActionData, sClosestDisturbance ) + 5 < SpacesAway( pSoldier->sGridNo, sClosestDisturbance ) ) )
+							{
+								// either moving significantly closer or into very close range
+								// ensure will we have enough APs for a possible crouch plus a shot
+								if ( InternalGoAsFarAsPossibleTowards( pSoldier, pSoldier->usActionData, (INT8) (MinAPsToAttack( pSoldier, sClosestOpponent, ADDTURNCOST) + AP_CROUCH), AI_ACTION_TAKE_COVER, 0 ) == pSoldier->usActionData )
+								{
+									return(AI_ACTION_TAKE_COVER);
+								}
+							}
+							else
+							{
+								return(AI_ACTION_TAKE_COVER);
+							}
+						}
+
+					}
+
+					// mark HIDING as impossible for next time through while loop
+					bHidePts = -99;
+				}
+
 				// if SEEKING is possible and at least as desirable as helping or hiding
 				if ( (bSeekPts > -90) && (bSeekPts >= bHelpPts) && (bSeekPts >= bHidePts) && (bSeekPts >= bWatchPts ) )
 				{
@@ -2117,54 +2210,6 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 					// mark SEEKING as impossible for next time through while loop
 					bHelpPts = -99;
-				}
-
-
-				// if HIDING is possible and at least as desirable as seeking or helping
-				if ((bHidePts > -90) && (bHidePts >= bSeekPts) && (bHidePts >= bHelpPts) && (bHidePts >= bWatchPts ))
-				{
-					sClosestOpponent = ClosestKnownOpponent( pSoldier, NULL, NULL );
-					// if an opponent is known (not necessarily reachable or conscious)
-					if (!SkipCoverCheck && sClosestOpponent != NOWHERE )
-					{
-						//////////////////////////////////////////////////////////////////////
-						// TAKE BEST NEARBY COVER FROM ALL KNOWN OPPONENTS
-						//////////////////////////////////////////////////////////////////////
-						#ifdef AI_TIMING_TESTS
-						uiStartTime = GetJA2Clock();
-						#endif
-
-						pSoldier->usActionData = FindBestNearbyCover(pSoldier,pSoldier->bAIMorale,&iDummy);
-						#ifdef AI_TIMING_TESTS
-						uiEndTime = GetJA2Clock();
-
-						guiRedHideTimeTotal += (uiEndTime - uiStartTime);
-						guiRedHideCounter++;
-						#endif
-
-						// let's be a bit cautious about going right up to a location without enough APs to shoot
-						if ( pSoldier->usActionData != NOWHERE )
-						{
-							sClosestDisturbance = ClosestReachableDisturbance(pSoldier, ubUnconsciousOK, &fClimb);
-							if ( sClosestDisturbance != NOWHERE && ( SpacesAway( pSoldier->usActionData, sClosestDisturbance ) < 5 || SpacesAway( pSoldier->usActionData, sClosestDisturbance ) + 5 < SpacesAway( pSoldier->sGridNo, sClosestDisturbance ) ) )
-							{
-								// either moving significantly closer or into very close range
-								// ensure will we have enough APs for a possible crouch plus a shot
-								if ( InternalGoAsFarAsPossibleTowards( pSoldier, pSoldier->usActionData, (INT8) (MinAPsToAttack( pSoldier, sClosestOpponent, ADDTURNCOST) + AP_CROUCH), AI_ACTION_TAKE_COVER, 0 ) == pSoldier->usActionData )
-								{
-									return(AI_ACTION_TAKE_COVER);
-								}
-							}
-							else
-							{
-								return(AI_ACTION_TAKE_COVER);
-							}
-						}
-
-					}
-
-					// mark HIDING as impossible for next time through while loop
-					bHidePts = -99;
 				}
 			}
 		}
