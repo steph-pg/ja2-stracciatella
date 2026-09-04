@@ -31,6 +31,7 @@
 
 #include "ContentManager.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "WeaponModels.h"
 
 #include <algorithm>
@@ -287,6 +288,8 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 	}
 
 
+	const bool fPrioritizeCover = gamepolicy(ai_prioritize_cover);
+
 	// Judge his ability to hit us as if he were standing, whatever stance he is in
 	// right now. An opponent who is currently crouched or prone behind cover has no
 	// line of fire at all, so he scores bHisCTGT ~ 0 against every candidate tile:
@@ -294,7 +297,10 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 	// our own shot. Meanwhile he stands up next turn, fires, and drops back down.
 	// Assuming his most dangerous stance picks a spot that still protects us then.
 	const UINT16 usHisRealAnimState = pHim->usAnimState;
-	pHim->usAnimState = STANDING;
+	if (fPrioritizeCover)
+	{
+		pHim->usAnimState = STANDING;
+	}
 
 	if (InWaterOrGas(pHim,sHisGridNo))
 	{
@@ -361,7 +367,10 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 		// a soldier lying behind an obstacle writes off every spot it could fire from
 		// after simply getting up.
 		const UINT16 usMyRealAnimState = pMe->usAnimState;
-		pMe->usAnimState = STANDING;
+		if (fPrioritizeCover)
+		{
+			pMe->usAnimState = STANDING;
+		}
 
 		// let's not assume anything about the stance the enemy might take, so take an average
 		// value... no cover give a higher value than partial cover
@@ -601,11 +610,12 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 	}*/
 
 
-	// Everyone looks for cover as though they had 100 Wisdom. The cap of 1 tile per
-	// 8 points of Wisdom left the average soldier searching four or five tiles and
-	// walking past the wall two steps beyond that, which reads as stupidity rather
-	// than as the low Wisdom it is meant to model.
-	INT32 const iCoverSearchWisdom = 100;
+	// maximum search range is 1 tile / 8 pts of wisdom - but when cover is a
+	// priority everyone looks for it as though they had 100 Wisdom. The cap left
+	// the average soldier searching four or five tiles and walking past the wall
+	// two steps beyond that, which reads as stupidity rather than as the low
+	// Wisdom it is meant to model.
+	INT32 const iCoverSearchWisdom = gamepolicy(ai_prioritize_cover) ? 100 : pSoldier->bWisdom;
 	if (iSearchRange > (iCoverSearchWisdom / 8))
 	{
 		iSearchRange = (iCoverSearchWisdom / 8);
