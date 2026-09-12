@@ -538,10 +538,16 @@ static UINT16 ModifyExpGainByTarget(const UINT16 exp_gain, const SOLDIERTYPE* co
 static BOOLEAN WillExplosiveWeaponFail(const SOLDIERTYPE* pSoldier, const OBJECTTYPE* pObj);
 
 
+bool IsSilenced(SOLDIERTYPE const& soldier)
+{
+	return FindAttachment(&soldier.inv[soldier.ubAttackingHand], SILENCER) != NO_SLOT;
+}
+
+
 static ST::string GetBurstSoundName(SOLDIERTYPE const& soldier)
 {
 	auto * const weapon = GCM->getWeapon(soldier.usAttackingWeapon);
-	bool isSilenced = FindAttachment(&soldier.inv[soldier.ubAttackingHand], SILENCER) != NO_SLOT;
+	bool isSilenced = IsSilenced(soldier);
 	auto const& burstSound = isSilenced ? weapon->silencedBurstSound : weapon->burstSound;
 
 	if (!burstSound.empty())
@@ -626,7 +632,7 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 		if ( GCM->getItem(usItemNum)->getItemClass() != IC_THROWING_KNIFE )
 		{
 			// Switch on silencer...
-			if( FindAttachment( &( pSoldier->inv[ pSoldier->ubAttackingHand ] ), SILENCER ) != NO_SLOT )
+			if( IsSilenced( *pSoldier ) )
 			{
 				if (!weapon->silencedSound.empty()) {
 					PlayLocationJA2Sample(pSoldier->sGridNo, weapon->silencedSound, HIGHVOLUME, 1);
@@ -729,17 +735,31 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 		fBuckshot = FALSE;
 		if (!CREATURE_OR_BLOODCAT( pSoldier ) )
 		{
-			pSoldier->fMuzzleFlash = TRUE;
+			// a silencer hides the flash, so the shot does not give the firer's position
+			// away at night
+			BOOLEAN fFlash = !( gamepolicy(realistic_muzzle_flashes) && IsSilenced( *pSoldier ) );
 			switch ( pSoldier->inv[ pSoldier->ubAttackingHand ].ubGunAmmoType )
 			{
 				case AMMO_BUCKSHOT:
 					fBuckshot = TRUE;
 					break;
 				case AMMO_SLEEP_DART:
-					pSoldier->fMuzzleFlash = FALSE;
+					fFlash = FALSE;
 					break;
 				default:
 					break;
+			}
+			if ( fFlash )
+			{
+				pSoldier->fMuzzleFlash = TRUE;
+			}
+			else if ( !gamepolicy(realistic_muzzle_flashes) )
+			{
+				// vanilla clears the flash for a flashless shot. With the policy on the two
+				// hands of a two-pistol attack arrive here as separate shots, so a silenced
+				// hand must not cancel out the flash of the unsilenced one; the flag is
+				// turned off again at the end of the turn (EndMuzzleFlash).
+				pSoldier->fMuzzleFlash = FALSE;
 			}
 		}
 	}
