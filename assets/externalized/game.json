@@ -66,6 +66,13 @@
   //  (say your buddies took care of it), you'd still get skipped for any further interrupts. Annoying in ambushes or when sneaking.
   //  vanilla setting: false
   "multiple_interrupts": false,
+
+  //  A gunshot lights up the shooter: the other teams get a look at them while the flash lasts (at night it reaches much
+  //  further than they can normally see) and whoever picks them up that way can fight the usual interrupt duel over it.
+  //  In exchange a silenced gun makes no flash at all. In vanilla the flash only extended the range of a look that was
+  //  happening anyway, and a silencer made no difference to it.
+  //  vanilla setting: false
+  "realistic_muzzle_flashes": false,
   
   //  Allow interrupts after being shot at on an earlier turn. In vanilla, being under fire blocks a
   //  soldier's interrupts until their own turn begins, so an attack silences them for the whole next

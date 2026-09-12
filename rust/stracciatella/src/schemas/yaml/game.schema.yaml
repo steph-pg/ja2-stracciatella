@@ -103,6 +103,17 @@ properties:
       (say your buddies took care of it), you'd still get skipped for any further interrupts. Annoying in ambushes or when sneaking.
 
       Vanilla setting: `false`
+  realistic_muzzle_flashes:
+    type: boolean
+    title: Realistic muzzle flashes
+    description: |
+      A gunshot lights up the shooter. Every other team gets a look at them while the flash lasts, which at night reaches
+      much further than they could normally see, and whoever picks them up that way can fight the usual interrupt duel
+      over it - so shooting from the dark no longer hides you. In exchange a silenced gun produces no flash at all, which
+      makes silencers worth carrying at night. In the original game the flash only ever extended the sight range of a
+      look that was happening anyway, and a silencer made no difference to it.
+
+      Vanilla setting: `false`
   fixed_cost_to_shoot:
     type: boolean
     title: Fixed cost to shoot

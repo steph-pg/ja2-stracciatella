@@ -5756,6 +5756,22 @@ static SOLDIERTYPE* InternalReduceAttackBusyCount(SOLDIERTYPE* const pSoldier, c
 
 	CheckForEndOfBattle( FALSE );
 
+	// While the firer is still lit by their muzzle flash (turn-based combat; in realtime
+	// it is cleared just below), let the other teams look for them so they can spot them
+	// at the flash's extended sighting range. The sighting lasts as long as the flash
+	// does: EndMuzzleFlash() drops it again for anyone who cannot see that far unlit.
+	//
+	// Interrupts are allowed on that look, so whoever picks the firer up by the flash can
+	// react to them. It is the ordinary sighting interrupt: the spotter still has to meet
+	// the standard conditions and win an interrupt duel, so a shot in the dark is not a
+	// free reaction for everyone facing that way. The attack busy count was decremented
+	// at the top of this function, so the shot itself no longer blocks the duel.
+	if ( gamepolicy(realistic_muzzle_flashes) &&
+		(gTacticalStatus.uiFlags & INCOMBAT) && pSoldier && pSoldier->fMuzzleFlash )
+	{
+		HandleSight( *pSoldier, SIGHT_LOOK | SIGHT_INTERRUPT | SIGHT_RADIO );
+	}
+
 	// if we're in realtime, turn off the attacker's muzzle flash at this point
 	if ( !(gTacticalStatus.uiFlags & INCOMBAT) && pSoldier )
 	{
