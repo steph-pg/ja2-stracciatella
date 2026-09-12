@@ -26,6 +26,7 @@
 #include "Message.h"
 #include "Text.h"
 #include "ShopKeeper_Interface.h"
+#include "StrategicMap.h"
 #include "GamePolicy.h"
 #include "GameSettings.h"
 #include "Environment.h"
@@ -42,6 +43,7 @@
 #include "GameInstance.h"
 #include "ItemModel.h"
 #include "MagazineModel.h"
+#include "content/NewStrings.h"
 #include "WeaponModels.h"
 #include <array>
 #include <initializer_list>
@@ -3510,6 +3512,64 @@ bool ItemIsCool(OBJECTTYPE const& o)
 
 	return false;
 }
+
+// Batteries below this are too flat to be worth carrying around.
+constexpr INT8 SPENT_BATTERIES_STATUS = 2;
+
+
+// Night vision gear only works while it is worn, which is one of the two head slots.
+static INT8 FindWornNightGear(SOLDIERTYPE const& s, UINT16 const usItem)
+{
+	if (s.inv[HEAD1POS].usItem == usItem) return HEAD1POS;
+	if (s.inv[HEAD2POS].usItem == usItem) return HEAD2POS;
+	return NO_SLOT;
+}
+
+
+bool IsWearingPoweredNightGear(SOLDIERTYPE const& s, UINT16 const usItem)
+{
+	INT8 const bSlot = FindWornNightGear(s, usItem);
+	if (bSlot == NO_SLOT) return false;
+
+	if (!gamepolicy(night_goggles_need_batteries)) return true;
+
+	// the enemy brings their own batteries, we never have to find them any
+	if (s.bTeam != OUR_TEAM) return true;
+
+	OBJECTTYPE const& gear = s.inv[bSlot];
+	INT8 const bBatteries = FindAttachment(&gear, BATTERIES);
+	return bBatteries != ITEM_NOT_FOUND && gear.bAttachStatus[bBatteries] > 0;
+}
+
+
+void DrainNightVisionBatteries(SOLDIERTYPE& s)
+{
+	if (!gamepolicy(night_goggles_need_batteries)) return;
+	if (s.bTeam != OUR_TEAM) return;
+
+	// underground it is always pitch dark, so the goggles were of use there too
+	if (!NightTime() && gWorldSector.z == 0) return;
+
+	for (UINT16 const usItem : { NIGHTGOGGLES, UVGOGGLES })
+	{
+		INT8 const bSlot = FindWornNightGear(s, usItem);
+		if (bSlot == NO_SLOT) continue;
+
+		OBJECTTYPE& gear = s.inv[bSlot];
+		INT8 const bBatteries = FindAttachment(&gear, BATTERIES);
+		if (bBatteries == ITEM_NOT_FOUND || gear.bAttachStatus[bBatteries] <= 0) continue;
+
+		int const iDrained = gear.bAttachStatus[bBatteries] - gamepolicy(night_goggles_battery_drain_percent);
+		gear.bAttachStatus[bBatteries] = static_cast<INT8>(iDrained > 0 ? iDrained : 0);
+		if (gear.bAttachStatus[bBatteries] >= SPENT_BATTERIES_STATUS) continue;
+
+		// what is left is not worth carrying around
+		gear.usAttachItem[bBatteries] = NOTHING;
+		gear.bAttachStatus[bBatteries] = 0;
+		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(*GCM->getNewString(NS_NIGHT_GEAR_OUT_OF_POWER), s.name, GCM->getItem(usItem)->getName()));
+	}
+}
+
 
 void ActivateXRayDevice( SOLDIERTYPE * pSoldier )
 {

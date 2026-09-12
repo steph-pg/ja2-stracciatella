@@ -4,6 +4,7 @@
         "There is someone else in the sector...",
         "New recruits cannot arrive there.",
         "Can't be done diagonally.",
+        "%s: %s has no power left",
 
         "__last_one"
 ]

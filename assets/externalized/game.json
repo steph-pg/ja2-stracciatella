@@ -274,5 +274,19 @@
   //  Threshold (numerator) above which a suppressed soldier drops to a lower stance.
   //  Set to 0 to make soldiers always react (1.13 behaviour); raise it to make them even more resistant (it's not the same as suppression tolerance).
   //  vanilla setting: 130
-  "suppression_fire_reaction_threshold": 130
+  "suppression_fire_reaction_threshold": 130,
+
+  //  Night vision gear runs on batteries.
+  //    true  - NV and UV goggles worn by your mercs only extend their sight while
+  //            batteries are attached to them. Batteries are a separate item, so
+  //            keep a few spares around. Enemies are not affected, their gear
+  //            always works.
+  //    false - vanilla behaviour, the goggles work forever.
+  //  vanilla setting: false
+  "night_goggles_need_batteries": false,
+
+  //  Status points drained from the batteries of worn night vision goggles after
+  //  every engagement fought in the dark. Batteries below 2% are thrown away.
+  //  Only used when night_goggles_need_batteries is enabled.
+  "night_goggles_battery_drain_percent": 10
 }

@@ -46,6 +46,7 @@
 #include "Strategic_Town_Loyalty.h"
 #include "Assignments.h"
 #include "History.h"
+#include "Items.h"
 #include "VObject.h"
 #include "Vehicles.h"
 #include "Video.h"
@@ -1307,6 +1308,12 @@ static void ClearMovementForAllInvolvedPlayerGroups(void)
 
 void RetreatAllInvolvedPlayerGroups( void )
 {
+	// pulling out counts as a night out for whoever wore night vision gear
+	FOR_EACH_IN_TEAM(s, OUR_TEAM)
+	{
+		if (PlayerMercInvolvedInThisCombat(*s)) DrainNightVisionBatteries(*s);
+	}
+
 	// make sure guys stop their off duty assignments, like militia training!
 	// but don't exit vehicles - drive off in them!
 	PutNonSquadMercsInBattleSectorOnSquads( FALSE );

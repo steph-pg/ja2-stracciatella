@@ -152,6 +152,16 @@ void CheckEquipmentForFragileItemDamage( SOLDIERTYPE *pSoldier, INT32 iDamage );
 
 extern void ActivateXRayDevice( SOLDIERTYPE * pSoldier );
 extern void TurnOffXRayEffects( SOLDIERTYPE * pSoldier );
+
+// Is the soldier wearing that piece of night vision gear, and does it have the
+// power to work? Only our own mercs have to feed their goggles batteries, and
+// only while the night_goggles_need_batteries policy is on.
+bool IsWearingPoweredNightGear(SOLDIERTYPE const& s, UINT16 usItem);
+
+// Drains the batteries of the night vision gear the soldier wears, after an
+// engagement fought in the dark. Flat batteries are thrown away.
+void DrainNightVisionBatteries(SOLDIERTYPE& s);
+
 INT8 FindLaunchableAttachment(const OBJECTTYPE* pObj, UINT16 usWeapon);
 
 BOOLEAN CanItemFitInPosition(SOLDIERTYPE* s, OBJECTTYPE* pObj, INT8 bPos, BOOLEAN fDoingPlacement);

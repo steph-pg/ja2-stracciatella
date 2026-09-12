@@ -977,10 +977,10 @@ INT16 DistanceVisible(const SOLDIERTYPE* pSoldier, INT8 bFacingDir, INT8 bSubjec
 	}
 	else if (bLightLevel > NORMAL_LIGHTLEVEL_DAY + 5)
 	{
-		if (IsWearingHeadGear(*pSoldier, NIGHTGOGGLES) || IsWearingHeadGear(*pSoldier, UVGOGGLES) ||
+		if (IsWearingPoweredNightGear(*pSoldier, NIGHTGOGGLES) || IsWearingPoweredNightGear(*pSoldier, UVGOGGLES) ||
 			pSoldier->ubBodyType == BLOODCAT || AM_A_ROBOT(pSoldier))
 		{
-			if (IsWearingHeadGear(*pSoldier, NIGHTGOGGLES) || AM_A_ROBOT(pSoldier))
+			if (IsWearingPoweredNightGear(*pSoldier, NIGHTGOGGLES) || AM_A_ROBOT(pSoldier))
 			{
 				if (bLightLevel > NORMAL_LIGHTLEVEL_NIGHT)
 				{

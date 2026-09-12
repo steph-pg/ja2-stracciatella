@@ -4385,6 +4385,16 @@ static bool  KillIncompacitatedEnemyInSector();
 static UINT8 NumEnemyInSectorExceptCreatures();
 
 
+// The fight is over, so whoever wore night vision gear can stop drawing power.
+static void DrainNightVisionBatteriesOfSquadsInSector()
+{
+	FOR_EACH_IN_TEAM(s, OUR_TEAM)
+	{
+		if (s->bInSector) DrainNightVisionBatteries(*s);
+	}
+}
+
+
 //!!!!
 //IMPORTANT NEW NOTE:
 //Whenever returning TRUE, make sure you clear gfBlitBattleSectorLocator;
@@ -4451,6 +4461,8 @@ BOOLEAN CheckForEndOfBattle( BOOLEAN fAnEnemyRetreated )
 
 	if ( fBattleLost )
 	{
+		DrainNightVisionBatteriesOfSquadsInSector();
+
 		// CJC: End AI's turn here.... first... so that UnSetUIBusy will succeed if militia win
 		// battle for us
 		EndAllAITurns( );
@@ -4516,6 +4528,8 @@ BOOLEAN CheckForEndOfBattle( BOOLEAN fAnEnemyRetreated )
 
 		// If here, the battle has been won!
 		// hurray! a glorious victory!
+
+		DrainNightVisionBatteriesOfSquadsInSector();
 
 		// Set enemy presence to false
 		gTacticalStatus.fEnemyInSector = FALSE;
