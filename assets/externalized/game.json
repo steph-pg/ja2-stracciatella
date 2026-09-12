@@ -133,7 +133,9 @@
   //  vanilla_setting: false
   "gui_extras": true,
 
-  //  Displays modifiers in hover boxes revealing hidden mechanics.
+  //  Displays modifiers in hover boxes revealing hidden mechanics. Also lists the mercs
+  //  a merc gets along with, and the ones they cannot stand, when hovering their
+  //  portrait in the mapscreen.
   //  vanilla_setting: false
   "informative_tooltips": false,
 
