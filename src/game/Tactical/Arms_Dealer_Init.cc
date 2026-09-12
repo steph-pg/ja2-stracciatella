@@ -1772,6 +1772,8 @@ void MakeObjectOutOfDealerItems( UINT16 usItemIndex, SPECIAL_ITEM_INFO *pSpclIte
 		}
 	}
 
+	LoadNightGearWithBatteries( *pObject );
+
 	// if it's a gun
 	if (GCM->getItem(pObject->usItem)->getItemClass() == IC_GUN )
 	{

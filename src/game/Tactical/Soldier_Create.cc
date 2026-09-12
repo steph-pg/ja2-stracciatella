@@ -907,6 +907,14 @@ no_name:
 	GeneratePaletteForSoldier(&s, c.ubSoldierClass);
 
 	memcpy(s.inv, c.Inv, sizeof(s.inv));
+
+	// Everyone but our own mercs is issued night vision gear with a set of
+	// batteries already in it, so only the player has to keep spares around.
+	if (c.bTeam != OUR_TEAM)
+	{
+		LoadNightGearWithBatteries(s.inv[HEAD1POS]);
+		LoadNightGearWithBatteries(s.inv[HEAD2POS]);
+	}
 }
 
 

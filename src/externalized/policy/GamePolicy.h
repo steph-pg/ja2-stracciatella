@@ -127,8 +127,7 @@ public:
 	uint8_t suppression_fire_modifier; // Scales AP loss from suppression (numerator of the AP-loss formula); vanilla 6, 0 disables AP loss
 	uint16_t suppression_fire_reaction_threshold; // Numerator of the stance-reaction threshold; vanilla 130, 0 = always react (1.13 behaviour), higher = more resistant
 
-	bool night_goggles_need_batteries;           // true: the player's night vision goggles only work while batteries are attached to them. false: vanilla, they always work
-	uint8_t night_goggles_battery_drain_percent; // Status points drained from the batteries of worn night vision goggles after every engagement fought in the dark
+	bool night_goggles_need_batteries; // true: night vision goggles only work while batteries are attached to them, and every engagement fought in the dark drains those. false: vanilla, they always work
 
 	////////////////////////////////////////////////////////////
 	//

@@ -277,16 +277,13 @@
   "suppression_fire_reaction_threshold": 130,
 
   //  Night vision gear runs on batteries.
-  //    true  - NV and UV goggles worn by your mercs only extend their sight while
-  //            batteries are attached to them. Batteries are a separate item, so
-  //            keep a few spares around. Enemies are not affected, their gear
-  //            always works.
+  //    true  - NV and UV goggles only extend sight while batteries are attached
+  //            to them. Every engagement fought in the dark costs 10% of their
+  //            charge, and what falls below 2% is thrown away. Goggles are issued
+  //            and sold with a fresh set, so enemies are fine either way, but your
+  //            own mercs need spares. Batteries also fit on leggings, if the
+  //            extra_attachments option is on, so a merc can carry some there.
   //    false - vanilla behaviour, the goggles work forever.
   //  vanilla setting: false
-  "night_goggles_need_batteries": false,
-
-  //  Status points drained from the batteries of worn night vision goggles after
-  //  every engagement fought in the dark. Batteries below 2% are thrown away.
-  //  Only used when night_goggles_need_batteries is enabled.
-  "night_goggles_battery_drain_percent": 10
+  "night_goggles_need_batteries": false
 }

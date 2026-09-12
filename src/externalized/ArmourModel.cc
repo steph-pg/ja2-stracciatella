@@ -42,7 +42,8 @@ static std::map<UINT16, decltype(g_helmets) *> const g_attachments_mod
 
 	{BREAK_LIGHT, &g_leggings},
 	{REGEN_BOOSTER, &g_leggings},
-	{ADRENALINE_BOOSTER, &g_leggings}
+	{ADRENALINE_BOOSTER, &g_leggings},
+	{BATTERIES, &g_leggings}
 };
 
 ArmourModel::ArmourModel(
@@ -147,13 +148,6 @@ bool ArmourModel::canBeAttached(const GamePolicy* policy, const ItemModel* attac
 	}
 	if (policy->extra_attachments)
 	{
-		// an attachment cannot carry attachments of its own, so stowing battery
-		// powered gear away would throw its batteries out
-		if (policy->night_goggles_need_batteries && IsBatteryPoweredGear(attachment->getItemIndex()))
-		{
-			return false;
-		}
-
 		auto const it = g_attachments_mod.find(attachment->getItemIndex());
 		if (it != g_attachments_mod.end() && (*it->second).count(this->itemIndex) == 1) return true;
 	}
