@@ -83,6 +83,8 @@
 
 #include <string_theory/format>
 
+#include <string>
+
 #define MAX_SORT_METHODS					6
 
 // Fonts
@@ -566,6 +568,114 @@ static void GlowTrashCan(void)
 	// restore background
 	if((iColorNum==0)||(iColorNum==1))
 		RestoreExternBackgroundRect( TRASH_CAN_X, TRASH_CAN_Y, ( UINT16 )( TRASH_CAN_WIDTH + 2 ), ( UINT16 )( TRASH_CAN_HEIGHT + 2 ) );
+}
+
+
+// The face panel tooltip caches what it last showed, so the text is only rebuilt when
+// the selected merc or their relations change.
+static SOLDIERTYPE const* g_face_help_merc = NULL;
+static INT8 g_face_help_slots[NUM_BUDDY_SLOTS + NUM_HATED_SLOTS];
+
+
+/* The fast help text tokenizer colours a single character at a time, so a whole name has
+ * to be handed to it character by character. */
+static ST::string ColourWholeString(ST::string const& text, char32_t const token)
+{
+	ST::utf32_buffer const codepoints = text.to_utf32();
+	std::u32string         tokenized;
+	tokenized.reserve(codepoints.size() * 2);
+	for (char32_t const* i = codepoints.c_str(); *i != U'\0'; ++i)
+	{
+		tokenized += token;
+		tokenized += *i;
+	}
+	return ST::string::from_utf32(tokenized.c_str(), tokenized.size());
+}
+
+
+// Nicknames from one of a profile's relation lists, comma separated. The slots hold -1
+// until they are filled, so an eventual friend or enemy is only named once they have
+// become a real one - which is also when the merc starts acting on it.
+static ST::string GetRelationNames(INT8 const* const pbSlots, UINT8 const ubSlotCount)
+{
+	ST::string names;
+	for (UINT8 ubSlot = 0; ubSlot < ubSlotCount; ++ubSlot)
+	{
+		INT8 const bProfile = pbSlots[ubSlot];
+		if (bProfile < 0) continue;
+
+		if (!names.empty()) names += ", ";
+		names += GetProfile(bProfile).zNickname;
+	}
+	return names;
+}
+
+
+// Who the merc gets along with, and who they cannot stand, for the tooltip on their face.
+// Friends are green and enemies red, without labels, so the box reads the same in every
+// language.
+static ST::string BuildRelationsHelpText(SOLDIERTYPE const& s)
+{
+	if (s.uiStatusFlags & SOLDIER_VEHICLE) return ST::string{};
+	if (s.ubProfile == NO_PROFILE)         return ST::string{};
+
+	MERCPROFILESTRUCT const& p = GetProfile(s.ubProfile);
+
+	ST::string const buddies = GetRelationNames(p.bBuddy, NUM_BUDDY_SLOTS);
+	ST::string const hated   = GetRelationNames(p.bHated, NUM_HATED_SLOTS);
+
+	ST::string text;
+	if (!buddies.empty())
+	{
+		text += ColourWholeString(buddies, U'^');
+	}
+	if (!hated.empty())
+	{
+		if (!text.empty()) text += "\n";
+		text += ColourWholeString(hated, U'~');
+	}
+	return text;
+}
+
+
+/* Keep the tooltip on the face panel in step with both the selected merc and their
+ * relations, the latter changing the moment an eventual friend or enemy turns into a real
+ * one. */
+static void UpdateFaceRegionHelpText(void)
+{
+	if (!gamepolicy(informative_tooltips)) return;
+
+	SOLDIERTYPE const* const s = GetSelectedInfoChar();
+
+	// the relations as they stand right now, to be held against what the tooltip was built from
+	INT8 bSlots[NUM_BUDDY_SLOTS + NUM_HATED_SLOTS];
+	for (INT8& bSlot : bSlots) bSlot = -1;
+
+	if (s != NULL && s->ubProfile != NO_PROFILE && !(s->uiStatusFlags & SOLDIER_VEHICLE))
+	{
+		MERCPROFILESTRUCT const& p = GetProfile(s->ubProfile);
+		for (INT8 bSlot = 0; bSlot < NUM_BUDDY_SLOTS; ++bSlot)
+		{
+			bSlots[bSlot] = p.bBuddy[bSlot];
+		}
+		for (INT8 bSlot = 0; bSlot < NUM_HATED_SLOTS; ++bSlot)
+		{
+			bSlots[NUM_BUDDY_SLOTS + bSlot] = p.bHated[bSlot];
+		}
+	}
+
+	bool fChanged = s != g_face_help_merc;
+	for (INT8 bSlot = 0; bSlot < NUM_BUDDY_SLOTS + NUM_HATED_SLOTS; ++bSlot)
+	{
+		if (bSlots[bSlot] == g_face_help_slots[bSlot]) continue;
+
+		g_face_help_slots[bSlot] = bSlots[bSlot];
+		fChanged = true;
+	}
+	if (!fChanged) return;
+
+	g_face_help_merc = s;
+	gCharInfoFaceRegion.SetFastHelpText(s != NULL ? BuildRelationsHelpText(*s) : ST::string{});
 }
 
 
@@ -1528,6 +1638,9 @@ ScreenID MapScreenHandle(void)
 		MSYS_DefineRegion( &gCharInfoFaceRegion, (INT16) PLAYER_INFO_FACE_START_X, (INT16) PLAYER_INFO_FACE_START_Y, (INT16) PLAYER_INFO_FACE_END_X, (INT16) PLAYER_INFO_FACE_END_Y, MSYS_PRIORITY_HIGH,
 					MSYS_NO_CURSOR, MSYS_NO_CALLBACK, MouseCallbackPrimarySecondary(FaceRegionBtnCallbackPrimary, FaceRegionBtnCallbackSecondary) );
 
+		// the fresh region carries no help text yet, so let it be filled in again
+		g_face_help_merc = NULL;
+
 		MSYS_DefineRegion(&gMPanelRegion, INV_REGION_X, INV_REGION_Y, INV_REGION_X + INV_REGION_WIDTH, INV_REGION_Y + INV_REGION_HEIGHT, MSYS_PRIORITY_HIGH, MSYS_NO_CURSOR, MSYS_NO_CALLBACK, MSYS_NO_CALLBACK);
 		// screen mask for animated cursors
 		MSYS_DefineRegion(&gMapScreenMaskRegion, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, MSYS_PRIORITY_LOW, CURSOR_NORMAL, MSYS_NO_CALLBACK, MapScreenMarkRegionBtnCallback);
@@ -1723,6 +1836,9 @@ ScreenID MapScreenHandle(void)
 
 	// handle change in info char
 	HandleChangeOfInfoChar( );
+
+	// keep the relations tooltip on the face panel current
+	UpdateFaceRegionHelpText( );
 
 	// update status of contract box
 	UpDateStatusOfContractBox( );
