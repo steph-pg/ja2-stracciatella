@@ -111,26 +111,6 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 		// Get new frame code
 		sNewAniFrame = gusAnimInst[ pSoldier->usAnimState ][ pSoldier->usAniCode ];
 
-		// Handle muzzel flashes
-		if ( pSoldier->bMuzFlashCount > 0 )
-		{
-			// FLash for about 3 frames
-			if ( pSoldier->bMuzFlashCount > MAX_ANIFRAMES_PER_FLASH )
-			{
-				pSoldier->bMuzFlashCount = 0;
-				if (pSoldier->muzzle_flash != NULL)
-				{
-					LightSpriteDestroy(pSoldier->muzzle_flash);
-					pSoldier->muzzle_flash = NULL;
-				}
-			}
-			else
-			{
-				pSoldier->bMuzFlashCount++;
-			}
-
-		}
-
 		if ( pSoldier->bBreathCollapsed )
 		{
 			// ATE: If we have fallen, and we can't get up... no
@@ -169,6 +149,28 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 		// Check for special code
 		if ( sNewAniFrame < 399 )
 		{
+			// Handle muzzel flashes. This counts frames actually drawn, not script codes
+			// processed: a script can hold several codes between the flash code and the
+			// next real frame (the burst script holds one more than the single-shot one),
+			// and counting those expires the flash before it is ever rendered.
+			if ( pSoldier->bMuzFlashCount > 0 )
+			{
+				// FLash for about 3 frames
+				if ( pSoldier->bMuzFlashCount > MAX_ANIFRAMES_PER_FLASH )
+				{
+					pSoldier->bMuzFlashCount = 0;
+					if (pSoldier->muzzle_flash != NULL)
+					{
+						LightSpriteDestroy(pSoldier->muzzle_flash);
+						pSoldier->muzzle_flash = NULL;
+					}
+				}
+				else
+				{
+					pSoldier->bMuzFlashCount++;
+				}
+
+			}
 
 			// Adjust / set true ani frame
 			// Use -1 because ani files are 1-based, these are 0-based
@@ -451,6 +453,15 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 					// DO ONLY IF WE'RE AT A GOOD LEVEL
 					if (ubAmbientLightLevel < MIN_AMB_LEVEL_FOR_MERC_LIGHTS) break;
+
+					// The previous round's flash may still be alive - a burst runs this
+					// code once per round, as does two-pistol shooting - and only one
+					// sprite is tracked, so let go of the old one instead of leaking it.
+					if (pSoldier->muzzle_flash != NULL)
+					{
+						LightSpriteDestroy(pSoldier->muzzle_flash);
+						pSoldier->muzzle_flash = NULL;
+					}
 
 					LIGHT_SPRITE* const l = LightSpriteCreate("L-R03.LHT");
 					pSoldier->muzzle_flash = l;
