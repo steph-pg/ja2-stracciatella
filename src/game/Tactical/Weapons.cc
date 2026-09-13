@@ -668,6 +668,17 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 	// so other places can use it
 	GetTargetWorldPositions( pSoldier, sTargetGridNo, &dTargetX, &dTargetY, &dTargetZ );
 
+	// The aiming cursor shows the chance to hit scaled by the chance the shot gets
+	// past whatever is in the way, so record that second term for the hit report.
+	// Read the target the same way GetTargetWorldPositions() did just above, since
+	// that is the call that resolved the aim location this is measured for.
+	UINT8 ubChanceToGetThrough = 0;
+	SOLDIERTYPE const* const pReportTarget = WhoIsThere2(sTargetGridNo, pSoldier->bTargetLevel);
+	if ( pReportTarget != NULL )
+	{
+		ubChanceToGetThrough = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pReportTarget, pSoldier->bAimShotLocation );
+	}
+
 	// Some things we don't do for knives...
 	if ( GCM->getItem(usItemNum)->getItemClass() != IC_THROWING_KNIFE )
 	{
@@ -799,7 +810,7 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 	}
 
 	FireBulletGivenTarget(pSoldier, dTargetX, dTargetY, dTargetZ, pSoldier->usAttackingWeapon,
-				(INT16) (uiHitChance - uiDiceRoll), fBuckshot, FALSE);
+				(INT16) (uiHitChance - uiDiceRoll), (UINT8) uiHitChance, ubChanceToGetThrough, fBuckshot, FALSE);
 
 	ubVolume = GCM->getWeapon( pSoldier->usAttackingWeapon )->ubAttackVolume;
 
@@ -2741,11 +2752,17 @@ INT32 TotalArmourProtection(SOLDIERTYPE& pTarget, const UINT8 ubHitLocation, con
 	return( iTotalProtection );
 }
 
-INT32 BulletImpact( SOLDIERTYPE *pFirer, SOLDIERTYPE * pTarget, UINT8 ubHitLocation, INT32 iOrigImpact, INT16 sHitBy, UINT8 * pubSpecial )
+INT32 BulletImpact( SOLDIERTYPE *pFirer, SOLDIERTYPE * pTarget, UINT8 ubHitLocation, INT32 iOrigImpact, INT16 sHitBy, UINT8 * pubSpecial, INT32 * piArmourAbsorbed )
 {
 	INT32 iImpact, iFluke, iBonus, iImpactForCrits = 0;
 	INT8  bStatLoss;
 	UINT8 ubAmmoType;
+
+	// Nothing gets through to the armour on the paths that return early below.
+	if (piArmourAbsorbed)
+	{
+		*piArmourAbsorbed = 0;
+	}
 
 	// NOTE: reduction of bullet impact due to range and obstacles is handled
 	// in MoveBullet.
@@ -2802,7 +2819,14 @@ INT32 BulletImpact( SOLDIERTYPE *pFirer, SOLDIERTYPE * pTarget, UINT8 ubHitLocat
 	}
 	else
 	{
-		iImpact = iOrigImpact - TotalArmourProtection(*pTarget, ubHitLocation, iOrigImpact, ubAmmoType);
+		// Note this damages the armour, so it must not be called a second time just
+		// to find out how much was stopped - report the value from here instead.
+		INT32 const iArmourAbsorbed = TotalArmourProtection(*pTarget, ubHitLocation, iOrigImpact, ubAmmoType);
+		if (piArmourAbsorbed)
+		{
+			*piArmourAbsorbed = iArmourAbsorbed;
+		}
+		iImpact = iOrigImpact - iArmourAbsorbed;
 	}
 
 	// calc minimum damage
