@@ -122,7 +122,8 @@
     //  vanilla value: false
     "stay_on_rooftop": false,
 
-    //  At night, AI soldiers path around lit tiles the player can see
+    //  At night, AI soldiers prefer routes through darkness, and never cross a
+    //  lit tile a player merc can see
     //  vanilla value: false
     "avoid_lit_tiles_at_night": false
   },
