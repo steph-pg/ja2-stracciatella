@@ -10,8 +10,11 @@
 #include "Animation_Control.h"
 #include "Animation_Data.h"
 #include "Buildings.h"
+#include "ContentManager.h"
 #include "English.h"
 #include "Environment.h"
+#include "GameInstance.h"
+#include "GamePolicy.h"
 #include "GameSettings.h"
 #include "GridSquare.h"
 #include "Handle_Doors.h"
@@ -112,6 +115,14 @@ enum TrailFlags
 #define EASYWATERCOST				TRAVELCOST_FLAT / 2
 #define ISWATER(t)				(((t)==TRAVELCOST_KNEEDEEP) || ((t)==TRAVELCOST_DEEPWATER))
 #define NOPASS					(TRAVELCOST_BLOCKED)
+
+// Extra search cost (never AP cost) for a lit tile, so the pathfinder routes
+// through darkness when a reasonable dark route exists. The flat term makes any
+// light expensive; the linear term adds more the brighter the tile is. With
+// TRAVELCOST_FLAT == 10 for one tile, a tile one level over ambient costs about
+// four tiles of detour.
+#define LIGHT_PATH_COST_FLAT		30
+#define LIGHT_PATH_COST_PER_LEVEL	12
 
 // Tiles lit at night and in a player merc's sight. LOS is too slow to test per
 // candidate tile, so the set is snapshotted once per enemy turn and consulted here.
@@ -790,12 +801,21 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 		}
 	}
 
-	// Unalerted soldiers walk normally, and one already in the light is let out.
-	BOOLEAN const fAvoidExposedTiles =
-		gfAIAvoidExposedTiles && !fPathingForPlayer &&
-		s->bTeam == ENEMY_TEAM && s->ubProfile == NO_PROFILE &&
-		s->bAlertStatus > STATUS_YELLOW &&
-		s->sGridNo != NOWHERE && !gubAIExposedTile[ s->sGridNo ];
+	// Unalerted soldiers walk normally rather than skulk, and one already caught
+	// in the light has no darkness left to keep to.
+	BOOLEAN fAvoidLitTiles      = FALSE;
+	UINT8   ubAmbientLightLevel = 0;
+	if ( !fPathingForPlayer && gWorldSector.z == 0 && s->bAlertStatus > STATUS_YELLOW
+		&& gamepolicy(ai_avoid_lit_tiles_at_night) )
+	{
+		ubAmbientLightLevel = GetTimeOfDayAmbientLightLevel();
+		if ( ubAmbientLightLevel >= NORMAL_LIGHTLEVEL_DAY + 2 )
+		{
+			fAvoidLitTiles =
+				GetRoom( s->sGridNo ) != NO_ROOM ||
+				LightTrueLevel( s->sGridNo, s->bLevel ) >= ubAmbientLightLevel;
+		}
+	}
 
 	//setup Q and first path record
 
@@ -963,12 +983,6 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 			if ( newLoc < 0 || newLoc >= GRIDSIZE )
 			{
 				SLOGW("Path Finding algorithm tried to go out of bounds at {}, in an attempt to find path from {} to {}", newLoc, iOrigination, iDestination);
-				goto NEXTDIR;
-			}
-
-			// lit tile in a player merc's sight
-			if ( fAvoidExposedTiles && gubAIExposedTile[ newLoc ] )
-			{
 				goto NEXTDIR;
 			}
 
@@ -1417,6 +1431,24 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 			{
 				// penalize moving backwards to encourage turning sooner
 				nextCost += 50;
+			}
+
+			if ( fAvoidLitTiles && GetRoom( (UINT16) newLoc ) == NO_ROOM )
+			{
+				// a lit tile a player merc can see right now gives us away outright
+				if ( gfAIAvoidExposedTiles && s->bTeam == ENEMY_TEAM &&
+					s->ubProfile == NO_PROFILE && gubAIExposedTile[ newLoc ] )
+				{
+					goto NEXTDIR;
+				}
+
+				// any other lit tile is merely expensive; a LOWER level is brighter
+				UINT8 const ubTileLightLevel = LightTrueLevel( (INT16) newLoc, ubLevel );
+				if ( ubTileLightLevel < ubAmbientLightLevel )
+				{
+					UINT8 const ubDelta = ubAmbientLightLevel - ubTileLightLevel;
+					nextCost += LIGHT_PATH_COST_FLAT + ubDelta * LIGHT_PATH_COST_PER_LEVEL;
+				}
 			}
 
 			newTotCost = curCost + nextCost;

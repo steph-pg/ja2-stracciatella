@@ -63,7 +63,7 @@ public:
 
 	bool avoid_ambushes;                  // AI able to recognize and avoid ambushes on seeing friendlies' corpses
 	bool stay_on_rooftop;                 // AI on guard on rooftop are disallowed to go down
-	bool ai_avoid_lit_tiles_at_night;     // at night, AI soldiers path around lit tiles the player can see
+	bool ai_avoid_lit_tiles_at_night;     // at night, AI soldiers path around lit tiles, and never cross one a player merc can see
 
 	bool interrupt_after_being_under_fire; // only being shot at during the turn in progress blocks a soldier's interrupts; vanilla keeps them blocked through the next turn too, since the under-fire mark is only cleared once their own turn begins. Applies to mercs and AI alike
 
