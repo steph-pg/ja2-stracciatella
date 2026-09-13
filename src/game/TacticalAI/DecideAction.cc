@@ -1987,7 +1987,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 								{
 									// abort! abort!
 									pSoldier->usActionData = NOWHERE;
-									SLOGD("TacticalAI: soldier #{} avoiding ambush trap on seeing corpses (warning level {})", pSoldier->ubID, ubWarnLevel);
+									SLOGD("TacticalAI: soldier #{} avoiding ambush trap on seeing corpses ({} min of warning left)", pSoldier->ubID, ubWarnLevel);
 								}
 							}
 						}

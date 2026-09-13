@@ -105,7 +105,6 @@ struct ROTTING_CORPSE_DEFINITION
 	INT8    bNumServicingCrows;
 	UINT8   ubProfile;
 	BOOLEAN fHeadTaken;
-	UINT8   ubAIWarningValue;
 };
 
 
@@ -171,7 +170,6 @@ void LookForAndMayCommentOnSeeingCorpse( SOLDIERTYPE *pSoldier, INT16 sGridNo, U
 
 INT16 GetGridNoOfCorpseGivenProfileID( UINT8 ubProfileID );
 
-void DecayRottingCorpseAIWarnings( void );
 UINT8 GetNearestRottingCorpseAIWarning( INT16 sGridNo );
 
 void ReduceAmmoDroppedByNonPlayerSoldiers(SOLDIERTYPE const&, OBJECTTYPE& ammo);

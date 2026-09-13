@@ -93,7 +93,6 @@ void HandleTacticalEndTurn()
 	DecaySmokeEffects(now, true);
 	DecayLightEffects(now, true);
 	DecayBloodAndSmells(now);
-	DecayRottingCorpseAIWarnings();
 
 	// Check for enemy pooling: Add enemies if there happens to be more than the
 	// max in the current battle. If one or more slots have freed up, we can add

@@ -29,7 +29,7 @@ void ExtractRottingCorpseFromFile(HWFILE const file, ROTTING_CORPSE_DEFINITION* 
 	EXTR_I8(d, c->bNumServicingCrows)
 	EXTR_U8(d, c->ubProfile)
 	EXTR_BOOL(d, c->fHeadTaken)
-	EXTR_U8(d, c->ubAIWarningValue)
+	EXTR_SKIP(d, 1)
 	EXTR_SKIP(d, 12)
 	Assert(d.getConsumed() == lengthof(data));
 }
@@ -58,7 +58,7 @@ void InjectRottingCorpseIntoFile(HWFILE const file, ROTTING_CORPSE_DEFINITION co
 	INJ_I8(d, c->bNumServicingCrows)
 	INJ_U8(d, c->ubProfile)
 	INJ_BOOL(d, c->fHeadTaken)
-	INJ_U8(d, c->ubAIWarningValue)
+	INJ_SKIP(d, 1)
 	INJ_SKIP(d, 12)
 	Assert(d.getConsumed() == lengthof(data));
 

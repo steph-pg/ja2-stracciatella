@@ -31,7 +31,6 @@
 #include "AIInternals.h"
 #include "AIList.h"
 #include "RenderWorld.h"
-#include "Rotting_Corpses.h"
 #include "Squads.h"
 #include "Soldier_Macros.h"
 #include "NPC.h"
@@ -289,9 +288,6 @@ static void EndTurnEvents(void)
 
 	DecaySmokeEffects(GetWorldTotalSeconds(), true);
 	DecayLightEffects(GetWorldTotalSeconds(), true);
-
-	// decay AI warning values from corpses
-	DecayRottingCorpseAIWarnings();
 }
 
 

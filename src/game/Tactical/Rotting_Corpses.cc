@@ -48,7 +48,10 @@
 // INVALID_STRUCTURE_ID in Structure.h!
 static_assert(MAX_ROTTING_CORPSES + TOTAL_SOLDIERS == INVALID_STRUCTURE_ID);
 
-#define CORPSE_WARNING_MAX			5
+// How long after a death the corpse still warns the AI of a possible ambush, in game
+// minutes. The game clock is frozen while turn-based combat runs, so this only ages
+// outside of combat, where it tracks real time 1:1 at normal speed.
+#define CORPSE_WARNING_MINUTES			5
 #define CORPSE_WARNING_DIST			5
 
 #define DELAY_UNTIL_ROTTING			( 1 * NUM_SEC_IN_DAY / 60 )
@@ -502,7 +505,6 @@ try
 
 	c->fActivated = TRUE;
 	ani->v.user.uiData = c->ID();
-	c->def.ubAIWarningValue = CORPSE_WARNING_MAX;
 
 	SetRenderFlags(RENDER_FLAG_FULL);
 
@@ -1350,26 +1352,23 @@ INT16 GetGridNoOfCorpseGivenProfileID(const UINT8 ubProfileID)
 }
 
 
-void DecayRottingCorpseAIWarnings(void)
-{
-	FOR_EACH_ROTTING_CORPSE(c)
-	{
-		if (c->def.ubAIWarningValue > 0) --c->def.ubAIWarningValue;
-	}
-}
-
-
 UINT8 GetNearestRottingCorpseAIWarning(const INT16 sGridNo)
 {
+	const UINT32 uiNow = GetWorldTotalMin();
 	UINT8 ubHighestWarning = 0;
 	CFOR_EACH_ROTTING_CORPSE(c)
 	{
-		if (c->def.ubAIWarningValue > 0 &&
-			PythSpacesAway(sGridNo, c->def.sGridNo) <= CORPSE_WARNING_DIST &&
-			c->def.ubAIWarningValue > ubHighestWarning)
-		{
-			ubHighestWarning = c->def.ubAIWarningValue;
-		}
+		if (PythSpacesAway(sGridNo, c->def.sGridNo) > CORPSE_WARNING_DIST) continue;
+
+		// guard against a corpse dated in the future, e.g. one placed by the editor
+		if (uiNow < c->def.uiTimeOfDeath) continue;
+
+		const UINT32 uiAge = uiNow - c->def.uiTimeOfDeath;
+		if (uiAge >= CORPSE_WARNING_MINUTES) continue;
+
+		// the fresher the body, the stronger the warning
+		const UINT8 ubWarning = (UINT8)(CORPSE_WARNING_MINUTES - uiAge);
+		if (ubWarning > ubHighestWarning) ubHighestWarning = ubWarning;
 	}
 	return ubHighestWarning;
 }
