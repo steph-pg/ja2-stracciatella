@@ -34,6 +34,7 @@
 #include "Smell.h"
 #include "Text.h"
 
+#include "AmmoTypeModel.h"
 #include "CalibreModel.h"
 #include "ContentManager.h"
 #include "GameInstance.h"
@@ -1804,6 +1805,45 @@ INT32 BulletImpactReducedByRange( INT32 iImpact, INT32 iDistanceTravelled, INT32
 }*/
 
 
+static const char* AimLocationName(UINT8 const ubAimLocation)
+{
+	switch (ubAimLocation)
+	{
+		case AIM_SHOT_HEAD:  return "head";
+		case AIM_SHOT_TORSO: return "torso";
+		case AIM_SHOT_LEGS:  return "legs";
+		case AIM_SHOT_GLAND: return "gland";
+		default:             return "random";
+	}
+}
+
+
+// Report what the shot was and where it ended up: aimed body part, the part the
+// bullet actually struck, the two chances the shot was rolled against, how well the
+// aim roll came out, the ammo, and the damage the armour soaked up. CTH is the aim
+// roll and CTGT the chance of clearing whatever stood in the way; the aiming cursor
+// shows their product, not either one alone. Hit-by is the margin the aim roll
+// succeeded by, worth half as much again in impact, which is the figure shown here -
+// it is not the whole story, as BulletImpact rolls a separate fluke of -25% to +25%
+// on top that nothing reports. Only the player's own mercs are worth naming.
+static void ReportBulletHit(BULLET const* const pBullet, SOLDIERTYPE const& tgt, UINT8 const ubHitLocation, UINT8 const ubAmmoType, INT16 const sHitBy, INT32 const iArmourAbsorbed)
+{
+	AmmoTypeModel const* const ammo = GCM->ammoTypes()->optionalById(ubAmmoType);
+
+	ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, ST::format(
+		"{} hit: aimed {}, hit {}, CTH {}%, CTGT {}%, hit by {} (+{}% impact), {}, armour stopped {}",
+		tgt.bTeam == OUR_TEAM ? tgt.name : ST::string("soldier"),
+		AimLocationName(pBullet->ubAimShotLocation),
+		AimLocationName(ubHitLocation),
+		pBullet->ubChanceToHit,
+		pBullet->ubChanceToGetThrough,
+		sHitBy,
+		sHitBy / 2,
+		ammo ? ammo->getInternalName() : ST::format("ammo {}", ubAmmoType),
+		iArmourAbsorbed));
+}
+
+
 static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIntended)
 {
 	SOLDIERTYPE* const pFirer = pBullet->pFirer;
@@ -1814,7 +1854,8 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 	UINT8 ubAmmoType;
 	UINT32 uiChanceThrough;
 	UINT8 ubSpecial = FIRE_WEAPON_NO_SPECIAL;
-	INT16 sHitBy;
+	// no bonus for good aim unless one of the damage branches below earns it
+	INT16 sHitBy = 0;
 	BOOLEAN fStopped = TRUE;
 	INT8 bSlot;
 	INT8 bHeadSlot = NO_SLOT;
@@ -1993,6 +2034,7 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 
 	// Determine damage, checking guy's armour, etc
 	INT16 const sRange = GetRangeInCellCoordsFromGridNoDiff(pFirer->sGridNo, tgt.sGridNo);
+	INT32 iArmourAbsorbed = 0;
 	if ( gTacticalStatus.uiFlags & GODMODE  && !(pFirer->uiStatusFlags & SOLDIER_PC))
 	{
 		// in god mode, and firer is computer controlled
@@ -2019,7 +2061,7 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 			// shouldn't happen but
 			iImpact = 0;
 		}
-		iDamage = BulletImpact(pFirer, &tgt, ubHitLocation, iImpact, sHitBy, &ubSpecial);
+		iDamage = BulletImpact(pFirer, &tgt, ubHitLocation, iImpact, sHitBy, &ubSpecial, &iArmourAbsorbed);
 		// handle hit here...
 		if (pFirer->bTeam == 0)
 		{
@@ -2047,10 +2089,15 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 			// shouldn't happen but
 			iImpact = 0;
 		}
-		iDamage = BulletImpact(pFirer, &tgt, ubHitLocation, iImpact, sHitBy, &ubSpecial);
+		iDamage = BulletImpact(pFirer, &tgt, ubHitLocation, iImpact, sHitBy, &ubSpecial, &iArmourAbsorbed);
 
 		// accidentally shot
 		tgt.fIntendedTarget = FALSE;
+	}
+
+	if (pBullet->fReal && tgt.bTeam == OUR_TEAM)
+	{
+		ReportBulletHit(pBullet, tgt, ubHitLocation, ubAmmoType, sHitBy, iArmourAbsorbed);
 	}
 
 	if ( ubAmmoType == AMMO_MONSTER )
@@ -3192,7 +3239,7 @@ static INT8 FireBullet(BULLET* pBullet, BOOLEAN fFake)
 }
 
 
-INT8 FireBulletGivenTarget(SOLDIERTYPE* const pFirer, const FLOAT dEndX, const FLOAT dEndY, const FLOAT dEndZ, const UINT16 usHandItem, INT16 sHitBy, const BOOLEAN fBuckshot, const BOOLEAN fFake)
+INT8 FireBulletGivenTarget(SOLDIERTYPE* const pFirer, const FLOAT dEndX, const FLOAT dEndY, const FLOAT dEndZ, const UINT16 usHandItem, INT16 sHitBy, const UINT8 ubChanceToHit, const UINT8 ubChanceToGetThrough, const BOOLEAN fBuckshot, const BOOLEAN fFake)
 {
 	// fFake indicates that we should set things up for a call to ChanceToGetThrough
 	FLOAT dStartZ;
@@ -3311,6 +3358,12 @@ INT8 FireBulletGivenTarget(SOLDIERTYPE* const pFirer, const FLOAT dEndX, const F
 			return FALSE;
 		}
 		pBullet->sHitBy	= sHitBy;
+
+		// GetTargetWorldPositions() has already resolved AIM_SHOT_RANDOM into a real
+		// body part by now, so this is the location the bullet was actually sent at.
+		pBullet->ubAimShotLocation    = pFirer->bAimShotLocation;
+		pBullet->ubChanceToHit        = ubChanceToHit;
+		pBullet->ubChanceToGetThrough = ubChanceToGetThrough;
 
 		float wallHeightUnits = WALL_HEIGHT_UNITS + ROOF_HIT_ADJUSTMENT;
 		// Account for cliff-elevated sectors, e.g. Drassen mine. Everywhere else it's zero
@@ -3438,7 +3491,7 @@ static INT8 ChanceToGetThrough(SOLDIERTYPE* const pFirer, const GridNo end_pos, 
 	INT16 end_x;
 	INT16 end_y;
 	ConvertGridNoToCenterCellXY(end_pos, &end_x, &end_y);
-	return FireBulletGivenTarget(pFirer, end_x, end_y, dEndZ, weapon, 0, buck_shot, TRUE);
+	return FireBulletGivenTarget(pFirer, end_x, end_y, dEndZ, weapon, 0, 0, 0, buck_shot, TRUE);
 }
 
 

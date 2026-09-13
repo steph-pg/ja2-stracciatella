@@ -49,6 +49,13 @@ struct BULLET
 	SOLDIERTYPE *pFirer;
 	UINT32  sTargetGridNo;
 	INT16   sHitBy;
+	// Snapshot of the shot that spawned this bullet, for the hit report. Taken when
+	// the bullet is created because the firer may have re-aimed or fired again by the
+	// time it lands. Deliberately not saved: a bullet in flight across a save/load
+	// reports a zero chance to hit, which is only cosmetic.
+	UINT8   ubAimShotLocation;
+	UINT8   ubChanceToHit;
+	UINT8   ubChanceToGetThrough;
 	INT32   iImpact;
 	INT32   iImpactReduction;
 	INT32   iRange;

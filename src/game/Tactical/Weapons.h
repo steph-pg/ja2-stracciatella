@@ -143,7 +143,9 @@ FireWeaponResult FireWeapon(SOLDIERTYPE * pSoldier, GridNo sTargetGridNo);
 void WeaponHit(SOLDIERTYPE* target, UINT16 usWeaponIndex, INT16 sDamage, INT16 sBreathLoss, UINT16 usDirection, INT16 sXPos, INT16 sYPos, INT16 sZPos, INT16 sRange, SOLDIERTYPE* attacker, UINT8 ubSpecial, UINT8 ubHitLocation);
 void StructureHit(BULLET* b, UINT16 usStructureID, INT32 iImpact, BOOLEAN fStopped);
 extern void WindowHit( INT16 sGridNo, UINT16 usStructureID, BOOLEAN fBlowWindowSouth, BOOLEAN fLargeForce );
-extern INT32 BulletImpact( SOLDIERTYPE *pFirer, SOLDIERTYPE * pTarget, UINT8 ubHitLocation, INT32 iImpact, INT16 sHitBy, UINT8 * pubSpecial );
+// If piArmourAbsorbed is given, it receives the damage the target's armour soaked
+// up, before the minimum-damage floor and any hit-location scaling are applied.
+extern INT32 BulletImpact( SOLDIERTYPE *pFirer, SOLDIERTYPE * pTarget, UINT8 ubHitLocation, INT32 iImpact, INT16 sHitBy, UINT8 * pubSpecial, INT32 * piArmourAbsorbed = NULL );
 BOOLEAN InRange(const SOLDIERTYPE* pSoldier, INT16 sGridNo);
 void ShotMiss(const BULLET* b);
 extern UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime, UINT8 ubAimPos, BOOLEAN fModify);

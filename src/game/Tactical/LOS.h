@@ -48,7 +48,7 @@ enum CollisionEnums
 
 INT32 CheckForCollision(FLOAT dX, FLOAT dY, FLOAT dZ, FLOAT dDeltaX, FLOAT dDeltaY, FLOAT dDeltaZ, UINT16* pusStructureID, FLOAT* pdNormalX, FLOAT* pdNormalY, FLOAT* pdNormalZ);
 
-INT8 FireBulletGivenTarget( SOLDIERTYPE * pFirer, FLOAT dEndX, FLOAT dEndY, FLOAT dEndZ, UINT16 usHandItem, INT16 sHitBy, BOOLEAN fBuckshot, BOOLEAN fFake );
+INT8 FireBulletGivenTarget( SOLDIERTYPE * pFirer, FLOAT dEndX, FLOAT dEndY, FLOAT dEndZ, UINT16 usHandItem, INT16 sHitBy, UINT8 ubChanceToHit, UINT8 ubChanceToGetThrough, BOOLEAN fBuckshot, BOOLEAN fFake );
 
 INT32 SoldierToSoldierLineOfSightTest(const SOLDIERTYPE* pStartSoldier, const SOLDIERTYPE* pEndSoldier, UINT8 ubTileSightLimit, INT8 bAware);
 INT32 SoldierToLocationLineOfSightTest( SOLDIERTYPE * pStartSoldier, INT16 sGridNo, UINT8 ubSightLimit, INT8 bAware );
