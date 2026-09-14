@@ -107,6 +107,95 @@ enum TrailFlags
 #define ISWATER(t)				(((t)==TRAVELCOST_KNEEDEEP) || ((t)==TRAVELCOST_DEEPWATER))
 #define NOPASS					(TRAVELCOST_BLOCKED)
 
+// --- AI night-light avoidance ----------------------------------------------
+// At night a soldier crossing lit ground is easy to spot, so the AI should keep
+// to the dark. Two things push it there, both only for enemy soldiers and both
+// off unless the ai avoid_lit_tiles_at_night policy is set:
+//
+//   * a mild search-cost bias away from any tile lit above the ambient night
+//     level, so a darker route wins whenever one is available at a reasonable
+//     expense;
+//   * a refusal to step onto a tile that is lit AND currently visible to one of
+//     the player's mercs. Those are the tiles that actually give a position
+//     away, and the set is small and localised, so a way around it nearly
+//     always exists.
+//
+// Testing light and line of sight per candidate tile inside the pathfinder
+// would be far too slow, so both are snapshotted into world-sized maps once at
+// the start of the enemy turn (BuildAINightLightMaps, called from BeginTeamTurn)
+// and only looked up here. gfAINightLightMaps is TRUE only while that snapshot
+// is valid - during the enemy team's own turn - so player and out-of-combat
+// pathing is untouched.
+
+// Search-cost penalty for a lit tile, in the same units as TRAVELCOST_FLAT
+// (10 = one tile), so a lit tile is worth a detour of about two tiles. This is
+// deliberately small: it is a nudge towards the dark, not a wall. A big penalty
+// makes the A* frontier balloon, and once the path queue is exhausted
+// FindBestPath simply fails - which the AI sees as "cannot get there" and
+// answers by dropping the move it had picked.
+#define LIGHT_PATH_COST				20
+
+static UINT8   gubAINightTileInLight[2][WORLD_MAX];
+static UINT8   gubAINightTileSeen[2][WORLD_MAX];
+static BOOLEAN gfAINightLightMaps = FALSE;
+
+void ClearAINightLightMaps(void)
+{
+	gfAINightLightMaps = FALSE;
+}
+
+void BuildAINightLightMaps(void)
+{
+	gfAINightLightMaps = FALSE;
+
+	// Only relevant on the surface at night - underground and in daylight there
+	// is no darkness to keep to. InLightAtNight() checks both as well, but
+	// checking here lets us skip the whole scan.
+	if (gWorldSector.z != 0) return;
+	if (GetTimeOfDayAmbientLightLevel() < NORMAL_LIGHTLEVEL_DAY + 2) return;
+
+	for (INT32 iGridNo = 0; iGridNo < WORLD_MAX; ++iGridNo)
+	{
+		gubAINightTileInLight[0][iGridNo] = InLightAtNight((INT16) iGridNo, 0);
+		gubAINightTileInLight[1][iGridNo] = InLightAtNight((INT16) iGridNo, 1);
+	}
+
+	std::fill_n(&gubAINightTileSeen[0][0], 2 * WORLD_MAX, (UINT8) 0);
+
+	// Now mark the lit tiles a living, in-sector player merc can actually see.
+	// Only lit tiles are worth a line of sight test, and each test is bounded by
+	// how far this merc really sees towards that tile, so the marked set stays
+	// small - the AI only detours around ground somebody is really watching.
+	const INT16 sScanRadius = MaxDistanceVisible();
+	CFOR_EACH_IN_TEAM(s, OUR_TEAM)
+	{
+		if (s->bLife < OKLIFE || s->sGridNo == NOWHERE || !s->bInSector) continue;
+
+		for (INT16 sYOff = -sScanRadius; sYOff <= sScanRadius; ++sYOff)
+		{
+			for (INT16 sXOff = -sScanRadius; sXOff <= sScanRadius; ++sXOff)
+			{
+				const INT32 iGridNo = s->sGridNo + sXOff + sYOff * WORLD_COLS;
+				if (iGridNo <= 0 || iGridNo >= WORLD_MAX) continue;
+
+				for (INT8 bLevel = 0; bLevel <= 1; ++bLevel)
+				{
+					if (gubAINightTileSeen[bLevel][iGridNo]) continue;  // another merc got there first
+					if (!gubAINightTileInLight[bLevel][iGridNo]) continue;
+
+					const INT16 sDistVisible = DistanceVisible(s, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, (INT16) iGridNo, bLevel);
+					if (SoldierToVirtualSoldierLineOfSightTest(s, (INT16) iGridNo, bLevel, ANIM_STAND, (UINT8) sDistVisible, TRUE))
+					{
+						gubAINightTileSeen[bLevel][iGridNo] = TRUE;
+					}
+				}
+			}
+		}
+	}
+
+	gfAINightLightMaps = TRUE;
+}
+
 static path_t *pathQ;
 static UINT16 gusPathShown,gusAPtsToMove;
 static INT32  queRequests;
@@ -728,6 +817,29 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 		}
 	}
 
+	// At night, keep enemies out of the light: prefer a route through darkness,
+	// and don't cross a lit tile the player can presently see (see
+	// BuildAINightLightMaps). Only once the team knows there are opponents in
+	// the sector - while still unaware, soldiers patrol normally instead of
+	// skulking about in the dark.
+	BOOLEAN const fAvoidLight =
+		gfAINightLightMaps &&
+		s->bTeam == ENEMY_TEAM &&
+		IS_MERC_BODY_TYPE( s ) &&
+		s->bAlertStatus > STATUS_YELLOW;
+
+	// Refusing lit tiles outright is narrower still. Named characters path as
+	// they always did, and a soldier that is already standing in the light must
+	// not be walled in by it: there may be no dark way out of a big lit patch,
+	// and the search would only fight the route towards wherever it is heading.
+	// Leaving the light is its own action (AI_ACTION_LEAVE_WATER_GAS, see
+	// FindNearbyDarkerSpot) and has to be able to path through it.
+	BOOLEAN const fRefuseLitTilesInSight =
+		fAvoidLight &&
+		s->ubProfile == NO_PROFILE &&
+		s->bAction != AI_ACTION_LEAVE_WATER_GAS &&
+		!gubAINightTileInLight[s->bLevel != 0][iOrigination];
+
 	//setup Q and first path record
 
 	SETLOC( *pQueueHead, iOrigination );
@@ -1342,6 +1454,19 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 			{
 				// penalize moving backwards to encourage turning sooner
 				nextCost += 50;
+			}
+
+			// Night ops: avoid the light. The refusal covers the destination tile
+			// too, so a soldier won't pick a lit, watched spot as the END of its
+			// move either - the cost bias alone could never stop that.
+			if ( fAvoidLight && gubAINightTileInLight[ubLevel != 0][newLoc] )
+			{
+				if ( fRefuseLitTilesInSight && gubAINightTileSeen[ubLevel != 0][newLoc] )
+				{
+					goto NEXTDIR;
+				}
+
+				nextCost += LIGHT_PATH_COST;
 			}
 
 			newTotCost = curCost + nextCost;

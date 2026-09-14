@@ -30,6 +30,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	auto ai = gp["ai"].toObject();
 	ai_better_aiming_choice = ai.getOptionalBool("better_aiming_choice");
 	ai_go_prone_more_often = ai.getOptionalBool("go_prone_more_often");
+	ai_avoid_lit_tiles_at_night = ai.getOptionalBool("avoid_lit_tiles_at_night");
 	threshold_cth_head = ai.getOptionalInt("threshold_cth_head", 67);
 	threshold_cth_legs = ai.getOptionalInt("threshold_cth_legs", 67);
 

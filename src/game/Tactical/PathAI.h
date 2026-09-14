@@ -21,6 +21,13 @@ INT16 EstimatePlotPath(SOLDIERTYPE* pSold, INT16 sDestGridno, INT8 bCopyRoute, I
 
 void ErasePath();
 INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMovementMode, INT8 bCopy, UINT8 fFlags);
+
+// Snapshot / discard the night-light maps the AI paths by: which tiles are lit
+// above the ambient night level, and which of those a player merc can presently
+// see. Built at the start of the enemy turn, dropped when control returns to
+// the player.
+void BuildAINightLightMaps(void);
+void ClearAINightLightMaps(void);
 void GlobalReachableTest( INT16 sStartGridNo );
 void GlobalItemsReachableTest( INT16 sStartGridNo1, INT16 sStartGridNo2 );
 void RoofReachableTest( INT16 sStartGridNo, UINT8 ubBuildingID );

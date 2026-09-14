@@ -58,6 +58,7 @@ public:
 
 	bool ai_better_aiming_choice;         // decide where to shoot depending on to-hit probability if random choice is being made
 	bool ai_go_prone_more_often;          // especially when already facing the right direction
+	bool ai_avoid_lit_tiles_at_night;     // at night, enemy soldiers keep to the dark and won't cross lit tiles a player merc can see
 	int8_t threshold_cth_head;            // threshold AI always take head shots, increase game difficulty
 	int8_t threshold_cth_legs;            // threshold AI switch to leg shots from torso
 
