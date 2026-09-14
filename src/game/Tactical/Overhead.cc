@@ -140,7 +140,7 @@ static std::vector<SOLDIERTYPE *> AwaySlots;
 SOLDIERTYPE* g_selected_man;
 
 
-const char* const gzActionStr[] =
+static const char* const gzActionStr[] =
 {
 	"NONE",
 
@@ -199,6 +199,95 @@ const char* const gzActionStr[] =
 	"TRAVERSE DOWN",
 	"OFFER SURRENDER"
 };
+
+static_assert(lengthof(gzActionStr) == NUM_AI_ACTIONS, "gzActionStr[] is out of sync with enum ActionType");
+
+
+// The AI stores all of these as plain INT8s, so every lookup is range checked.
+template<size_t N>
+static const char* NameFromTable(const char* const (&table)[N], INT8 const bValue)
+{
+	return bValue < 0 || static_cast<size_t>(bValue) >= N ? "INVALID" : table[bValue];
+}
+
+
+const char* AIActionName(INT8 const bAction)
+{
+	return NameFromTable(gzActionStr, bAction);
+}
+
+
+static const char* const gzAlertStr[] =
+{
+	"GREEN",
+	"YELLOW",
+	"RED",
+	"BLACK"
+};
+
+static_assert(lengthof(gzAlertStr) == NUM_STATUS_STATES, "gzAlertStr[] is out of sync with the alert status enum");
+
+const char* AIAlertName(INT8 const bAlertStatus)
+{
+	return NameFromTable(gzAlertStr, bAlertStatus);
+}
+
+
+static const char* const gzOrdersStr[] =
+{
+	"STATIONARY",
+	"ON GUARD",
+	"CLOSE PATROL",
+	"FAR PATROL",
+	"POINT PATROL",
+	"ON CALL",
+	"SEEK ENEMY",
+	"RND PT PATROL"
+};
+
+static_assert(lengthof(gzOrdersStr) == MAXORDERS, "gzOrdersStr[] is out of sync with the orders enum");
+
+const char* AIOrdersName(INT8 const bOrders)
+{
+	return NameFromTable(gzOrdersStr, bOrders);
+}
+
+
+static const char* const gzAttitudeStr[] =
+{
+	"DEFENSIVE",
+	"BRAVE SOLO",
+	"BRAVE AID",
+	"CUNNING SOLO",
+	"CUNNING AID",
+	"AGGRESSIVE"
+};
+
+static_assert(lengthof(gzAttitudeStr) == MAXATTITUDES, "gzAttitudeStr[] is out of sync with the attitudes enum");
+
+const char* AIAttitudeName(INT8 const bAttitude)
+{
+	// ATTACKSLAYONLY is listed past MAXATTITUDES
+	if (bAttitude == ATTACKSLAYONLY) return "ATTACK SLAY ONLY";
+	return NameFromTable(gzAttitudeStr, bAttitude);
+}
+
+
+static const char* const gzMoraleStr[] =
+{
+	"HOPELESS",
+	"WORRIED",
+	"NORMAL",
+	"CONFIDENT",
+	"FEARLESS"
+};
+
+static_assert(lengthof(gzMoraleStr) == NUM_MORALE_STATES, "gzMoraleStr[] is out of sync with the morale enum");
+
+const char* AIMoraleName(INT8 const bMorale)
+{
+	return NameFromTable(gzMoraleStr, bMorale);
+}
 
 
 struct TeamInfo

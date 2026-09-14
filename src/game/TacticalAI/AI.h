@@ -87,6 +87,8 @@ enum ActionType
 	AI_ACTION_END_COWER_AND_MOVE,	// sort of dummy value, special for civilians who are to go somewhere at end of battle
 	AI_ACTION_TRAVERSE_DOWN,			// move down a level
 	AI_ACTION_OFFER_SURRENDER,		// offer surrender to the player
+
+	NUM_AI_ACTIONS								// keep last; gzActionStr[] in Overhead.cc is checked against this
 };
 
 

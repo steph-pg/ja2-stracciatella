@@ -24,8 +24,9 @@ static INT8 RTPlayerDecideAction(SOLDIERTYPE* pSoldier)
 	{
 		bAction = DecideAction( pSoldier );
 	}
-	SLOGD("DecideAction: selected action {}, actionData {}\n\n",
-				bAction, pSoldier->usActionData);
+	// DecideAction() logs the decision itself; this covers the auto bandage path
+	SLOGD("RTPlayerDecideAction: soldier {} selected action {} ({}), actionData {}\n\n",
+				pSoldier->ubID, AIActionName(bAction), bAction, pSoldier->usActionData);
 
 	return(bAction);
 }
