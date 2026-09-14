@@ -24,8 +24,11 @@ static INT8 RTPlayerDecideAction(SOLDIERTYPE* pSoldier)
 	{
 		bAction = DecideAction( pSoldier );
 	}
-	SLOGD("DecideAction: selected action {}, actionData {}\n\n",
-				bAction, pSoldier->usActionData);
+	SLOGD("DecideAction: soldier {} on {} alert, orders {}, attitude {}, AI morale {} -- selected action {} ({}), actionData {}\n\n",
+				pSoldier->ubID,
+				AIAlertName(pSoldier->bAlertStatus), AIOrdersName(pSoldier->bOrders),
+				AIAttitudeName(pSoldier->bAttitude), AIMoraleName(pSoldier->bAIMorale),
+				AIActionName(bAction), bAction, pSoldier->usActionData);
 
 	return(bAction);
 }

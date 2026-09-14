@@ -2876,14 +2876,6 @@ void DebugSoldierPage2()
 
 void DebugSoldierPage3()
 {
-	static const char* const gzAlertStr[] =
-	{
-		"GREEN",
-		"YELLOW",
-		"RED",
-		"BLACK"
-	};
-
 	INT32 const h = DEBUG_PAGE_LINE_HEIGHT;
 
 	const SOLDIERTYPE* const s = gUIFullTarget;
@@ -2894,18 +2886,18 @@ void DebugSoldierPage3()
 		INT32 y = DEBUG_PAGE_START_Y;
 
 		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "ID:",     s->ubID);
-		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Action:", gzActionStr[s->bAction]);
+		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Action:", AIActionName(s->bAction));
 
 		if (s->uiStatusFlags & SOLDIER_ENEMY)
 		{
-			MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Alert:", gzAlertStr[s->bAlertStatus]);
+			MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Alert:", AIAlertName(s->bAlertStatus));
 		}
 
 		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Action Data:", s->usActionData);
 
 		if (s->uiStatusFlags & SOLDIER_ENEMY)
 		{
-			MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "AIMorale", s->bAIMorale);
+			MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "AIMorale", AIMoraleName(s->bAIMorale));
 		}
 		else
 		{
@@ -2934,7 +2926,7 @@ void DebugSoldierPage3()
 			);
 		}
 
-		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Last Action:", gzActionStr[s->bLastAction]);
+		MPrintStat(DEBUG_PAGE_FIRST_COLUMN, y += h, "Last Action:", AIActionName(s->bLastAction));
 
 		if (gubWatchedLocPoints[s->ubID][2] > 0)
 		{

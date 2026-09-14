@@ -745,7 +745,7 @@ void FreeUpNPCFromTurning(SOLDIERTYPE* pSoldier)
 	if ((pSoldier->bAction == AI_ACTION_CHANGE_FACING) && pSoldier->bActionInProgress)
 	{
 		SLOGD("FreeUpNPCFromTurning: our action {}, desdir {} dir {}",
-			pSoldier->bAction, pSoldier->bDesiredDirection, pSoldier->bDirection);
+			AIActionName(pSoldier->bAction), pSoldier->bDesiredDirection, pSoldier->bDirection);
 		ActionDone(pSoldier);
 	}
 }
@@ -794,7 +794,7 @@ void ActionDone(SOLDIERTYPE *pSoldier)
 		if (pSoldier->uiStatusFlags & SOLDIER_MONSTER)
 		{
 			SLOGD("Cancelling actiondone: our action {}, desdir {} dir {}",
-				pSoldier->bAction, pSoldier->bDesiredDirection, pSoldier->bDirection);
+				AIActionName(pSoldier->bAction), pSoldier->bDesiredDirection, pSoldier->bDirection);
 		}
 
 		// If doing an attack, reset attack busy count and # of bullets
@@ -1314,12 +1314,12 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 	if (gfTurnBasedAI || gTacticalStatus.fAutoBandageMode)
 	{
 		SLOGD("{} does {} (a.d. {}) in {} with {} APs left",
-			pSoldier->ubID, gzActionStr[pSoldier->bAction], pSoldier->usActionData,
+			pSoldier->ubID, AIActionName(pSoldier->bAction), pSoldier->usActionData,
 			pSoldier->sGridNo, pSoldier->bActionPoints);
 	}
 
 	SLOGD("{} does {} (a.d. {}) at time {}", pSoldier->ubID,
-		gzActionStr[pSoldier->bAction], pSoldier->usActionData, GetJA2Clock());
+		AIActionName(pSoldier->bAction), pSoldier->usActionData, GetJA2Clock());
 
 	switch (pSoldier->bAction)
 	{
@@ -1607,7 +1607,7 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 				if ( iRetCode != ITEM_HANDLE_BROKEN ) // if the item broke, this is 'legal' and doesn't need reporting
 				{
 					SLOGW("AI {} got error code {} from HandleItem, doing action {}, has {} APs... aborting deadlock!",
-								pSoldier->ubID, iRetCode, pSoldier->bAction, pSoldier->bActionPoints);
+								pSoldier->ubID, iRetCode, AIActionName(pSoldier->bAction), pSoldier->bActionPoints);
 				}
 				CancelAIAction(pSoldier);
 				if (gfTurnBasedAI)
@@ -1736,7 +1736,7 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 			if ( iRetCode != ITEM_HANDLE_OK)
 			{
 				SLOGW("AI {} got error code {} from HandleItem, doing action {}... aborting deadlock!",
-							pSoldier->ubID, iRetCode, pSoldier->bAction);
+							pSoldier->ubID, iRetCode, AIActionName(pSoldier->bAction));
 				CancelAIAction(pSoldier);
 				EndAIGuysTurn(*pSoldier);
 			}
