@@ -200,6 +200,98 @@ const char* const gzActionStr[] =
 	"OFFER SURRENDER"
 };
 
+static_assert(lengthof(gzActionStr) == NUM_AI_ACTIONS, "gzActionStr[] is out of sync with enum ActionType");
+
+
+// Name of an AI action, for logs and for the soldier debug screen.  Unlike indexing
+// gzActionStr directly, this tolerates the out of range values that an uninitialised
+// or already cancelled action can carry.
+const char* AIActionName(INT8 const bAction)
+{
+	if (bAction < 0 || bAction >= NUM_AI_ACTIONS) return "INVALID";
+	return gzActionStr[bAction];
+}
+
+
+// The remaining inputs the AI decides on, named for the same reason.  All of these are
+// stored as plain INT8s, so every lookup is range checked.
+
+static const char* const gzAlertStr[] =
+{
+	"GREEN",
+	"YELLOW",
+	"RED",
+	"BLACK"
+};
+
+static_assert(lengthof(gzAlertStr) == NUM_STATUS_STATES, "gzAlertStr[] is out of sync with the alert status enum");
+
+const char* AIAlertName(INT8 const bAlertStatus)
+{
+	if (bAlertStatus < 0 || bAlertStatus >= NUM_STATUS_STATES) return "INVALID";
+	return gzAlertStr[bAlertStatus];
+}
+
+
+static const char* const gzOrdersStr[] =
+{
+	"STATIONARY",
+	"ON GUARD",
+	"CLOSE PATROL",
+	"FAR PATROL",
+	"POINT PATROL",
+	"ON CALL",
+	"SEEK ENEMY",
+	"RND PT PATROL"
+};
+
+static_assert(lengthof(gzOrdersStr) == MAXORDERS, "gzOrdersStr[] is out of sync with the orders enum");
+
+const char* AIOrdersName(INT8 const bOrders)
+{
+	if (bOrders < 0 || bOrders >= MAXORDERS) return "INVALID";
+	return gzOrdersStr[bOrders];
+}
+
+
+static const char* const gzAttitudeStr[] =
+{
+	"DEFENSIVE",
+	"BRAVE SOLO",
+	"BRAVE AID",
+	"CUNNING SOLO",
+	"CUNNING AID",
+	"AGGRESSIVE"
+};
+
+static_assert(lengthof(gzAttitudeStr) == MAXATTITUDES, "gzAttitudeStr[] is out of sync with the attitudes enum");
+
+const char* AIAttitudeName(INT8 const bAttitude)
+{
+	// ATTACKSLAYONLY is a special value listed past MAXATTITUDES, so it needs its own case.
+	if (bAttitude == ATTACKSLAYONLY) return "ATTACK SLAY ONLY";
+	if (bAttitude < 0 || bAttitude >= MAXATTITUDES) return "INVALID";
+	return gzAttitudeStr[bAttitude];
+}
+
+
+static const char* const gzMoraleStr[] =
+{
+	"HOPELESS",
+	"WORRIED",
+	"NORMAL",
+	"CONFIDENT",
+	"FEARLESS"
+};
+
+static_assert(lengthof(gzMoraleStr) == NUM_MORALE_STATES, "gzMoraleStr[] is out of sync with the morale enum");
+
+const char* AIMoraleName(INT8 const bMorale)
+{
+	if (bMorale < 0 || bMorale >= NUM_MORALE_STATES) return "INVALID";
+	return gzMoraleStr[bMorale];
+}
+
 
 struct TeamInfo
 {

@@ -132,6 +132,14 @@ extern SOLDIERTYPE* g_selected_man;
 
 extern const char* const gzActionStr[];
 
+// Human readable names of the AI's action and of its decision inputs.
+// All are safe for out of range values.
+const char* AIActionName(INT8 bAction);
+const char* AIAlertName(INT8 bAlertStatus);
+const char* AIOrdersName(INT8 bOrders);
+const char* AIAttitudeName(INT8 bAttitude);
+const char* AIMoraleName(INT8 bMorale);
+
 // Soldier List used for all soldier overhead interaction
 extern SOLDIERTYPE Menptr[TOTAL_SOLDIERS];
 
