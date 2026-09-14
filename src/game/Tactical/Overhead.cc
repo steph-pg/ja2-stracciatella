@@ -4043,6 +4043,10 @@ void ExitCombatMode( )
 	// Leave combat mode
 	gTacticalStatus.uiFlags &= (~INCOMBAT);
 
+	// The enemy-turn snapshot of watched lit tiles only holds during that turn
+	// (see BuildAINightLightMaps); out of combat there are no turns to speak of.
+	ClearAINightLightMaps();
+
 	EndTopMessage( );
 
 	// OK, we have exited combat mode.....

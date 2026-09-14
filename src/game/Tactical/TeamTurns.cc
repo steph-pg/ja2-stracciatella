@@ -342,6 +342,10 @@ void BeginTeamTurn( UINT8 ubTeam )
 
 		if (ubTeam == OUR_TEAM )
 		{
+			// Control is back with the player, so the enemy-turn snapshot of which
+			// lit tiles are watched is no longer valid.
+			ClearAINightLightMaps();
+
 			// ATE: Check if we are still in a valid battle...
 			// ( they could have blead to death above )
 			if ( ( gTacticalStatus.uiFlags & INCOMBAT ) )
@@ -352,6 +356,17 @@ void BeginTeamTurn( UINT8 ubTeam )
 		}
 		else
 		{
+			// Before the enemy starts moving, snapshot which lit tiles the player
+			// can presently see so the AI can route around them in the dark (see
+			// BuildAINightLightMaps). Without the snapshot the pathfinder leaves
+			// night pathing alone entirely, so the policy switches off the whole
+			// feature.
+			if ( ubTeam == ENEMY_TEAM && ( gTacticalStatus.uiFlags & INCOMBAT )
+				&& gamepolicy(ai_avoid_lit_tiles_at_night) )
+			{
+				BuildAINightLightMaps();
+			}
+
 			// Set First enemy merc to AI control
 			if ( BuildAIListForTeam( ubTeam ) )
 			{

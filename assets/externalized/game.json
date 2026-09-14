@@ -108,6 +108,11 @@
     //  vanilla value: false
     "avoid_ambushes": false,
 
+    //  At night, enemy soldiers prefer routes through darkness and will not cross a lit tile
+    //  that one of the player's mercs can currently see.
+    //  vanilla value: false
+    "avoid_lit_tiles_at_night": false,
+
     //  Enemy guards on rooftop are disallowed to climb down
     //  vanilla value: false
     "stay_on_rooftop": false

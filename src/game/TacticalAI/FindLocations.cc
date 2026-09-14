@@ -31,6 +31,7 @@
 
 #include "ContentManager.h"
 #include "GameInstance.h"
+#include "policy/GamePolicy.h"
 #include "WeaponModels.h"
 
 #include <algorithm>
@@ -835,6 +836,20 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 
 			// ignore blacklisted spot
 			if ( sGridNo == pSoldier->sBlackList )
+			{
+				continue;
+			}
+
+			// Night ops: don't take cover in a lit spot while we are standing in the
+			// dark - trading concealment for cover gives our position away. The
+			// light already scales the cover value below, but a bright spot with good
+			// cover can still win that on points, and this is also what keeps the
+			// pathfinder from being asked for a route it will refuse to plot (see
+			// BuildAINightLightMaps). Under fire, cover wins - get out of the open.
+			if ( gamepolicy(ai_avoid_lit_tiles_at_night) && pSoldier->bTeam == ENEMY_TEAM &&
+				!pSoldier->bUnderFire &&
+				InLightAtNight( sGridNo, pSoldier->bLevel ) &&
+				!InLightAtNight( pSoldier->sGridNo, pSoldier->bLevel ) )
 			{
 				continue;
 			}

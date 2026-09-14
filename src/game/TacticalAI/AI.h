@@ -182,6 +182,7 @@ void FreeUpNPCFromRoofClimb(SOLDIERTYPE *pSoldier );
 void HandleSoldierAI( SOLDIERTYPE *pSoldier );
 void HandleInitialRedAlert(INT8 bTeam);
 
+BOOLEAN InLightAtNight( INT16 sGridNo, INT8 bLevel );
 void InitPanicSystem(void);
 bool InWaterOrGas(SOLDIERTYPE const*, GridNo);
 BOOLEAN IsActionAffordable(SOLDIERTYPE *pSoldier);
