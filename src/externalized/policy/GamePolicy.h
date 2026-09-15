@@ -121,6 +121,8 @@ public:
 
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
 
+	uint16_t training_speed_modifier;     // % modifier to the training points a merc earns from practice and from being taught by a teammate (100 = vanilla, 200 = twice as fast)
+
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
 
