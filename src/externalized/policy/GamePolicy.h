@@ -122,6 +122,8 @@ public:
 
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
 
+	uint16_t training_speed_modifier;     // % modifier to training speed (100 = vanilla)
+
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
 

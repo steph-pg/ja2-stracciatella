@@ -255,6 +255,10 @@
 
   "enable_stat_healing": false,
 
+  //  Percentage modifier to self-training and instructed training speed.
+  //  vanilla setting: 100
+  "training_speed_modifier": 100,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {

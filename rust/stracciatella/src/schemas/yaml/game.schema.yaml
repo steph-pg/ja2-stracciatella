@@ -539,6 +539,15 @@ properties:
 
       Vanilla setting: `false`
 
+  training_speed_modifier:
+    $ref: types/uint16.schema.yaml
+    title: Training speed modifier
+    description: |
+      Percentage modifier to self-training and instructed training speed.
+      Militia training is not affected.
+
+      Vanilla setting: `100`
+
   campaign:
     type: object
     properties:

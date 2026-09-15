@@ -2318,6 +2318,18 @@ static int TownTrainerQsortCompare(const void* pArg1, const void* pArg2)
 }
 
 
+// Scales training points by training_speed_modifier, keeping at least one point
+static UINT16 ScaleTrainingPts(UINT16 const pts)
+{
+	UINT32 const modifier = gamepolicy(training_speed_modifier);
+	if (modifier == 100) return pts;
+
+	UINT32 const scaled = pts * modifier / 100;
+	if (scaled == 0) return pts > 0 && modifier > 0 ? 1 : 0;
+	return scaled < INT16_MAX ? (UINT16) scaled : INT16_MAX;
+}
+
+
 INT16 GetBonusTrainingPtsDueToInstructor(const SOLDIERTYPE* pInstructor, const SOLDIERTYPE* pStudent, INT8 bTrainStat, BOOLEAN fAtGunRange, UINT16* pusMaxPts)
 {
 	// return the bonus training pts of this instructor with this student,...if student null, simply assignment student skill of 0 and student wisdom of 100
@@ -2464,6 +2476,9 @@ INT16 GetBonusTrainingPtsDueToInstructor(const SOLDIERTYPE* pInstructor, const S
 	// adjust for instructor fatigue
 	ReducePointsForFatigue( pInstructor, &sTrainingPts );
 
+	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
+	sTrainingPts = ScaleTrainingPts(sTrainingPts);
+
 	return( sTrainingPts );
 }
 
@@ -2502,6 +2517,9 @@ INT16 GetSoldierTrainingPts(const SOLDIERTYPE* s, INT8 bTrainStat, BOOLEAN fAtGu
 
 	// adjust for fatigue
 	ReducePointsForFatigue(s, &sTrainingPts);
+
+	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
+	sTrainingPts = ScaleTrainingPts(sTrainingPts);
 
 	return( sTrainingPts );
 }
@@ -2544,6 +2562,9 @@ INT16 GetSoldierStudentPts(const SOLDIERTYPE* s, INT8 bTrainStat, BOOLEAN fAtGun
 
 	// adjust for fatigue
 	ReducePointsForFatigue(s, &sTrainingPts);
+
+	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
+	sTrainingPts = ScaleTrainingPts(sTrainingPts);
 
 
 	// now add in stuff for trainer
