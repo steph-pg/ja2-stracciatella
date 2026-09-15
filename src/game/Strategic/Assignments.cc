@@ -2318,6 +2318,22 @@ static int TownTrainerQsortCompare(const void* pArg1, const void* pArg2)
 }
 
 
+/* Scales training points by the training_speed_modifier policy.  Vanilla practice and teaching
+ * are slow enough that a merc with halfway decent stats hardly improves at all, so this lets a
+ * campaign dial the rate up (or down) without touching the formulas themselves.  Anyone who earns
+ * anything at all keeps at least a single point, so a modifier below 100 slows training down
+ * rather than stopping it dead. */
+static UINT16 ScaleTrainingPts(UINT16 const pts)
+{
+	UINT32 const modifier = gamepolicy(training_speed_modifier);
+	if (modifier == 100) return pts;
+
+	UINT32 const scaled = pts * modifier / 100;
+	if (scaled == 0) return pts > 0 && modifier > 0 ? 1 : 0;
+	return scaled < INT16_MAX ? (UINT16) scaled : INT16_MAX;
+}
+
+
 INT16 GetBonusTrainingPtsDueToInstructor(const SOLDIERTYPE* pInstructor, const SOLDIERTYPE* pStudent, INT8 bTrainStat, BOOLEAN fAtGunRange, UINT16* pusMaxPts)
 {
 	// return the bonus training pts of this instructor with this student,...if student null, simply assignment student skill of 0 and student wisdom of 100
@@ -2464,6 +2480,9 @@ INT16 GetBonusTrainingPtsDueToInstructor(const SOLDIERTYPE* pInstructor, const S
 	// adjust for instructor fatigue
 	ReducePointsForFatigue( pInstructor, &sTrainingPts );
 
+	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
+	sTrainingPts = ScaleTrainingPts(sTrainingPts);
+
 	return( sTrainingPts );
 }
 
@@ -2502,6 +2521,9 @@ INT16 GetSoldierTrainingPts(const SOLDIERTYPE* s, INT8 bTrainStat, BOOLEAN fAtGu
 
 	// adjust for fatigue
 	ReducePointsForFatigue(s, &sTrainingPts);
+
+	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
+	sTrainingPts = ScaleTrainingPts(sTrainingPts);
 
 	return( sTrainingPts );
 }
@@ -2544,6 +2566,10 @@ INT16 GetSoldierStudentPts(const SOLDIERTYPE* s, INT8 bTrainStat, BOOLEAN fAtGun
 
 	// adjust for fatigue
 	ReducePointsForFatigue(s, &sTrainingPts);
+
+	// scale what they learn on their own; the instructor's share is scaled by the call below
+	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
+	sTrainingPts = ScaleTrainingPts(sTrainingPts);
 
 
 	// now add in stuff for trainer
