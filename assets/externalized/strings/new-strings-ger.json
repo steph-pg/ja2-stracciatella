@@ -5,6 +5,13 @@
         "Neue Rekruten können dort nicht hinkommen.",
         "Can't be done diagonally.",
         "%s: %s ohne Strom",
+        "Nahkampfwaffe",
+        "Schwere Waffe",
+        "Unbewaffnet",
+        "Gegenstand",
+        "Helm",
+        "Weste",
+        "Beinschutz",
 
         "__last_one"
 ]

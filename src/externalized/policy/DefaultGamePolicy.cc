@@ -48,6 +48,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	regular_soldier_stat_spread = gp.getOptionalBool("regular_soldier_stat_spread");
 
 	gui_extras = gp.getOptionalBool("gui_extras", true);
+	show_enemy_equipment = gp.getOptionalBool("show_enemy_equipment");
 	informative_tooltips = gp.getOptionalBool("informative_tooltips", false);
 	extra_attachments = gp.getOptionalBool("extra_attachments");
 	skip_sleep_explanation = gp.getOptionalBool("skip_sleep_explanation");

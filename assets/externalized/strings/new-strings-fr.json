@@ -5,6 +5,13 @@
         "New recruits cannot arrive there.",
         "Can't be done diagonally.",
         "%s : %s sans batterie",
+        "Melee weapon",
+        "Heavy weapon",
+        "Unarmed",
+        "Item",
+        "Helmet",
+        "Vest",
+        "Leggings",
 
         "__last_one"
 ]

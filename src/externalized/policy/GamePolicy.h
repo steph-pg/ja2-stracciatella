@@ -52,6 +52,7 @@ public:
 	int8_t gun_jam_chance_minimum;        // Minimum % chance for a gun to jam even in perfect condition (0 = vanilla, never jams above status 80)
 
 	bool gui_extras;                      /* graphical user interface cosmetic mod */
+	bool show_enemy_equipment;            // hovering a visible enemy shows a box listing their weapon type, armour pieces and head gear
 	bool informative_tooltips;            /* Reveal modifiers in hover boxes */
 	bool extra_attachments;               // allow more item attachments options
 	bool skip_sleep_explanation;          // skip annoying popups

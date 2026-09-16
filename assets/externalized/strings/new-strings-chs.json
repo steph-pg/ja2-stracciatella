@@ -5,6 +5,13 @@
         "新兵不能到那儿。",
         "Can't be done diagonally.",
         "%s：%s没电了",
+        "Melee weapon",
+        "Heavy weapon",
+        "Unarmed",
+        "Item",
+        "Helmet",
+        "Vest",
+        "Leggings",
 
         "__last_one"
 ]
