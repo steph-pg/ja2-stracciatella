@@ -31,6 +31,7 @@
 
 #include "ContentManager.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "WeaponModels.h"
 
 #include <algorithm>
@@ -287,6 +288,20 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 	}
 
 
+	const bool fPrioritizeCover = gamepolicy(ai_prioritize_cover);
+
+	// Judge his ability to hit us as if he were standing, whatever stance he is in
+	// right now. An opponent who is currently crouched or prone behind cover has no
+	// line of fire at all, so he scores bHisCTGT ~ 0 against every candidate tile:
+	// cover stops telling the tiles apart and we settle for a spot that only suits
+	// our own shot. Meanwhile he stands up next turn, fires, and drops back down.
+	// Assuming his most dangerous stance picks a spot that still protects us then.
+	const UINT16 usHisRealAnimState = pHim->usAnimState;
+	if (fPrioritizeCover)
+	{
+		pHim->usAnimState = STANDING;
+	}
+
 	if (InWaterOrGas(pHim,sHisGridNo))
 	{
 		bHisActualCTGT = 0;
@@ -325,6 +340,9 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 		}
 	}
 
+	// done weighing his threat - give him his stance back
+	pHim->usAnimState = usHisRealAnimState;
+
 	// if my intended gridno is in water or gas, I can't attack at all from there
 	// here, for smoke, consider bad
 	if (InWaterGasOrSmoke(pMe,sMyGridNo))
@@ -344,9 +362,21 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 		// bMyCTGT = ChanceToGetThrough(pMe,sHisGridNo,FAKE,ACTUAL,TESTWALLS,9999,M9PISTOL,NOT_FOR_LOS); // assume a gunshot
 		// bMyCTGT = SoldierToLocationChanceToGetThrough( pMe, sHisGridNo, pMe->bTargetLevel, pMe->bTargetCubeLevel );
 
+		// Judge our own shot from this spot as if we were standing too, the way the
+		// attack code itself does (see AISoldierToSoldierChanceToGetThrough). Otherwise
+		// a soldier lying behind an obstacle writes off every spot it could fire from
+		// after simply getting up.
+		const UINT16 usMyRealAnimState = pMe->usAnimState;
+		if (fPrioritizeCover)
+		{
+			pMe->usAnimState = STANDING;
+		}
+
 		// let's not assume anything about the stance the enemy might take, so take an average
 		// value... no cover give a higher value than partial cover
 		bMyCTGT = CalcAverageCTGTForPosition(pMe, pHim, sHisGridNo, pHim->bLevel, iMyAPsLeft);
+
+		pMe->usAnimState = usMyRealAnimState;
 
 		// since NPCs are too dumb to shoot "blind", ie. at opponents that they
 		// themselves can't see (mercs can, using another as a spotter!), if the
@@ -497,6 +527,138 @@ static UINT8 NumberOfTeamMatesAdjacent(SOLDIERTYPE* pSoldier, INT16 sGridNo)
 	return( ubCount );
 }
 
+// Whoever fired from a watched location is most likely the opponent standing right
+// beside it, having stepped back out of sight after the shot. Only an opponent we
+// already know about counts: we are borrowing their stats, not discovering them.
+static SOLDIERTYPE* FindOpponentBesideWatchedLoc(SOLDIERTYPE* pSoldier, INT16 sWatchedLoc, INT8 bLevel)
+{
+	// the location itself first, then the ring around it
+	for (UINT8 ubLoop = 0; ubLoop <= NUM_WORLD_DIRECTIONS; ++ubLoop)
+	{
+		INT16 sSpot = sWatchedLoc;
+
+		if (ubLoop < NUM_WORLD_DIRECTIONS)
+		{
+			sSpot = NewGridNo(sWatchedLoc, DirectionInc(ubLoop));
+
+			// NewGridNo hands back the same tile when the neighbour is off the map
+			if (sSpot == sWatchedLoc) continue;
+		}
+
+		SOLDIERTYPE* const pOther = WhoIsThere2(sSpot, bLevel);
+		if (pOther == NULL || pOther->bLife < OKLIFE) continue;
+
+		// same test the threat loop makes: neutrals and our own side aren't opponents
+		if (CONSIDERED_NEUTRAL(pSoldier, pOther) || (pSoldier->bSide == pOther->bSide))
+		{
+			continue;
+		}
+
+		// unknown personally and publicly - we have no business knowing they are there
+		if ((pSoldier->bOppList[pOther->ubID] == NOT_HEARD_OR_SEEN) &&
+			(gbPublicOpplist[pSoldier->bTeam][pOther->ubID] == NOT_HEARD_OR_SEEN))
+		{
+			continue;
+		}
+
+		return pOther;
+	}
+
+	return NULL;
+}
+
+
+// A merc who steps out from behind a corner, fires and steps straight back leaves the
+// cover search nothing to weigh: from where they stand now there is no line of fire,
+// and their last known location is the tile they ducked back into. What we do remember
+// is the tile the shots came from - a watched location. So stand a soldier there as
+// well, and let the cover value account for them leaning back out next turn.
+//
+// Who to stand there: the opponent we can make out beside that tile, since that is who
+// ducked back. Failing that a copy of ourselves, the only soldier whose stats and gear
+// we can be sure of and near enough the right order of threat.
+static UINT32 AddWatchedLocThreats(SOLDIERTYPE* pSoldier, UINT32 uiThreatCnt, INT32 iMaxThreatRange)
+{
+	// a stand-in is not in the world, so it needs storage of its own - one per watched
+	// location, since every Threat entry holds on to its soldier for the whole search
+	static SOLDIERTYPE gStandIn[NUM_WATCHED_LOCS];
+
+	for (INT8 bLoop = 0; bLoop < NUM_WATCHED_LOCS && uiThreatCnt < (UINT32) MAXMERCS; ++bLoop)
+	{
+		INT16 const sWatchedLoc = gsWatchedLoc[pSoldier->ubID][bLoop];
+		UINT8 const ubPoints    = gubWatchedLocPoints[pSoldier->ubID][bLoop];
+
+		if (sWatchedLoc == NOWHERE || ubPoints == 0) continue;
+
+		INT8  const bWatchedLevel = gbWatchedLocLevel[pSoldier->ubID][bLoop];
+		INT32 const iThreatRange  = GetRangeInCellCoordsFromGridNoDiff(pSoldier->sGridNo, sWatchedLoc);
+
+		// too far off to matter, the same cutoff the opponents themselves get
+		if (iThreatRange > iMaxThreatRange) continue;
+
+		// a threat already sitting on that tile tells us nothing new
+		bool fAlreadyThreatened = false;
+		for (UINT32 uiLoop = 0; uiLoop < uiThreatCnt; ++uiLoop)
+		{
+			if (SpacesAway(Threat[uiLoop].sGridNo, sWatchedLoc) <= WATCHED_LOC_RADIUS)
+			{
+				fAlreadyThreatened = true;
+				break;
+			}
+		}
+		if (fAlreadyThreatened) continue;
+
+		SOLDIERTYPE* pShooter = FindOpponentBesideWatchedLoc(pSoldier, sWatchedLoc, bWatchedLevel);
+		bool const fStandIn = (pShooter == NULL);
+
+		if (fStandIn)
+		{
+			INT16 sTempX, sTempY;
+
+			SOLDIERTYPE& standIn = gStandIn[bLoop];
+			standIn = *pSoldier;
+			standIn.sGridNo = sWatchedLoc;
+			standIn.bLevel  = bWatchedLevel;
+			ConvertGridNoToCenterCellXY(sWatchedLoc, &sTempX, &sTempY);
+			standIn.dXPos = (FLOAT) sTempX;
+			standIn.dYPos = (FLOAT) sTempY;
+
+			// they are there to shoot, so they stand up and start the turn fresh
+			standIn.usAnimState   = STANDING;
+			standIn.bActionPoints = CalcActionPoints(&standIn);
+
+			// nothing about this phantom may reach back into a real soldier
+			standIn.target      = NULL;
+			standIn.CTGTTarget  = NULL;
+			standIn.pTempObject = NULL;
+			standIn.pKeyRing    = NULL;
+
+			pShooter = &standIn;
+		}
+
+		INT32 const iValue = CalcManThreatValue(pShooter, pSoldier->sGridNo, FALSE, pSoldier);
+		if (iValue == -999) continue;
+
+		Threat[uiThreatCnt].pOpponent  = pShooter;
+		Threat[uiThreatCnt].sGridNo    = sWatchedLoc;
+		Threat[uiThreatCnt].iValue     = iValue;
+		Threat[uiThreatCnt].iAPs       = CalcActionPoints(pShooter);
+		Threat[uiThreatCnt].iOrigRange = iThreatRange;
+
+		// how sure we are of a return visit scales with the points left on the location
+		Threat[uiThreatCnt].iCertainty = (ubPoints * 100) / MAX_WATCHED_LOC_POINTS;
+
+		SLOGD("FindBestNearbyCover: watched loc {} level {} weighed as a threat, certainty {}, shooter is {}",
+			sWatchedLoc, (int) bWatchedLevel, Threat[uiThreatCnt].iCertainty,
+			fStandIn ? "a stand-in with our own stats" : "an opponent beside it");
+
+		uiThreatCnt++;
+	}
+
+	return uiThreatCnt;
+}
+
+
 INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentBetter)
 {
 	// all 32-bit integers for max. speed
@@ -580,10 +742,15 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 	}*/
 
 
-	// maximum search range is 1 tile / 8 pts of wisdom
-	if (iSearchRange > (pSoldier->bWisdom / 8))
+	// maximum search range is 1 tile / 8 pts of wisdom - but when cover is a
+	// priority everyone looks for it as though they had 100 Wisdom. The cap left
+	// the average soldier searching four or five tiles and walking past the wall
+	// two steps beyond that, which reads as stupidity rather than as the low
+	// Wisdom it is meant to model.
+	INT32 const iCoverSearchWisdom = gamepolicy(ai_prioritize_cover) ? 100 : pSoldier->bWisdom;
+	if (iSearchRange > (iCoverSearchWisdom / 8))
 	{
-		iSearchRange = (pSoldier->bWisdom / 8);
+		iSearchRange = (iCoverSearchWisdom / 8);
 	}
 
 	if (!gfTurnBasedAI)
@@ -608,6 +775,12 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 			iSearchRange = iMaxMoveTilesLeft;
 		}
 	}
+
+	// FindBestPath only fills gubAIPathCosts for a square of AI_PATHCOST_RADIUS
+	// tiles, and clamps gubNPCDistLimit to match, so tiles past that never come
+	// back flagged reachable. Stop here rather than scan a ring we always skip -
+	// and keep the offsets below inside the array they index.
+	iSearchRange = std::min<INT32>(iSearchRange, AI_PATHCOST_RADIUS);
 
 	if (iSearchRange <= 0)
 	{
@@ -699,6 +872,12 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 		}
 
 		uiThreatCnt++;
+	}
+
+	if (gamepolicy(ai_prioritize_cover))
+	{
+		// the tiles opponents have been firing at us from threaten us too
+		uiThreatCnt = AddWatchedLocThreats(pSoldier, uiThreatCnt, iMaxThreatRange);
 	}
 
 	// if no known opponents were found to threaten us, can't worry about cover

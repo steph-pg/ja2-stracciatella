@@ -55,6 +55,8 @@ enum NoiseKind
 
 
 #define NUM_WATCHED_LOCS 3
+#define MAX_WATCHED_LOC_POINTS			4
+#define WATCHED_LOC_RADIUS			1
 
 extern INT8  gbPublicOpplist[MAXTEAMS][ TOTAL_SOLDIERS ];
 extern INT8  gbSeenOpponents[TOTAL_SOLDIERS][TOTAL_SOLDIERS];

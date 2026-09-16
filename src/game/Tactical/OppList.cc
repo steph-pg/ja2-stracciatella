@@ -131,8 +131,6 @@ UINT8 gubKnowledgeValue[10][10] =
 	*/
 };
 
-#define MAX_WATCHED_LOC_POINTS			4
-#define WATCHED_LOC_RADIUS			1
 
 INT16 gsWatchedLoc[ TOTAL_SOLDIERS ][ NUM_WATCHED_LOCS ];
 INT8 gbWatchedLocLevel[ TOTAL_SOLDIERS ][ NUM_WATCHED_LOCS ];

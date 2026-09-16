@@ -40,6 +40,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	corpse_warning_distance = ai.getOptionalUInt("corpse_warning_distance", 5);
 	stay_on_rooftop = ai.getOptionalBool("stay_on_rooftop");
 	enemy_shoot_unseen = ai.getOptionalBool("enemy_shoot_unseen");
+	ai_prioritize_cover = ai.getOptionalBool("prioritize_cover");
 
 	interrupt_after_being_under_fire = gp.getOptionalBool("interrupt_after_being_under_fire", true);
 
