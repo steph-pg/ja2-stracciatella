@@ -94,6 +94,8 @@ public:
 
 	bool diagonally_interactable_doors;   // Open doors without exposing your mercs too much. Also affects switches.
 
+	bool locksmith_kit_wear;              // botched lock picks wear the locksmith kit down until it is used up, and its status no longer affects the picking chance (false = vanilla, kits never wear out)
+
 	/* IMP */
 	int8_t imp_attribute_max;             // IMP character attribute maximum 0 to 100, vanilla 85
 	int8_t imp_attribute_min;             // IMP character attribute minimum 0 to imp_attribute_max, vanilla 35

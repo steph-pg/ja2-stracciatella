@@ -39,9 +39,11 @@
 #include "ContentManager.h"
 #include "GameInstance.h"
 #include "Logger.h"
+#include "policy/GamePolicy.h"
 
 #include <string_theory/string>
 
+#include <algorithm>
 #include <vector>
 
 static std::vector<DOOR_STATUS> gpDoorStatus;
@@ -426,6 +428,30 @@ BOOLEAN AttemptToPickLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	else
 	{
 		// NOTE: failures are not rewarded, since you can keep trying indefinitely...
+
+		// a botched attempt bends the picks, so wear the kit down - tougher locks
+		// chew through it faster. The kit picks just as well worn as new, it simply
+		// gets used up, so a failed attempt always costs at least a point.
+		if ( gamepolicy( locksmith_kit_wear ) )
+		{
+			INT8 const bSlot = FindObj( pSoldier, LOCKSMITHKIT );
+			if ( bSlot != NO_SLOT )
+			{
+				OBJECTTYPE & kit = pSoldier->inv[ bSlot ];
+				int const bStress = std::min( 100, pLock->ubPickDifficulty + 30 );
+				INT8 const bWear = (INT8) ( 1 + PreRandom( bStress / 10 ) );
+				if ( bWear >= kit.bStatus[0] )
+				{
+					// nothing left of the kit but bent picks
+					RemoveObjFrom( &kit, 0 );
+				}
+				else
+				{
+					kit.bStatus[0] -= bWear;
+				}
+				DirtyMercPanelInterface( pSoldier, DIRTYLEVEL2 );
+			}
+		}
 
 		// check for traps
 		return( FALSE );
