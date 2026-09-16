@@ -106,6 +106,12 @@ bool ValidAmmoType( UINT16 usItem, UINT16 usAmmoType );
 // Determine if it is possible to add this attachment to the item
 bool ValidAttachment(UINT16 attachment, UINT16 item);
 
+// Determine whether the attachment UI has to keep quiet about pairing these two items.
+// Glue and duct tape carry the hidden add-on flag, since a steel rod quietly turns them
+// into a barrel extender, but where they are an attachment in their own right - a repair
+// kit - they belong on screen like any other.
+bool HiddenAttachmentPair(UINT16 item, UINT16 otherItem);
+
 BOOLEAN ValidLaunchable( UINT16 usLaunchable, UINT16 usItem );
 UINT16 GetLauncherFromLaunchable( UINT16 usLaunchable );
 

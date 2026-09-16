@@ -1,8 +1,11 @@
 #include "ItemModel.h"
 #include "Directories.h"
+#include "GamePolicy.h"
+#include "Item_Types.h"
 #include "TranslatableString.h"
 #include <cstdint>
 #include <memory>
+#include <set>
 #include <string_theory/st_string.h>
 #include <utility>
 
@@ -183,9 +186,17 @@ uint16_t ItemModel::deserializeFlags(const JsonObject &obj)
 	return flags;
 }
 
+// a repair kit has room for the odds and ends a repair needs, so a merc can keep
+// them there rather than in a pocket - extra_attachments game policy
+static std::set<uint16_t> const g_repairKitExtras {QUICK_GLUE, DUCT_TAPE};
+
 /** Check if the given attachment can be attached to the item. */
 bool ItemModel::canBeAttached(const GamePolicy* policy, const ItemModel* attachment) const
 {
+	if (policy->extra_attachments && this->itemIndex == TOOLKIT)
+	{
+		return g_repairKitExtras.count(attachment->getItemIndex()) == 1;
+	}
 	return false;
 }
 
