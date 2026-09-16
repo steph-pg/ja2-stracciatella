@@ -278,6 +278,15 @@
 
   "enable_stat_healing": false,
 
+  //  Percentage modifier to the training points a merc earns each hour from
+  //  practising alone and from being taught by a teammate.
+  //    100 - vanilla rate
+  //    300 - three times as fast
+  //     50 - half as fast
+  //  Vanilla training crawls once a stat is halfway decent, so few mercs are
+  //  worth the days it costs. Militia training is not affected.
+  "training_speed_modifier": 300,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {

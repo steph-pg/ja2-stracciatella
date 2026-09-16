@@ -589,6 +589,33 @@ properties:
 
       Vanilla setting: `false`
 
+  training_speed_modifier:
+    $ref: types/uint16.schema.yaml
+    title: Training speed modifier
+    description: |
+      Percentage modifier to the training points a merc earns each hour from
+      practising alone and from being taught by a teammate. `100` leaves the
+      vanilla rate untouched, `300` triples it, `50` halves it.
+
+      Vanilla training is slow enough that only a merc with poor stats gains
+      anything worth the days spent on it, because the hourly points shrink as
+      the stat climbs and each point of a high stat costs more to earn. This
+      scales the hourly points, after the gun range bonus, the teaching trait,
+      the mutual opinion of trainer and student and fatigue have all been
+      applied, so the reasons one merc trains better than another still hold.
+
+      Both halves of instructed training scale: what the student picks up alone
+      and what the instructor adds. The leadership and wisdom the instructor
+      earns for teaching follow the same scale, as does the wisdom a student
+      gains alongside a mental skill.
+
+      A merc earning anything at all always keeps at least one point, so a
+      modifier below `100` slows training down without stopping it. Militia
+      training is not affected.
+
+      Vanilla setting: `100`
+>>>>>>> training-speed-modifier
+
   campaign:
     type: object
     properties:
