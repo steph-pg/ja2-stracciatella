@@ -80,6 +80,21 @@
     //  vanilla value: false
     "refill_defeated_patrol_groups": false,
 
+    //  Whether the queen sizes up a sector the way she sizes up her own army.  Vanilla rates
+    //  the militia tiers at 1/2/3 points a head while rating her own admins, troops and elites
+    //  at 2/4/6, so she attacks and reinforces defended sectors with forces that are far too
+    //  small.  With this on, defenders are rated on the same scale, an assault is sized to the
+    //  defenders actually present rather than to the desired garrison size, and groups that
+    //  cannot be served hold no weight in the reinforcement lottery.  She draws a weighted slot
+    //  before checking whether its owner is eligible, so weight on a group she cannot serve only
+    //  hands the draw to whichever group happens to follow it in the list.  A group that happens
+    //  to be free is only handed an assault it can actually win, and a group that staged next to
+    //  its target is weighed against the sector once more before it walks in, so militia raised
+    //  while it was on the road still counts.
+    //
+    //  vanilla value: false
+    "improved_sector_evaluation": false,
+
     //  Defines how many days must pass before the queen is willing to refill a defeated patrol
     //  group.
     //

@@ -25,4 +25,5 @@ public:
 	std::array<unsigned int, NUM_DIF_LEVELS>    num_aware_battles;
 
 	bool refill_defeated_patrol_groups;
+	bool improved_sector_evaluation;
 };
