@@ -39,7 +39,7 @@
   //  power consumption, higher values can make the game appear to be more responsive.
   //  Minimum: 1, Maximum: 144
   //  Stracciatella default value: 40
-  "target_fps": 120,
+  "target_fps": 40,
 
   // Many of the game's predefined durations are multiplied by this value, including animations. This means
   // that a value greater than 1 slows down the game, while values less than 1 speed it up. For example, the
@@ -69,21 +69,21 @@
   //  Everyone will be able to interrupt multiple times in the same turn. Vanilla behaviour is that if you skipped reacting to the first interrupt
   //  (say your buddies took care of it), you'd still get skipped for any further interrupts. Annoying in ambushes or when sneaking.
   //  vanilla setting: false
-  "multiple_interrupts": true,
+  "multiple_interrupts": false,
 
   //  A gunshot lights up the shooter: the other teams get a look at them while the flash lasts (at night it reaches much
   //  further than they can normally see) and whoever picks them up that way can fight the usual interrupt duel over it.
   //  In exchange a silenced gun makes no flash at all. In vanilla the flash only extended the range of a look that was
   //  happening anyway, and a silencer made no difference to it.
   //  vanilla setting: false
-  "realistic_muzzle_flashes": true,
+  "realistic_muzzle_flashes": false,
   
   //  Allow interrupts after being shot at on an earlier turn. In vanilla, being under fire blocks a
   //  soldier's interrupts until their own turn begins, so an attack silences them for the whole next
   //  turn as well. With this on, only being shot at during the turn in progress blocks the reaction.
   //  Mercs and enemies alike react a turn sooner, so the AI can punish 'shoot and hide' tactics.
   //  vanilla setting: false
-  "interrupt_after_being_under_fire": true,
+  "interrupt_after_being_under_fire": false,
 
   // Boosting stats like agility, dexterity, exp. level and health absurdly increases the action points cost to shoot.
   // With this option on: the better the stats the fewer APs will be needed. Note that you also won't get AP discount when injured.
@@ -98,7 +98,7 @@
   // Vanilla guns above status 80 never jam; this adds a floor so there is always some risk.
   // Applied on top of the normal condition-based jam roll. 0 restores vanilla behaviour.
   // vanilla value: 0
-  "gun_jam_chance_minimum": 2,
+  "gun_jam_chance_minimum": 0,
 
   // Maxiumum number of soldiers in one squad.
   // Larger squad sizes requires the wider screen to display all members. For a squad size of n, the screen must be at
@@ -113,12 +113,12 @@
     //  With this setting on when possible enemies select target location when threshold cth is reached against that
     //  body part, with head being higher priority.
     //  vanilla values: false, N/A, N/A
-    "better_aiming_choice": true,
+    "better_aiming_choice": false,
     "threshold_cth_head": 67,
     "threshold_cth_legs": 67,
     //  When already facing its focus, lay down if nothing else.
     // vanilla setting: false
-    "go_prone_more_often": true,
+    "go_prone_more_often": false,
 
     //  Avoid ambushes
     //  On seeing a corpse, the AI suspects an ambush and refuses to walk into the tiles around it.
@@ -129,20 +129,34 @@
     //  recommended value.
     //  corpse_warning_distance is how far from a corpse, in tiles, the AI still heeds the warning.
     //  vanilla values: 5, 5
-    "corpse_warning_duration": 60,
+    "corpse_warning_duration": 0,
     "corpse_warning_distance": 5,
 
     //  Enemy guards on rooftop are disallowed to climb down
     //  vanilla value: false
-    "stay_on_rooftop": true,
+    "stay_on_rooftop": false,
 
+<<<<<<< HEAD
     //  AI may fire a gun at an opponent it cannot see itself, as long as a team-mate
     //  has it in sight. It also lets an enemy that only knows where the player is
     //  shoot instead of merely manoeuvring. A remembered or heard position is never
     //  enough to open fire.
     //  vanilla value: false
-    "enemy_shoot_unseen": true,
-    "prioritize_cover":  true
+    "enemy_shoot_unseen": false
+=======
+    //  The AI treats cover as something worth going out of its way for.
+    //  It weighs a tile against opponents who could stand up and shoot from
+    //  where they are, not just against the stance they happen to be in; it
+    //  also weighs the tiles it has been shot at from, so that stepping out
+    //  from a corner, firing and stepping back no longer leaves it with
+    //  nothing to hide from; every soldier searches its whole cover radius
+    //  instead of one tile per 8 points of Wisdom; and an enemy that is
+    //  either shaken or more than a dozen tiles from the nearest merc it
+    //  knows about reaches for cover before it goes looking for a fight or
+    //  settles for turning to face one.
+    //  vanilla value: false
+    "prioritize_cover": true
+>>>>>>> ai-prioritize-cover
   },
 
   //  How much variation should there be in elite soldier xp level?
@@ -158,7 +172,7 @@
   //  regular army troops and regular militia; administrators, elites and the
   //  green and elite militia keep the vanilla roll.
   //  vanilla_setting: false
-  "regular_soldier_stat_spread": true,
+  "regular_soldier_stat_spread": false,
 
   //  Enables extra GUI features. Currently includes:
   //  Progress Bars for the Mercs stats in tactical Mode.
@@ -174,7 +188,7 @@
   //  a merc gets along with, and the ones they cannot stand, when hovering their
   //  portrait in the mapscreen.
   //  vanilla_setting: false
-  "informative_tooltips": true,
+  "informative_tooltips": false,
 
   //  Skips the "cannot sleep" popup when driving or when the merc is already rested.
   //  vanilla setting: false
@@ -182,7 +196,7 @@
 
   //  Enables extra attachments: boosters and break lights on leggings, goggles on helmets.
   //  vanilla setting: false
-  "extra_attachments": true,
+  "extra_attachments": false,
 
   //  Packages at Drassen airport never get stolen, no need to bribe Pablo.
   //  vanilla_setting: false
@@ -191,15 +205,15 @@
   //  Min/max chance to hit and headshot damage multiplier.
   //  vanilla_setting: 1, 99, 1.5, 0.5
   "chance_to_hit_minimum": 1,
-  "chance_to_hit_maximum": 80,
+  "chance_to_hit_maximum": 99,
   "tactical_head_damage_multiplier": 1.5,
   "tactical_legs_damage_multiplier": 0.5,
 
   //  Aim bonus per spent AP and for using scopes
   //  vanilla setting (%): 10, 20, 20
-  "aim_bonus_per_std_ap": 5,
-  "aim_bonus_sniperscope": 8,
-  "aim_bonus_laserscope": 16,
+  "aim_bonus_per_std_ap": 10,
+  "aim_bonus_sniperscope": 20,
+  "aim_bonus_laserscope": 20,
 
   //  Range bonuses and penalties. 10 per 1 tile.
   //  vanilla setting: 0, 100
@@ -210,7 +224,7 @@
   //  Launchers and unaerodynamic items are unaffected. Applied before the breath penalty and the
   //  Throwing trait bonus.
   //  vanilla setting: 100
-  "thrown_range_modifier": 70,
+  "thrown_range_modifier": 100,
 
   //  Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
   //  vanilla setting: false
@@ -218,7 +232,7 @@
 
   //  Show chance-to-hit next to mouse cursor when preparing an attack
   //  vanilla setting: false
-  "show_hit_chance": true,
+  "show_hit_chance": false,
 
   //  Scales the loading time of websites on the laptop. Lower value means faster loading. Setting this to 0.0 removes the loading entirely.
   //  vanilla setting: 1.0
@@ -227,7 +241,7 @@
   //  Open or close doors diagonally (unless AI-controlled). Makes room clearings much easier by reducing exposure when opening doors.
   //  Your character must already stand on the door-adjacent tile to effect diagonal interaction.
   //  vanilla setting: false
-  "diagonally_interactable_doors": true,
+  "diagonally_interactable_doors": false,
 
   //  A botched lock pick bends the picks, so every failed attempt wears the
   //  locksmith kit down, the harder the lock the faster. A worn kit picks no
@@ -238,7 +252,7 @@
   //  items.json - a repairable kit can be topped back up by a mechanic and
   //  is never really spent.
   //  vanilla setting: false
-  "locksmith_kit_wear": true,
+  "locksmith_kit_wear": false,
 
   //  IMP creation tweaks
   "imp": {
@@ -318,7 +332,7 @@
   //     50 - half as fast
   //  Vanilla training crawls once a stat is halfway decent, so few mercs are
   //  worth the days it costs. Militia training is not affected.
-  "training_speed_modifier": 200,
+  "training_speed_modifier": 300,
   
   //  Does Skyrider map the sectors the helicopter flies over?
   //    true  - every sector the helicopter crosses counts as explored, so it is
@@ -327,7 +341,7 @@
   //    false - vanilla behaviour: only sectors a merc actually stands in count.
   //  Note that explored sectors can no longer be ambushed, so aerial scouting
   //  also buys safe passage.
-  "skyrider_explores_sectors": true,
+  "skyrider_explores_sectors": false,
 
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
@@ -344,7 +358,7 @@
     //  When true, the pack is out hunting between 7am and 9pm and the lair is
     //  empty; their numbers are untouched, so the quest to clear it is unaffected.
     //  vanilla settings: false
-    "bloodcat_lair_night_only": true
+    "bloodcat_lair_night_only": false
   },
 
   //  Scales AP loss from suppression fire (numerator of the AP-loss formula); set to 0 if you want to disable suppression completely.
@@ -365,5 +379,5 @@
   //            extra_attachments option is on, so a merc can carry some there.
   //    false - vanilla behaviour, the goggles work forever.
   //  vanilla setting: false
-  "night_goggles_need_batteries": true
+  "night_goggles_need_batteries": false
 }

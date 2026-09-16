@@ -13,7 +13,7 @@
     //
     //  vanilla values: 150, 200, 400
     "queens_pool_of_troops_easy": 150,
-    "queens_pool_of_troops_medium": 200,
+    "queens_pool_of_troops_medium": 400,
     "queens_pool_of_troops_hard": 400,
 
     //  Modifies the starting values as well as the desired values for all of the garrisons.
@@ -35,7 +35,7 @@
     //
     //  vanilla values: 5, 20, 60
     "enemy_starting_alert_level_easy": 5,
-    "enemy_starting_alert_level_medium": 20,
+    "enemy_starting_alert_level_medium": 40,
     "enemy_starting_alert_level_hard": 60,
 
     //  When an enemy spots and chases a player group, the alertness value decrements by this
@@ -54,7 +54,7 @@
     //
     //  vanilla values: 480, 360, 180
     "time_evaluate_in_minutes_easy": 480,
-    "time_evaluate_in_minutes_medium": 360,
+    "time_evaluate_in_minutes_medium": 240,
     "time_evaluate_in_minutes_hard": 180,
 
 
@@ -71,7 +71,7 @@
     //
     //  vanilla values: 144, 96, 48
     "grace_period_in_hours_easy": 144,  // 6 days
-    "grace_period_in_hours_medium": 96, // 4 days
+    "grace_period_in_hours_medium": 48, // 4 days
     "grace_period_in_hours_hard": 48,   // 2 days
 
     //  Whether or not the queen would send new groups of army to replace defeated patrols. By
@@ -93,7 +93,7 @@
     //  while it was on the road still counts.
     //
     //  vanilla value: false
-    "improved_sector_evaluation": false,
+    "improved_sector_evaluation": true,
 
     //  Defines how many days must pass before the queen is willing to refill a defeated patrol
     //  group.
