@@ -5465,6 +5465,12 @@ static void HandleSuppressionFire(const SOLDIERTYPE* const targeted_merc, SOLDIE
 					pSoldier->bActionInProgress = TRUE;
 				}
 
+				// Someone in the middle of first aid has to break it off. Their aid
+				// pose is a crouch, so leaving the service on would send them right
+				// back up to it the moment they hit the ground - and charge them for
+				// the stance change back. No end-aid animation for the same reason.
+				InternalGivingSoldierCancelServices( pSoldier, FALSE );
+
 				// go for it!
 				// ATE: Cancel any PENDING ANIMATIONS...
 				pSoldier->usPendingAnimation = NO_PENDING_ANIMATION;
