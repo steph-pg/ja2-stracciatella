@@ -212,7 +212,16 @@ properties:
         title: Stay on rooftop
         description: |
           Enemy guards on rooftop are disallowed to climb down
-          
+
+          Vanilla setting: `false`
+      enemy_shoot_unseen:
+        type: boolean
+        title: Shoot at unseen opponents
+        description: |
+          AI may fire a gun at an opponent it cannot see itself, as long as a team-mate has it
+          in sight. It also lets an enemy that only knows where the player is shoot instead of
+          merely manoeuvring. A remembered or heard position is never enough to open fire.
+
           Vanilla setting: `false`
     required:
       - better_aiming_choice
@@ -222,6 +231,7 @@ properties:
       - corpse_warning_duration
       - corpse_warning_distance
       - stay_on_rooftop
+      - enemy_shoot_unseen
   interrupt_after_being_under_fire:
     type: boolean
     title: Interrupt after being under fire

@@ -126,7 +126,14 @@
 
     //  Enemy guards on rooftop are disallowed to climb down
     //  vanilla value: false
-    "stay_on_rooftop": false
+    "stay_on_rooftop": false,
+
+    //  AI may fire a gun at an opponent it cannot see itself, as long as a team-mate
+    //  has it in sight. It also lets an enemy that only knows where the player is
+    //  shoot instead of merely manoeuvring. A remembered or heard position is never
+    //  enough to open fire.
+    //  vanilla value: false
+    "enemy_shoot_unseen": false
   },
 
   //  How much variation should there be in elite soldier xp level?
