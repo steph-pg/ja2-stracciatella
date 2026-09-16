@@ -775,22 +775,8 @@ static BOOLEAN GetObjFromInventoryStashSlot(OBJECTTYPE* pInventorySlot, OBJECTTY
 		return( FALSE );
 	}
 
-	// if there are only one item in slot, just copy
-	if (pInventorySlot->ubNumberOfObjects == 1)
-	{
-		*pItemPtr = *pInventorySlot;
-		DeleteObj( pInventorySlot );
-	}
-	else
-	{
-		// take one item
-		pItemPtr->usItem = pInventorySlot->usItem;
-
-		// find first unempty slot
-		pItemPtr->bStatus[0] = pInventorySlot->bStatus[0];
-		pItemPtr->ubNumberOfObjects = 1;
-		RemoveObjFrom( pInventorySlot, 0 );
-	}
+	// take one item, with everything that identifies it
+	GetObjFrom( pInventorySlot, 0, pItemPtr );
 
 	return ( TRUE );
 }
@@ -854,7 +840,9 @@ static BOOLEAN PlaceObjectInInventoryStash(OBJECTTYPE* pInventorySlot, OBJECTTYP
 		// placement in an empty slot
 		ubNumberToDrop = pItemPtr->ubNumberOfObjects;
 
-		if (pItemPtr->usItem == pInventorySlot->usItem)
+		// two keys sharing an item number must not stack, or one ID is lost
+		if (pItemPtr->usItem == pInventorySlot->usItem &&
+			(!GCM->getItem(pItemPtr->usItem)->isKey() || pItemPtr->ubKeyID == pInventorySlot->ubKeyID))
 		{
 			if (GCM->getItem(pItemPtr->usItem)->isMoney())
 			{
