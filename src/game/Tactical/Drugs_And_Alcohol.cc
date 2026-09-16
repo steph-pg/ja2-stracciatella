@@ -103,6 +103,10 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject )
 			{
 				gMercProfiles[ pSoldier->ubProfile ].ubNumTimesDrugUseInLifetime++;
 			}
+
+			// Second wind - the booster clears all accumulated breath loss
+			pSoldier->sBreathRed = 0;
+			pSoldier->bBreath    = pSoldier->bBreathMax;
 		}
 
 		// Increment side effects..
