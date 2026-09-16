@@ -120,6 +120,7 @@ enum ItemSearchReason
 #define STOPSHORTDIST 5
 
 INT16 AdvanceToFiringRange( SOLDIERTYPE * pSoldier, INT16 sClosestOpponent );
+UINT8 APsToReadyWeaponAfterMoving(SOLDIERTYPE *pSoldier);
 
 void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot);
 void CalcBestStab(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestStab, BOOLEAN fBladeAttack);

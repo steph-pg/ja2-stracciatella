@@ -1961,7 +1961,8 @@ INT16 AdvanceToFiringRange( SOLDIERTYPE * pSoldier, INT16 sClosestOpponent )
 	INT8   bAttackCost, bTrueActionPoints;
 	UINT16 usActionData;
 
-	bAttackCost = MinAPsToAttack(pSoldier, sClosestOpponent, ADDTURNCOST);
+	// the shot is taken after a move, so also bank the weapon raise it makes necessary
+	bAttackCost = (INT8) (MinAPsToAttack(pSoldier, sClosestOpponent, ADDTURNCOST) + APsToReadyWeaponAfterMoving( pSoldier ));
 
 	if (bAttackCost >= pSoldier->bActionPoints)
 	{
