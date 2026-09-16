@@ -527,6 +527,138 @@ static UINT8 NumberOfTeamMatesAdjacent(SOLDIERTYPE* pSoldier, INT16 sGridNo)
 	return( ubCount );
 }
 
+// Whoever fired from a watched location is most likely the opponent standing right
+// beside it, having stepped back out of sight after the shot. Only an opponent we
+// already know about counts: we are borrowing their stats, not discovering them.
+static SOLDIERTYPE* FindOpponentBesideWatchedLoc(SOLDIERTYPE* pSoldier, INT16 sWatchedLoc, INT8 bLevel)
+{
+	// the location itself first, then the ring around it
+	for (UINT8 ubLoop = 0; ubLoop <= NUM_WORLD_DIRECTIONS; ++ubLoop)
+	{
+		INT16 sSpot = sWatchedLoc;
+
+		if (ubLoop < NUM_WORLD_DIRECTIONS)
+		{
+			sSpot = NewGridNo(sWatchedLoc, DirectionInc(ubLoop));
+
+			// NewGridNo hands back the same tile when the neighbour is off the map
+			if (sSpot == sWatchedLoc) continue;
+		}
+
+		SOLDIERTYPE* const pOther = WhoIsThere2(sSpot, bLevel);
+		if (pOther == NULL || pOther->bLife < OKLIFE) continue;
+
+		// same test the threat loop makes: neutrals and our own side aren't opponents
+		if (CONSIDERED_NEUTRAL(pSoldier, pOther) || (pSoldier->bSide == pOther->bSide))
+		{
+			continue;
+		}
+
+		// unknown personally and publicly - we have no business knowing they are there
+		if ((pSoldier->bOppList[pOther->ubID] == NOT_HEARD_OR_SEEN) &&
+			(gbPublicOpplist[pSoldier->bTeam][pOther->ubID] == NOT_HEARD_OR_SEEN))
+		{
+			continue;
+		}
+
+		return pOther;
+	}
+
+	return NULL;
+}
+
+
+// A merc who steps out from behind a corner, fires and steps straight back leaves the
+// cover search nothing to weigh: from where they stand now there is no line of fire,
+// and their last known location is the tile they ducked back into. What we do remember
+// is the tile the shots came from - a watched location. So stand a soldier there as
+// well, and let the cover value account for them leaning back out next turn.
+//
+// Who to stand there: the opponent we can make out beside that tile, since that is who
+// ducked back. Failing that a copy of ourselves, the only soldier whose stats and gear
+// we can be sure of and near enough the right order of threat.
+static UINT32 AddWatchedLocThreats(SOLDIERTYPE* pSoldier, UINT32 uiThreatCnt, INT32 iMaxThreatRange)
+{
+	// a stand-in is not in the world, so it needs storage of its own - one per watched
+	// location, since every Threat entry holds on to its soldier for the whole search
+	static SOLDIERTYPE gStandIn[NUM_WATCHED_LOCS];
+
+	for (INT8 bLoop = 0; bLoop < NUM_WATCHED_LOCS && uiThreatCnt < (UINT32) MAXMERCS; ++bLoop)
+	{
+		INT16 const sWatchedLoc = gsWatchedLoc[pSoldier->ubID][bLoop];
+		UINT8 const ubPoints    = gubWatchedLocPoints[pSoldier->ubID][bLoop];
+
+		if (sWatchedLoc == NOWHERE || ubPoints == 0) continue;
+
+		INT8  const bWatchedLevel = gbWatchedLocLevel[pSoldier->ubID][bLoop];
+		INT32 const iThreatRange  = GetRangeInCellCoordsFromGridNoDiff(pSoldier->sGridNo, sWatchedLoc);
+
+		// too far off to matter, the same cutoff the opponents themselves get
+		if (iThreatRange > iMaxThreatRange) continue;
+
+		// a threat already sitting on that tile tells us nothing new
+		bool fAlreadyThreatened = false;
+		for (UINT32 uiLoop = 0; uiLoop < uiThreatCnt; ++uiLoop)
+		{
+			if (SpacesAway(Threat[uiLoop].sGridNo, sWatchedLoc) <= WATCHED_LOC_RADIUS)
+			{
+				fAlreadyThreatened = true;
+				break;
+			}
+		}
+		if (fAlreadyThreatened) continue;
+
+		SOLDIERTYPE* pShooter = FindOpponentBesideWatchedLoc(pSoldier, sWatchedLoc, bWatchedLevel);
+		bool const fStandIn = (pShooter == NULL);
+
+		if (fStandIn)
+		{
+			INT16 sTempX, sTempY;
+
+			SOLDIERTYPE& standIn = gStandIn[bLoop];
+			standIn = *pSoldier;
+			standIn.sGridNo = sWatchedLoc;
+			standIn.bLevel  = bWatchedLevel;
+			ConvertGridNoToCenterCellXY(sWatchedLoc, &sTempX, &sTempY);
+			standIn.dXPos = (FLOAT) sTempX;
+			standIn.dYPos = (FLOAT) sTempY;
+
+			// they are there to shoot, so they stand up and start the turn fresh
+			standIn.usAnimState   = STANDING;
+			standIn.bActionPoints = CalcActionPoints(&standIn);
+
+			// nothing about this phantom may reach back into a real soldier
+			standIn.target      = NULL;
+			standIn.CTGTTarget  = NULL;
+			standIn.pTempObject = NULL;
+			standIn.pKeyRing    = NULL;
+
+			pShooter = &standIn;
+		}
+
+		INT32 const iValue = CalcManThreatValue(pShooter, pSoldier->sGridNo, FALSE, pSoldier);
+		if (iValue == -999) continue;
+
+		Threat[uiThreatCnt].pOpponent  = pShooter;
+		Threat[uiThreatCnt].sGridNo    = sWatchedLoc;
+		Threat[uiThreatCnt].iValue     = iValue;
+		Threat[uiThreatCnt].iAPs       = CalcActionPoints(pShooter);
+		Threat[uiThreatCnt].iOrigRange = iThreatRange;
+
+		// how sure we are of a return visit scales with the points left on the location
+		Threat[uiThreatCnt].iCertainty = (ubPoints * 100) / MAX_WATCHED_LOC_POINTS;
+
+		SLOGD("FindBestNearbyCover: watched loc {} level {} weighed as a threat, certainty {}, shooter is {}",
+			sWatchedLoc, (int) bWatchedLevel, Threat[uiThreatCnt].iCertainty,
+			fStandIn ? "a stand-in with our own stats" : "an opponent beside it");
+
+		uiThreatCnt++;
+	}
+
+	return uiThreatCnt;
+}
+
+
 INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentBetter)
 {
 	// all 32-bit integers for max. speed
@@ -740,6 +872,12 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 		}
 
 		uiThreatCnt++;
+	}
+
+	if (gamepolicy(ai_prioritize_cover))
+	{
+		// the tiles opponents have been firing at us from threaten us too
+		uiThreatCnt = AddWatchedLocThreats(pSoldier, uiThreatCnt, iMaxThreatRange);
 	}
 
 	// if no known opponents were found to threaten us, can't worry about cover

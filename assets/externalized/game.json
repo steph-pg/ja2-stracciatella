@@ -124,11 +124,14 @@
 
     //  The AI treats cover as something worth going out of its way for.
     //  It weighs a tile against opponents who could stand up and shoot from
-    //  where they are, not just against the stance they happen to be in;
-    //  every soldier searches its whole cover radius instead of one tile per
-    //  8 points of Wisdom; and an enemy that is either shaken or more than a
-    //  dozen tiles from the nearest merc it knows about reaches for cover
-    //  before it goes looking for a fight or settles for turning to face one.
+    //  where they are, not just against the stance they happen to be in; it
+    //  also weighs the tiles it has been shot at from, so that stepping out
+    //  from a corner, firing and stepping back no longer leaves it with
+    //  nothing to hide from; every soldier searches its whole cover radius
+    //  instead of one tile per 8 points of Wisdom; and an enemy that is
+    //  either shaken or more than a dozen tiles from the nearest merc it
+    //  knows about reaches for cover before it goes looking for a fight or
+    //  settles for turning to face one.
     //  vanilla value: false
     "prioritize_cover": true
   },
