@@ -405,6 +405,7 @@ struct SOLDIERTYPE
 
 	TIMECOUNTER UpdateCounter;
 	TIMECOUNTER DamageCounter;
+	TIMECOUNTER APLossCounter;
 	TIMECOUNTER AICounter;
 	TIMECOUNTER FadeCounter;
 
@@ -603,6 +604,11 @@ struct SOLDIERTYPE
 	INT16 sDamage;
 	INT16 sDamageX;
 	INT16 sDamageY;
+	INT8 bDisplayAPLossCount;
+	INT8 fDisplayAPLoss;
+	INT16 sAPLoss;
+	INT16 sAPLossX;
+	INT16 sAPLossY;
 	INT8 bDoBurst;
 	INT16 usUIMovementMode;
 	BOOLEAN fUIMovementFast;
