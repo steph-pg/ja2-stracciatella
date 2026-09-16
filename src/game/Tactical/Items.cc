@@ -646,6 +646,19 @@ bool ValidAttachment(UINT16 const attachment, UINT16 const item)
 }
 
 
+bool HiddenAttachmentPair(UINT16 const item, UINT16 const otherItem)
+{
+	auto const* const model = GCM->getItem(item, ItemSystem::nothrow);
+	if (!model || !(model->getFlags() & ITEM_HIDDEN_ADDON)) return false;
+
+	// an attachment a game policy adds on purpose is one the player is meant to find
+	auto const* const other = GCM->getItem(otherItem, ItemSystem::nothrow);
+	if (other && other->canBeAttached(GCM->getGamePolicy(), model)) return false;
+
+	return true;
+}
+
+
 BOOLEAN ValidItemAttachment(const OBJECTTYPE* const pObj, const UINT16 usAttachment, const BOOLEAN fAttemptingAttachment)
 {
 	BOOLEAN fSameItem = FALSE, fSimilarItems = FALSE;

@@ -932,35 +932,33 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen(const SOLDIERTYPE* pSoldier, INT32 bI
 		return( fFound );
 	}
 
-	if ((!(GCM->getItem(pTestObject->usItem)->getFlags() & ITEM_HIDDEN_ADDON)))
+	// First test attachments, which almost any type of item can have....
+	for ( cnt = 0; cnt < NUM_INV_SLOTS; cnt++ )
 	{
-		// First test attachments, which almost any type of item can have....
-		for ( cnt = 0; cnt < NUM_INV_SLOTS; cnt++ )
+		OBJECTTYPE const& o = pSoldier->inv[cnt];
+
+		UINT16 const a = o.usItem;
+		UINT16 const b = pTestObject->usItem;
+
+		if (HiddenAttachmentPair(a, b) || HiddenAttachmentPair(b, a))
 		{
-			OBJECTTYPE const& o = pSoldier->inv[cnt];
+			// don't consider for UI purposes
+			continue;
+		}
 
-			if (GCM->getItem(o.usItem)->getFlags() & ITEM_HIDDEN_ADDON)
+		if (ValidAttachment(a, b) ||
+			ValidAttachment(b, a) ||
+			ValidLaunchable(b, a) ||
+			ValidLaunchable(a, b))
+		{
+			if ( fOn != gbCompatibleAmmo[ cnt ] )
 			{
-				// don't consider for UI purposes
-				continue;
+				fFound = TRUE;
 			}
 
-			UINT16 const a = o.usItem;
-			UINT16 const b = pTestObject->usItem;
-			if (ValidAttachment(a, b) ||
-				ValidAttachment(b, a) ||
-				ValidLaunchable(b, a) ||
-				ValidLaunchable(a, b))
-			{
-				if ( fOn != gbCompatibleAmmo[ cnt ] )
-				{
-					fFound = TRUE;
-				}
-
-				// IT's an OK calibere ammo, do something!
-				// Render Item with specific color
-				gbCompatibleAmmo[ cnt ] = fOn;
-			}
+			// IT's an OK calibere ammo, do something!
+			// Render Item with specific color
+			gbCompatibleAmmo[ cnt ] = fOn;
 		}
 	}
 
@@ -1034,7 +1032,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapInventory( SOLDIERTYPE *pSoldier, INT32 bInv
 	{
 		pObject = &( pInventoryPoolList[ iStartSlotNumber + cnt ].o );
 
-		if ( GCM->getItem(pObject->usItem)->getFlags() & ITEM_HIDDEN_ADDON )
+		if (HiddenAttachmentPair(pObject->usItem, pTestObject->usItem))
 		{
 			// don't consider for UI purposes
 			continue;
@@ -1159,14 +1157,15 @@ BOOLEAN InternalHandleCompatibleAmmoUI(const SOLDIERTYPE* pSoldier, const OBJECT
 	{
 		OBJECTTYPE const& o = pSoldier->inv[cnt];
 
-		if (GCM->getItem(o.usItem)->getFlags() & ITEM_HIDDEN_ADDON)
+		UINT16 const a = o.usItem;
+		UINT16 const b = pTestObject->usItem;
+
+		if (HiddenAttachmentPair(a, b))
 		{
 			// don't consider for UI purposes
 			continue;
 		}
 
-		UINT16 const a = o.usItem;
-		UINT16 const b = pTestObject->usItem;
 		if (ValidAttachment(a, b) ||
 			ValidAttachment(b, a) ||
 			ValidLaunchable(b, a) ||
@@ -1824,7 +1823,7 @@ void InternalInitItemDescriptionBox(OBJECTTYPE* const o, const INT16 sX, const I
 	if (gpItemPointer != NULL && !gfItemDescHelpTextOffset && !CheckFact(FACT_ATTACHED_ITEM_BEFORE, 0))
 	{
 		ST::string text;
-		if (!(GCM->getItem(o->usItem)->getFlags() & ITEM_HIDDEN_ADDON) && (
+		if (!HiddenAttachmentPair(o->usItem, gpItemPointer->usItem) && (
 			ValidAttachment(gpItemPointer->usItem, o->usItem) ||
 			ValidLaunchable(gpItemPointer->usItem, o->usItem) ||
 			ValidMerge(gpItemPointer->usItem, o->usItem)))
@@ -2136,7 +2135,7 @@ void RenderItemDescriptionBox(void)
 	bool hatch_out_attachments = gfItemDescObjectIsAttachment; // if examining attachment, always hatch out attachment slots
 	if (OBJECTTYPE const* const ptr_obj = gpItemPointer)
 	{
-		if (GCM->getItem(ptr_obj->usItem)->getFlags() & ITEM_HIDDEN_ADDON || (
+		if (HiddenAttachmentPair(ptr_obj->usItem, obj.usItem) || (
 			!ValidItemAttachment(&obj, ptr_obj->usItem, FALSE) &&
 			!ValidMerge(ptr_obj->usItem, obj.usItem) &&
 			!ValidLaunchable(ptr_obj->usItem, obj.usItem)))

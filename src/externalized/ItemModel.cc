@@ -1,5 +1,7 @@
 #include "ItemModel.h"
 #include "Directories.h"
+#include "GamePolicy.h"
+#include "Item_Types.h"
 #include "TranslatableString.h"
 #include <cstdint>
 #include <memory>
@@ -196,12 +198,20 @@ bool IsBatteryPoweredGear(uint16_t const itemIndex)
 	return g_batteryPoweredGear.count(itemIndex) == 1;
 }
 
+// a repair kit has room for the odds and ends a repair needs, so a merc can keep
+// them there rather than in a pocket - extra_attachments game policy
+static std::set<uint16_t> const g_repairKitExtras {QUICK_GLUE, DUCT_TAPE};
+
 /** Check if the given attachment can be attached to the item. */
 bool ItemModel::canBeAttached(const GamePolicy* policy, const ItemModel* attachment) const
 {
 	if (policy->night_goggles_need_batteries && attachment->getItemIndex() == BATTERIES)
 	{
 		return IsBatteryPoweredGear(this->itemIndex);
+	}
+	if (policy->extra_attachments && this->itemIndex == TOOLKIT)
+	{
+		return g_repairKitExtras.count(attachment->getItemIndex()) == 1;
 	}
 	return false;
 }

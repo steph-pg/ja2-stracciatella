@@ -330,6 +330,9 @@ properties:
         
         - boosters and break lights on leggings
         - goggles on helmets
+        - quick glue and duct tape in a repair kit, so a merc keeps them with the tools rather
+          than in a pocket. A stack gives up a single item per attachment, and the kit has room
+          for one of each.
 
       Vanilla setting: `false`
   pablo_wont_steal:
