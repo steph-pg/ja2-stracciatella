@@ -28,8 +28,11 @@
 #include "Logger.h"
 #include "MercProfile.h"
 
+#include "BloodCatSpawnsModel.h"
 #include "ContentManager.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
+#include "Game_Clock.h"
 
 BOOLEAN gfOriginalList = TRUE;
 
@@ -1504,6 +1507,16 @@ void AddSoldierInitListBloodcats()
 
 	ubSectorID = gWorldSector.AsByte();
 	pSector = &SectorInfo[ ubSectorID ];
+
+	if( gamepolicy(bloodcat_lair_night_only) && DayTime() )
+	{ //The lair's pack hunts by day, so nobody is home.  Deliberately leave bBloodCats alone --
+		//it is the population count the quest to clear the lair reads -- and just skip the placements.
+		auto spawns = GCM->getBloodCatSpawnsOfSector( ubSectorID );
+		if( spawns != NULL && spawns->isLair )
+		{
+			return;
+		}
+	}
 
 	if( !pSector->bBloodCatPlacements )
 	{ //This map has no bloodcat placements, so don't waste CPU time.

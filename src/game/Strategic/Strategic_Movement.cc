@@ -10,6 +10,7 @@
 #include "Game_Clock.h"
 #include "Game_Events.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "GameSettings.h"
 #include "Inventory_Choosing.h"
 #include "Items.h"
@@ -3287,6 +3288,10 @@ static BOOLEAN TestForBloodcatAmbush(GROUP const* const pGroup)
 		bIsArena = spawns->isArena; // SEC_N5
 	}
 
+	//The pack may be out hunting, in which case walking into the lair is not a battle.  Their
+	//numbers are left alone, so they are all still waiting when the sun goes down.
+	bool bLairDeserted = bIsLair && gamepolicy(bloodcat_lair_night_only) && DayTime();
+
 	iHoursElapsed = (GetWorldTotalMin() - pSector->uiTimeCurrentSectorWasLastLoaded) / 60;
 	if( bIsLair || bIsArena )
 	{ //These are special maps -- we use all placements.
@@ -3337,7 +3342,7 @@ static BOOLEAN TestForBloodcatAmbush(GROUP const* const pGroup)
 		}
 	}
 
-	if( !fAlreadyAmbushed && !bIsArena && pSector->bBloodCats > 0 &&
+	if( !fAlreadyAmbushed && !bIsArena && !bLairDeserted && pSector->bBloodCats > 0 &&
 			!pGroup->fVehicle && !NumEnemiesInSector(gSector))
 	{
 		if( !bIsLair || !gubFact[ FACT_PLAYER_KNOWS_ABOUT_BLOODCAT_LAIR ] )
