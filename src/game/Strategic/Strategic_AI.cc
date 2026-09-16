@@ -257,11 +257,54 @@ static UINT16 EnemyGroupOffensePoints(const GROUP* pGroup)
 }
 
 
+/* Decides whether a force rated in offense points is worth committing against a sector rated in
+ * defence points.  Vanilla commits when three times the force's head count reaches the defence
+ * points, which for a force of plain troops amounts to demanding four thirds of the old defence
+ * rating.  Rating the defenders on the queen's own 2/4/6 scale roughly doubles that rating, so
+ * two thirds of the new one is the same bar, and she stays as willing to attack as she was before
+ * the defenders were re-rated.  Weighing points against points also stops an elite force from
+ * being held to a stricter standard than a green one: under the head count rule an elite counts
+ * the same as an admin, though it fights for three times as much. */
+static bool AssaultForceIsStrongEnough(INT32 iOffensePoints, UINT16 usDefencePoints)
+{
+	return iOffensePoints * 3 >= usDefencePoints * 2;
+}
+
+
+/* The same question asked of a force that has not been raised yet, so it can only be rated by the
+ * number of soldiers it is about to be given.  Counts them as plain troops; a composition with
+ * any elites in it only ever comes out stronger than that. */
+static bool AssaultHeadCountIsStrongEnough(INT32 iHeadCount, UINT16 usDefencePoints)
+{
+	if( saipolicy(improved_sector_evaluation) )
+	{
+		return AssaultForceIsStrongEnough( iHeadCount * 4, usDefencePoints );
+	}
+	return iHeadCount * 3 >= usDefencePoints;
+}
+
+
+/* The smallest head count AssaultHeadCountIsStrongEnough() accepts for the given defence points. */
+static INT32 AssaultHeadCountNeeded(UINT16 usDefencePoints)
+{
+	if( saipolicy(improved_sector_evaluation) )
+	{
+		return (usDefencePoints * 2 + 11) / 12;
+	}
+	return (usDefencePoints + 2) / 3;
+}
+
+
 static BOOLEAN PlayerForceTooStrong(UINT8 ubSectorID, UINT16 usOffensePoints, UINT16* pusDefencePoints)
 {
 	SGPSector sSector(ubSectorID);
 
 	*pusDefencePoints = CalcSectorDefencePoints( sSector, 5 );
+	if( saipolicy(improved_sector_evaluation) )
+	{ /* Hold a group that spots something to the same bar the queen applies when she stages an
+	   * assault, or a patrol that sees militia refuses a fight it is well able to win. */
+		return !AssaultForceIsStrongEnough( usOffensePoints, *pusDefencePoints );
+	}
 	if( *pusDefencePoints > usOffensePoints )
 	{
 		return TRUE;
@@ -1422,9 +1465,10 @@ void CheckEnemyControlledSector( UINT8 ubSectorID )
 						SGPSector const sTarget(gGarrisonGroup[ pSector->ubGarrisonID ].ubSectorID);
 						UINT16 const usDefencePoints = CalcSectorDefencePoints( sTarget, 5 );
 						UINT16 const usOffensePoints = EnemyGroupOffensePoints( pGroup );
-						if( saipolicy(improved_sector_evaluation) && usOffensePoints <= usDefencePoints )
+						if( saipolicy(improved_sector_evaluation) &&
+								!AssaultForceIsStrongEnough( usOffensePoints, usDefencePoints ) )
 						{
-							SLOGD("Staged group #{} at {} calls off its assault on {}: offense {} does not beat defence {}.  Reassigning it.",
+							SLOGD("Staged group #{} at {} calls off its assault on {}: offense {} is not worth committing against defence {}.  Reassigning it.",
 									(int)pGroup->ubGroupID, pGroup->ubSector, sTarget,
 									usOffensePoints, usDefencePoints);
 							ReassignAIGroup( &pGroup );
@@ -1813,12 +1857,12 @@ static BOOLEAN SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefe
 	// Size the assault to the sector's actual defenders rather than only to the desired
 	// garrison size. Vanilla sends roughly desiredPopulation regardless of how much
 	// militia is present, so a well-defended town gets attacked by too small a force.
-	// Aim instead for the head count the decimation check below treats as viable
-	// (approved*3 >= usDefencePoints). Only ever grows the force, and stays bounded by
-	// MAX_STRATEGIC_TEAM_SIZE (and, further down, by the available reinforcement pool).
+	// Aim instead for the head count the decimation check below treats as viable. Only ever
+	// grows the force, and stays bounded by MAX_STRATEGIC_TEAM_SIZE (and, further down, by the
+	// available reinforcement pool).
 	if( saipolicy(improved_sector_evaluation) )
 	{
-		INT32 const iDefenceDrivenForce = std::min<INT32>(MAX_STRATEGIC_TEAM_SIZE, (usDefencePoints + 2) / 3);
+		INT32 const iDefenceDrivenForce = std::min<INT32>(MAX_STRATEGIC_TEAM_SIZE, AssaultHeadCountNeeded( usDefencePoints ));
 		if( iDefenceDrivenForce > iMaxReinforcementsAllowed )
 		{
 			iMaxReinforcementsAllowed = iDefenceDrivenForce;
@@ -1859,9 +1903,9 @@ static BOOLEAN SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefe
 		 * composition, not the group actually at hand.  Returning FALSE lets the caller carry on
 		 * looking for somewhere this group can be useful. */
 		if( saipolicy(improved_sector_evaluation) &&
-				EnemyGroupOffensePoints( pGroup ) <= usDefencePoints )
+				!AssaultForceIsStrongEnough( EnemyGroupOffensePoints( pGroup ), usDefencePoints ) )
 		{
-			SLOGD("Group #{} at {} was not reassigned to {}: its offense {} does not beat the sector's defence {}.",
+			SLOGD("Group #{} at {} was not reassigned to {}: its offense {} is not worth committing against the sector's defence {}.",
 					(int)pGroup->ubGroupID, pGroup->ubSector, dstSector,
 					EnemyGroupOffensePoints( pGroup ), usDefencePoints);
 			return FALSE;
@@ -1899,7 +1943,7 @@ static BOOLEAN SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefe
 		}
 		iReinforcementsApproved = std::min(iReinforcementsRequested, giReinforcementPool);
 
-		if( iReinforcementsApproved * 3 < usDefencePoints )
+		if( !AssaultHeadCountIsStrongEnough( iReinforcementsApproved, usDefencePoints ) )
 		{ //The enemy force that would be sent would likely be decimated by the player forces.
 			BankGarrisonReinforcementsDenied( iDstGarrisonID );
 			SLOGD("No reinforcements sent from palace to {}: the {} troops the pool can spare would be decimated by {} defence points.  Denial credit raised to {}.",
@@ -1978,7 +2022,7 @@ static BOOLEAN SendReinforcementsForGarrison(INT32 iDstGarrisonID, UINT16 usDefe
 						iMaxReinforcementsAllowed - ubNumExtraReinforcements, iMaxReinforcementsAllowed);
 				iReinforcementsApproved = iMaxReinforcementsAllowed - ubNumExtraReinforcements;
 			}
-			else if( (iReinforcementsApproved + ubNumExtraReinforcements) * 3 < usDefencePoints )
+			else if( !AssaultHeadCountIsStrongEnough( iReinforcementsApproved + ubNumExtraReinforcements, usDefencePoints ) )
 			{ //The enemy force that would be sent would likely be decimated by the player forces.
 				BankGarrisonReinforcementsDenied( iDstGarrisonID );
 				SLOGD("No reinforcements sent from {} to {}: the {} troops available (plus {} extra) would be decimated by {} defence points.  Denial credit raised to {}.",
