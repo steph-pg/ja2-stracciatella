@@ -44,6 +44,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	enemy_elite_minimum_level = gp.getOptionalInt("enemy_elite_minimum_level", 6);
 	enemy_elite_maximum_level = gp.getOptionalInt("enemy_elite_maximum_level", 10);
+	regular_soldier_stat_spread = gp.getOptionalBool("regular_soldier_stat_spread");
 
 	gui_extras = gp.getOptionalBool("gui_extras", true);
 	informative_tooltips = gp.getOptionalBool("informative_tooltips", false);

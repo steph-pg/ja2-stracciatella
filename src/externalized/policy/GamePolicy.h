@@ -72,6 +72,7 @@ public:
 
 	int8_t enemy_elite_minimum_level;     // increase challenge: minimum experience level for enemy elite soldier
 	int8_t enemy_elite_maximum_level;     // maximum experience level for enemy elite soldier
+	bool regular_soldier_stat_spread;     // regular army troops and regular militia roll strength, wisdom, leadership, medical and explosives from a flat floor up to their level's ceiling, instead of a narrow band just above the floor their level sets
 
 	bool imp_load_saved_merc_by_nickname; // IMP merc is saved and can be loaded at IMP creation if has same nickname
 	bool imp_load_keep_inventory;         // IMP merc gets inventory from last save game

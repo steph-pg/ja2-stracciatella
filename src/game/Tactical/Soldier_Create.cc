@@ -1122,6 +1122,36 @@ INT8 CalcDifficultyModifier( UINT8 ubSoldierClass )
 static void ReduceHighExpLevels(INT8* pbExpLevel);
 
 
+/* Vanilla rolls every stat as bBaseAttribute + Random(9) + Random(8), a narrow
+ * band sitting just above the floor the soldier's level sets, so everyone of a
+ * given rank ends up similarly capable at everything. This rolls flat from
+ * bFloor up to that same ceiling instead, widening the spread downwards while
+ * leaving the best rolls untouched. Guarded by regular_soldier_stat_spread. */
+static INT8 RollStatWithFloor(INT8 const bBaseAttribute, INT8 const bFloor)
+{
+	INT8 const bCeiling = bBaseAttribute + 15;
+	if (bCeiling <= bFloor) return bFloor;
+	return (INT8)(bFloor + Random(bCeiling + 1 - bFloor));
+}
+
+//Lower bounds for the spread above.  The stats that decide a fight directly
+//-- agility, dexterity, marksmanship, health and morale -- keep their vanilla roll.
+static constexpr INT8 STAT_SPREAD_FLOOR_EXPLOSIVE  = 15;
+static constexpr INT8 STAT_SPREAD_FLOOR_MEDICAL    = 35;
+static constexpr INT8 STAT_SPREAD_FLOOR_LEADERSHIP = 35;
+static constexpr INT8 STAT_SPREAD_FLOOR_STRENGTH   = 50;
+static constexpr INT8 STAT_SPREAD_FLOOR_WISDOM     = 50;
+
+/* Only the regular ranks on either side get the wider spread.  Administrators
+ * and elites stay predictable at their level, and so do the green and elite
+ * militia -- they are already handled as special cases elsewhere. */
+static bool SpreadStatsForSoldierClass(UINT8 const ubSoldierClass)
+{
+	return ubSoldierClass == SOLDIER_CLASS_ARMY ||
+		ubSoldierClass == SOLDIER_CLASS_REG_MILITIA;
+}
+
+
 //When the editor modifies the soldier's relative attribute level,
 //this function is called to update that information.
 //Used to generate a detailed placement from a basic placement.  This assumes that the detailed placement
@@ -1370,6 +1400,14 @@ void CreateDetailedPlacementGivenBasicPlacementInfo( SOLDIERCREATE_STRUCT *pp, B
 	pp->bLeadership = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 	pp->bStrength = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 	pp->bWisdom = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
+	if (gamepolicy(regular_soldier_stat_spread) && SpreadStatsForSoldierClass(ubSoldierClass))
+	{
+		pp->bExplosive  = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_EXPLOSIVE);
+		pp->bMedical    = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_MEDICAL);
+		pp->bLeadership = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_LEADERSHIP);
+		pp->bStrength   = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_STRENGTH);
+		pp->bWisdom     = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_WISDOM);
+	}
 	pp->bMorale = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 
 	if (ubSoldierClass != SOLDIER_CLASS_ELITE)
@@ -1603,6 +1641,14 @@ void UpdateSoldierWithStaticDetailedInformation( SOLDIERTYPE *s, SOLDIERCREATE_S
 		s->bLeadership = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 		s->bStrength = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 		s->bWisdom = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
+		if (gamepolicy(regular_soldier_stat_spread) && SpreadStatsForSoldierClass(spp->ubSoldierClass))
+		{
+			s->bExplosive  = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_EXPLOSIVE);
+			s->bMedical    = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_MEDICAL);
+			s->bLeadership = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_LEADERSHIP);
+			s->bStrength   = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_STRENGTH);
+			s->bWisdom     = RollStatWithFloor(bBaseAttribute, STAT_SPREAD_FLOOR_WISDOM);
+		}
 		s->bMorale = (INT8)(bBaseAttribute + Random( 9 ) + Random( 8 ));
 	}
 	//Replace any soldier attributes with any static values in the detailed placement.
