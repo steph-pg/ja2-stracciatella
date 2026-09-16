@@ -553,10 +553,16 @@ static UINT16 ModifyExpGainByTarget(const UINT16 exp_gain, const SOLDIERTYPE* co
 static BOOLEAN WillExplosiveWeaponFail(const SOLDIERTYPE* pSoldier, const OBJECTTYPE* pObj);
 
 
+bool IsSilenced(SOLDIERTYPE const& soldier)
+{
+	return FindAttachment(&soldier.inv[soldier.ubAttackingHand], SILENCER) != NO_SLOT;
+}
+
+
 static ST::string GetBurstSoundName(SOLDIERTYPE const& soldier)
 {
 	auto * const weapon = GCM->getWeapon(soldier.usAttackingWeapon);
-	bool isSilenced = FindAttachment(&soldier.inv[soldier.ubAttackingHand], SILENCER) != NO_SLOT;
+	bool isSilenced = IsSilenced(soldier);
 	auto const& burstSound = isSilenced ? weapon->silencedBurstSound : weapon->burstSound;
 
 	if (!burstSound.empty())
@@ -641,7 +647,7 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 		if ( GCM->getItem(usItemNum)->getItemClass() != IC_THROWING_KNIFE )
 		{
 			// Switch on silencer...
-			if( FindAttachment( &( pSoldier->inv[ pSoldier->ubAttackingHand ] ), SILENCER ) != NO_SLOT )
+			if( IsSilenced( *pSoldier ) )
 			{
 				if (!weapon->silencedSound.empty()) {
 					PlayLocationJA2Sample(pSoldier->sGridNo, weapon->silencedSound, HIGHVOLUME, 1);

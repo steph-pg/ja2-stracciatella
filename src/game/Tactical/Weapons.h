@@ -154,6 +154,8 @@ void ReloadWeapon(SOLDIERTYPE*, UINT8 inv_pos);
 bool IsGunBurstCapable(SOLDIERTYPE const*, UINT8 inv_pos);
 void EnsureConsistentWeaponMode(SOLDIERTYPE*);
 bool HasLauncher(SOLDIERTYPE const*);
+// Is a silencer attached to the weapon the soldier is attacking with?
+bool IsSilenced(SOLDIERTYPE const&);
 extern INT32 CalcBodyImpactReduction( UINT8 ubAmmoType, UINT8 ubHitLocation );
 INT32 TotalArmourProtection(SOLDIERTYPE&, UINT8 ubHitLocation, INT32 iImpact, UINT8 ubAmmoType);
 INT8 ArmourPercent(const SOLDIERTYPE* pSoldier);
