@@ -42,7 +42,8 @@ static std::map<UINT16, decltype(g_helmets) *> const g_attachments_mod
 
 	{BREAK_LIGHT, &g_leggings},
 	{REGEN_BOOSTER, &g_leggings},
-	{ADRENALINE_BOOSTER, &g_leggings}
+	{ADRENALINE_BOOSTER, &g_leggings},
+	{BATTERIES, &g_leggings}
 };
 
 ArmourModel::ArmourModel(

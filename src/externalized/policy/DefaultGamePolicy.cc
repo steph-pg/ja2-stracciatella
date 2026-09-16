@@ -108,6 +108,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	suppression_fire_modifier = gp.getOptionalUInt("suppression_fire_modifier", 6);
 	suppression_fire_reaction_threshold = gp.getOptionalUInt("suppression_fire_reaction_threshold", 130);
+
+	night_goggles_need_batteries = gp.getOptionalBool("night_goggles_need_batteries", false);
 }
 
 /** Check if a hotkey is enabled. */

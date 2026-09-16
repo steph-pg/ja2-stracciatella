@@ -26,6 +26,7 @@
 #include "Message.h"
 #include "Text.h"
 #include "ShopKeeper_Interface.h"
+#include "StrategicMap.h"
 #include "GamePolicy.h"
 #include "GameSettings.h"
 #include "Environment.h"
@@ -42,6 +43,7 @@
 #include "GameInstance.h"
 #include "ItemModel.h"
 #include "MagazineModel.h"
+#include "content/NewStrings.h"
 #include "WeaponModels.h"
 #include <array>
 #include <initializer_list>
@@ -1543,6 +1545,23 @@ bool AttachObject(SOLDIERTYPE* const s, OBJECTTYPE* const pTargetObj, OBJECTTYPE
 		{
 			attach_pos = FindAttachment(&target, NOTHING);
 			if (attach_pos == NO_SLOT) return false;
+		}
+
+		/* An attachment cannot carry attachments of its own, so batteries have to
+		 * come out of night vision gear before it is stowed on a helmet - they
+		 * would be destroyed otherwise. Leave the gear alone if the merc has
+		 * nowhere to keep them. */
+		INT8 const loose_batteries = s ? FindAttachment(&attachment, BATTERIES) : ITEM_NOT_FOUND;
+		if (loose_batteries != ITEM_NOT_FOUND)
+		{
+			OBJECTTYPE batteries{};
+			if (RemoveAttachment(&attachment, loose_batteries, &batteries) &&
+				!AutoPlaceObject(s, &batteries, FALSE))
+			{
+				attachment.usAttachItem[loose_batteries]  = batteries.usItem;
+				attachment.bAttachStatus[loose_batteries] = batteries.bStatus[0];
+				return false;
+			}
 		}
 
 		AttachmentInfoStruct const* attach_info = 0;
@@ -3533,6 +3552,84 @@ bool ItemIsCool(OBJECTTYPE const& o)
 
 	return false;
 }
+
+// A fresh set of batteries, what one engagement costs, and the charge below
+// which what is left is not worth carrying around.
+constexpr INT8 FRESH_BATTERIES_STATUS = 100;
+constexpr INT8 BATTERY_DRAIN_PER_FIGHT = 10;
+constexpr INT8 SPENT_BATTERIES_STATUS = 2;
+
+
+// Night vision gear only works while it is worn, which is one of the two head slots.
+static INT8 FindWornNightGear(SOLDIERTYPE const& s, UINT16 const usItem)
+{
+	if (s.inv[HEAD1POS].usItem == usItem) return HEAD1POS;
+	if (s.inv[HEAD2POS].usItem == usItem) return HEAD2POS;
+	return NO_SLOT;
+}
+
+
+void LoadNightGearWithBatteries(OBJECTTYPE& gear)
+{
+	if (!gamepolicy(night_goggles_need_batteries)) return;
+	if (!IsBatteryPoweredGear(gear.usItem)) return;
+	if (FindAttachment(&gear, BATTERIES) != ITEM_NOT_FOUND) return;
+
+	INT8 const bSlot = FindAttachment(&gear, NOTHING);
+	if (bSlot == ITEM_NOT_FOUND) return;
+
+	gear.usAttachItem[bSlot] = BATTERIES;
+	gear.bAttachStatus[bSlot] = FRESH_BATTERIES_STATUS;
+}
+
+
+bool IsWearingPoweredNightGear(SOLDIERTYPE const& s, UINT16 const usItem)
+{
+	INT8 const bSlot = FindWornNightGear(s, usItem);
+	if (bSlot == NO_SLOT) return false;
+
+	if (!gamepolicy(night_goggles_need_batteries)) return true;
+
+	OBJECTTYPE const& gear = s.inv[bSlot];
+	INT8 const bBatteries = FindAttachment(&gear, BATTERIES);
+	return bBatteries != ITEM_NOT_FOUND && gear.bAttachStatus[bBatteries] > 0;
+}
+
+
+// Only gear that did any work runs its batteries down. Underground it is always
+// pitch dark, but UV goggles need starlight and are dead weight down there.
+static bool NightGearWasOfUse(UINT16 const usItem)
+{
+	if (gWorldSector.z > 0) return usItem == NIGHTGOGGLES;
+	return NightTime();
+}
+
+
+void DrainNightVisionBatteries(SOLDIERTYPE& s)
+{
+	if (!gamepolicy(night_goggles_need_batteries)) return;
+
+	for (UINT16 const usItem : { NIGHTGOGGLES, UVGOGGLES })
+	{
+		if (!NightGearWasOfUse(usItem)) continue;
+
+		INT8 const bSlot = FindWornNightGear(s, usItem);
+		if (bSlot == NO_SLOT) continue;
+
+		OBJECTTYPE& gear = s.inv[bSlot];
+		INT8 const bBatteries = FindAttachment(&gear, BATTERIES);
+		if (bBatteries == ITEM_NOT_FOUND || gear.bAttachStatus[bBatteries] <= 0) continue;
+
+		gear.bAttachStatus[bBatteries] -= BATTERY_DRAIN_PER_FIGHT;
+		if (gear.bAttachStatus[bBatteries] >= SPENT_BATTERIES_STATUS) continue;
+
+		// what is left is not worth carrying around
+		gear.usAttachItem[bBatteries] = NOTHING;
+		gear.bAttachStatus[bBatteries] = 0;
+		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(*GCM->getNewString(NS_NIGHT_GEAR_OUT_OF_POWER), s.name, GCM->getItem(usItem)->getName()));
+	}
+}
+
 
 void ActivateXRayDevice( SOLDIERTYPE * pSoldier )
 {

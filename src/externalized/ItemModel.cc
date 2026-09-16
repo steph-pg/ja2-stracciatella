@@ -3,6 +3,7 @@
 #include "TranslatableString.h"
 #include <cstdint>
 #include <memory>
+#include <set>
 #include <string_theory/st_string.h>
 #include <utility>
 
@@ -183,9 +184,20 @@ uint16_t ItemModel::deserializeFlags(const JsonObject &obj)
 	return flags;
 }
 
+static std::set<uint16_t> const g_batteryPoweredGear {NIGHTGOGGLES, UVGOGGLES};
+
+bool IsBatteryPoweredGear(uint16_t const itemIndex)
+{
+	return g_batteryPoweredGear.count(itemIndex) == 1;
+}
+
 /** Check if the given attachment can be attached to the item. */
 bool ItemModel::canBeAttached(const GamePolicy* policy, const ItemModel* attachment) const
 {
+	if (policy->night_goggles_need_batteries && attachment->getItemIndex() == BATTERIES)
+	{
+		return IsBatteryPoweredGear(this->itemIndex);
+	}
 	return false;
 }
 

@@ -594,6 +594,16 @@ properties:
       suppression completely.
 
       Vanilla setting: `6`
+  night_goggles_need_batteries:
+    type: boolean
+    title: Night vision goggles need batteries
+    description: |
+      Night vision gear runs on batteries. When enabled, NV and UV goggles only extend sight while batteries
+      are attached to them, and every engagement fought in the dark costs 10% of their charge. Goggles are
+      issued and sold with a fresh set in them, so enemies are fine either way, but your own mercs need
+      spares.
+
+      Vanilla setting: `false`
   suppression_fire_reaction_threshold:
     $ref: types/uint16.schema.yaml
     title: Suppression fire reaction threshold

@@ -984,6 +984,7 @@ static void DropOffItemsInDestination(UINT8 ubOrderNum, const ShippingDestinatio
 			// treat 0s as 1s :-)
 			ubTempNumItems = perPocket > 1 ? std::clamp(ubItemsDelivered, (uint8_t) 1, perPocket) : (uint8_t) 1;
 			CreateItems( usItem, gpNewBobbyrShipments[ ubOrderNum ].BobbyRayPurchase[i].bItemQuality, ubTempNumItems, &Object );
+			LoadNightGearWithBatteries( Object );
 
 			// stack as many as possible
 			if( fSectorLoaded )

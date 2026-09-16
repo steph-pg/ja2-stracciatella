@@ -18,6 +18,9 @@ struct ExplosiveModel;
 struct MagazineModel;
 struct WeaponModel;
 
+// Is this gear run by batteries, when the night_goggles_need_batteries game policy is set?
+bool IsBatteryPoweredGear(uint16_t itemIndex);
+
 struct ItemModel : public Containers::NamedEntity<uint16_t>
 {
 public:

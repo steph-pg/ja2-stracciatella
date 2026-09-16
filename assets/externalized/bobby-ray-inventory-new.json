@@ -109,6 +109,7 @@
         "GASMASK": 4,
         "CANTEEN": 10,
         "METALDETECTOR": 2,
+        "BATTERIES": 10,
         "LASERSCOPE": 1,
         "DUCKBILL": 3,
         "UVGOGGLES": 1
