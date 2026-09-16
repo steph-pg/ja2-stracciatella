@@ -3473,6 +3473,21 @@ static void ReassignAIGroup(GROUP** pGroup)
 			}
 		}
 	}
+
+	/* Patrol duty is where a group that no garrison wants ends up, and a patrol whose own group was
+	 * wiped out is refilled the moment one of them arrives.  With refill_defeated_patrol_groups off
+	 * the player has asked for a patrol they beat to stay beaten, so send the group home to the
+	 * queen's pool instead of letting it take a patrol's place.  She still refills patrols from the
+	 * pool and from garrison surplus in her regular reinforcement round; this only stops the groups
+	 * she has no attack for from drifting into patrol duty. */
+	if( !saipolicy(refill_defeated_patrol_groups) )
+	{
+		SLOGD("Group #{} at {} has no garrison to reinforce and is being sent to the queen's pool; patrols are not refilled.",
+				(int)(*pGroup)->ubGroupID, (*pGroup)->ubSector);
+		SendGroupToPool( pGroup );
+		return;
+	}
+
 	if( uiReloopLastIndex == NO_LAST_INDEX )
 	{
 		//go through the patrol groups
