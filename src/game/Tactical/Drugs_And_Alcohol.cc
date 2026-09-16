@@ -141,7 +141,7 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject )
 			if ( pSoldier->bDrugSideEffectRate[ ubDrugType ] > ( ubDrugSideEffect[ ubDrugType ] * 3 ) )
 			{
 				// Keel over...
-				DeductPoints( pSoldier, 0, 10000 );
+				DeductPoints( pSoldier, 0, 10000, FALSE );
 
 				// Permanently lower certain stats...
 				pSoldier->bWisdom    -= HEART_ATTACK_STAT_REDUCE;
