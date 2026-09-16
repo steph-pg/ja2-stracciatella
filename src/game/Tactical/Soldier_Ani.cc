@@ -62,6 +62,7 @@
 
 #include "ContentManager.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "WeaponModels.h"
 #include "Logger.h"
 #include "Debug.h"
@@ -464,6 +465,8 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					// DO ONLY IF WE'RE AT A GOOD LEVEL
 					if (ubAmbientLightLevel < MIN_AMB_LEVEL_FOR_MERC_LIGHTS) break;
 
+					// a silencer hides the flash, so there is nothing to light up either
+					if (gamepolicy(realistic_muzzle_flashes) && IsSilenced(*pSoldier)) break;
 					// The previous round's flash may still be alive - a burst runs this
 					// code once per round, as does two-pistol shooting - and only one
 					// sprite is tracked, so let go of the old one instead of leaking it.

@@ -43,6 +43,7 @@ public:
 	bool f_all_dropped_visible;           /**< All dropped equipment is visible right away. */
 
 	bool multiple_interrupts;             // can interrupt more than once per turn
+	bool realistic_muzzle_flashes;        // a muzzle flash gives the firer away to the other teams at the flash's extended sighting range, and a silencer hides the flash entirely
 
 	bool fixed_cost_to_shoot;    // Changes the formula for APs to shoot
 
