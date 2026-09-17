@@ -64,6 +64,7 @@ static inline SOLDIERTYPE* LatestInterruptGuy(void)
 #define INTERRUPTS_OVER		(gubOutOfTurnPersons == 1)
 
 BOOLEAN gfHiddenInterrupt = FALSE;
+BOOLEAN gfMuzzleFlashSighting = FALSE;
 static SOLDIERTYPE* gLastInterruptedGuy = NULL;
 
 extern SightFlags gubSightFlags;
@@ -1289,8 +1290,16 @@ BOOLEAN InterruptDuel( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pOpponent)
 {
 	BOOLEAN fResult = FALSE;
 
+	// Seeing someone who cannot see back is normally worth a free interrupt. A muzzle
+	// flash hands that out far too readily though: it lights the firer up for everyone in
+	// range regardless of facing, and in the dark it is precisely the onlookers the firer
+	// cannot see who pick them up, so the whole squad would react for free. Under
+	// realistic_muzzle_flashes a sighting made by flash alone wins on points like any other.
+	BOOLEAN const fAllowFreeInterrupt =
+		!( gamepolicy(realistic_muzzle_flashes) && gfMuzzleFlashSighting );
+
 	// if opponent can't currently see us and we can see them
-	if ( pSoldier->bOppList[ pOpponent->ubID ] == SEEN_CURRENTLY && pOpponent->bOppList[pSoldier->ubID] != SEEN_CURRENTLY )
+	if ( fAllowFreeInterrupt && pSoldier->bOppList[ pOpponent->ubID ] == SEEN_CURRENTLY && pOpponent->bOppList[pSoldier->ubID] != SEEN_CURRENTLY )
 	{
 		fResult = TRUE; // we automatically interrupt
 		// fix up our interrupt duel pts if necessary

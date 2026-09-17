@@ -80,6 +80,7 @@
 #include "StrategicMap.h"
 #include "Structure.h"
 #include "SysUtil.h"
+#include "TeamTurns.h"
 #include "Text.h"
 #include "Tile_Animation.h"
 #include "TileDef.h"
@@ -5762,14 +5763,18 @@ static SOLDIERTYPE* InternalReduceAttackBusyCount(SOLDIERTYPE* const pSoldier, c
 	// does: EndMuzzleFlash() drops it again for anyone who cannot see that far unlit.
 	//
 	// Interrupts are allowed on that look, so whoever picks the firer up by the flash can
-	// react to them. It is the ordinary sighting interrupt: the spotter still has to meet
-	// the standard conditions and win an interrupt duel, so a shot in the dark is not a
-	// free reaction for everyone facing that way. The attack busy count was decremented
-	// at the top of this function, so the shot itself no longer blocks the duel.
+	// react to them. The spotter has to meet the standard conditions and win an interrupt
+	// duel: gfMuzzleFlashSighting denies them the free interrupt they would otherwise get
+	// for seeing someone who cannot see back, which in the dark is every onlooker the flash
+	// reveals the firer to. A shot in the dark is therefore not a free reaction for the
+	// whole squad. The attack busy count was decremented at the top of this function, so
+	// the shot itself no longer blocks the duel.
 	if ( gamepolicy(realistic_muzzle_flashes) &&
 		(gTacticalStatus.uiFlags & INCOMBAT) && pSoldier && pSoldier->fMuzzleFlash )
 	{
+		gfMuzzleFlashSighting = TRUE;
 		HandleSight( *pSoldier, SIGHT_LOOK | SIGHT_INTERRUPT | SIGHT_RADIO );
+		gfMuzzleFlashSighting = FALSE;
 	}
 
 	// if we're in realtime, turn off the attacker's muzzle flash at this point
