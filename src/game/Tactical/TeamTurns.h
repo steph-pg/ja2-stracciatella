@@ -7,6 +7,10 @@
 extern UINT8 gubOutOfTurnPersons;
 extern BOOLEAN gfHiddenInterrupt;
 extern BOOLEAN gfHiddenTurnbased;
+// Set while interrupts are resolved for a sighting made by a muzzle flash: under
+// realistic_muzzle_flashes it denies the automatic interrupt for seeing someone who
+// cannot see back (see InterruptDuel).
+extern BOOLEAN gfMuzzleFlashSighting;
 
 #define INTERRUPT_QUEUED (gubOutOfTurnPersons > 0)
 
