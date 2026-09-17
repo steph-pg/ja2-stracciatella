@@ -736,6 +736,7 @@ static void CalculateSoldierCells()
 static void DrawDebugText(SOLDIERCELL* pCell);
 static void RenderSoldierCellBars(SOLDIERCELL* pCell);
 static void RenderSoldierCellHealth(SOLDIERCELL* pCell);
+static void RenderSoldierCellLeader(SOLDIERCELL const* pCell, INT32 xp, INT32 yp);
 
 
 static void RenderSoldierCell(SOLDIERCELL* const c)
@@ -789,6 +790,7 @@ static void RenderSoldierCell(SOLDIERCELL* const c)
 	}
 
 	RenderSoldierCellHealth(c);
+	RenderSoldierCellLeader(c, x, y);
 	DrawDebugText(c);
 
 	InvalidateRegion(dx, dy, dx + 50, dy + 44);
@@ -838,6 +840,21 @@ static void RenderSoldierCellBars(SOLDIERCELL* pCell)
 	iStartY = pCell->yp + 29 - 25*pCell->pSoldier->bMorale/100;
 	ColorFillVideoSurfaceArea( FRAME_BUFFER, pCell->xp+45, iStartY, pCell->xp+46, pCell->yp+29, Get16BPPColor( FROMRGB( 8, 156, 8 ) ) );
 	ColorFillVideoSurfaceArea( FRAME_BUFFER, pCell->xp+46, iStartY, pCell->xp+47, pCell->yp+29, Get16BPPColor( FROMRGB( 8, 107, 8 ) ) );
+}
+
+
+// Each side's leader sets the leadership bonus for their whole team, so put their rating
+// on their portrait to make the two of them stand out among the frames.
+static void RenderSoldierCellLeader(SOLDIERCELL const* const pCell, INT32 const xp, INT32 const yp)
+{
+	if( !(pCell->uiFlags & CELL_TEAMLEADER) )
+		return;
+
+	SetFont( FONT10ARIAL );
+	SetFontForeground( FONT_YELLOW );
+	SetFontShadow( FONT_NEARBLACK );
+	MPrint( xp + 1, yp, static_cast<INT32>(pCell->pSoldier->bLeadership) );
+	SetFontShadow( DEFAULT_SHADOW );
 }
 
 
