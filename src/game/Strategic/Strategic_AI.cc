@@ -1414,25 +1414,7 @@ void CheckEnemyControlledSector( UINT8 ubSectorID )
 					}
 					else if (pGroup->ubSector.AsByte() != gGarrisonGroup[pSector->ubGarrisonID].ubSectorID)
 					{
-						/* The group staged next to the target when the order was given, and the sector may have
-						 * gained militia since.  Weigh it again before it walks in, or a handful of troops
-						 * assaults a town that has long outgrown them.  A group that no longer measures up is
-						 * reassigned, which also frees the garrison's pending slot so a force of the right size
-						 * can be requested in its place. */
-						SGPSector const sTarget(gGarrisonGroup[ pSector->ubGarrisonID ].ubSectorID);
-						UINT16 const usDefencePoints = CalcSectorDefencePoints( sTarget, 5 );
-						UINT16 const usOffensePoints = EnemyGroupOffensePoints( pGroup );
-						if( saipolicy(improved_sector_evaluation) && usOffensePoints <= usDefencePoints )
-						{
-							SLOGD("Staged group #{} at {} calls off its assault on {}: offense {} does not beat defence {}.  Reassigning it.",
-									(int)pGroup->ubGroupID, pGroup->ubSector, sTarget,
-									usOffensePoints, usDefencePoints);
-							ReassignAIGroup( &pGroup );
-						}
-						else
-						{
-							MoveSAIGroupToSector( &pGroup, gGarrisonGroup[ pSector->ubGarrisonID ].ubSectorID, DIRECT, pGroup->pEnemyGroup->ubIntention );
-						}
+						MoveSAIGroupToSector( &pGroup, gGarrisonGroup[ pSector->ubGarrisonID ].ubSectorID, DIRECT, pGroup->pEnemyGroup->ubIntention );
 					}
 				}
 				//else the group is on route to stage hopefully...
