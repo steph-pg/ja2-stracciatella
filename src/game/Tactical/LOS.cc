@@ -3793,31 +3793,30 @@ void MoveBullet(BULLET* const pBullet)
 						{
 							if ( IS_MERC_BODY_TYPE( pTarget ) && pBullet->pFirer->bSide != pTarget->bSide )
 							{
-								if ( !(pBullet->usFlags & BULLET_FLAG_BUCKSHOT) || Random( 2 ) )
+
+								// bullet goes whizzing by this guy!
+								switch ( gAnimControl[ pTarget->usAnimState ].ubEndHeight )
 								{
-									// bullet goes whizzing by this guy!
-									switch ( gAnimControl[ pTarget->usAnimState ].ubEndHeight )
-									{
-										case ANIM_PRONE:
-											// two 1/4 chances of avoiding suppression pt - one below
-											if (PreRandom( 4 ) == 0)
-											{
-												break;
-											}
-											// else fall through
-										case ANIM_CROUCH:
-											// 1/4 chance of avoiding suppression pt
-											if (PreRandom( 4 ) == 0)
-											{
-												break;
-											}
-											// else fall through
-										default:
-											pTarget->ubSuppressionPoints++;
-											pTarget->suppressor = pBullet->pFirer;
+									case ANIM_PRONE:
+										// two 1/4 chances of avoiding suppression pt - one below
+										if (PreRandom( 4 ) == 0)
+										{
 											break;
-									}
+										}
+										// else fall through
+									case ANIM_CROUCH:
+										// 1/4 chance of avoiding suppression pt
+										if (PreRandom( 4 ) == 0)
+										{
+											break;
+										}
+										// else fall through
+									default:
+										pTarget->ubSuppressionPoints++;
+										pTarget->suppressor = pBullet->pFirer;
+										break;
 								}
+								
 
 								/*
 								// this could be a close call
