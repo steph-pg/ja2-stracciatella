@@ -143,6 +143,7 @@
     //  vanilla value: false
     "enemy_shoot_unseen": true,
     "prioritize_cover":  true
+    "avoid_lit_tiles_at_night": false
   },
 
   //  How much variation should there be in elite soldier xp level?

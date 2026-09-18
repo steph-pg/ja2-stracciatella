@@ -10,7 +10,11 @@
 #include "Animation_Control.h"
 #include "Animation_Data.h"
 #include "Buildings.h"
+#include "ContentManager.h"
 #include "English.h"
+#include "Environment.h"
+#include "GameInstance.h"
+#include "GamePolicy.h"
 #include "GameSettings.h"
 #include "GridSquare.h"
 #include "Handle_Doors.h"
@@ -18,15 +22,21 @@
 #include "Interface.h"
 #include "Isometric_Utils.h"
 #include "Keys.h"
+#include "LOS.h"
+#include "Lighting.h"
 #include "Logger.h"
+#include "OppList.h"
 #include "Overhead.h"
 #include "Overhead_Types.h"
 #include "PathAI.h"
 #include "Points.h"
 #include "Random.h"
+#include "Render_Fun.h"
 #include "Soldier_Control.h"
+#include "StrategicMap.h"
 #include "Structure.h"
 #include "TileDef.h"
+#include "Timer_Control.h"
 #include "WorldDef.h"
 #include "WorldMan.h"
 
@@ -106,6 +116,82 @@ enum TrailFlags
 #define EASYWATERCOST				TRAVELCOST_FLAT / 2
 #define ISWATER(t)				(((t)==TRAVELCOST_KNEEDEEP) || ((t)==TRAVELCOST_DEEPWATER))
 #define NOPASS					(TRAVELCOST_BLOCKED)
+
+// Tiles lit at night and in a player merc's sight. LOS is too slow to test per
+// candidate tile, so the set is snapshotted and only consulted here.
+#define AI_EXPOSED_TILE_MAP_LIFETIME	500 // ms, out of combat only
+
+static UINT8   gubAIExposedTile[WORLD_MAX];
+static BOOLEAN gfAIAvoidExposedTiles = FALSE;
+static UINT32  guiAIExposedTileMapBuilt = 0; // 0 == no snapshot
+
+void ClearAIExposedTileMap(void)
+{
+	gfAIAvoidExposedTiles = FALSE;
+	guiAIExposedTileMapBuilt = 0;
+}
+
+void BuildAIExposedTileMap(void)
+{
+	gfAIAvoidExposedTiles = FALSE;
+	guiAIExposedTileMapBuilt = std::max(GetJA2Clock(), (UINT32)1);
+	std::fill(std::begin(gubAIExposedTile), std::end(gubAIExposedTile), (UINT8)0);
+
+	// surface at night only, as in InLightAtNight()
+	if (gWorldSector.z != 0) return;
+	const UINT8 ubAmbient = GetTimeOfDayAmbientLightLevel();
+	if (ubAmbient < NORMAL_LIGHTLEVEL_DAY + 2) return;
+
+	const INT16 sScanRadius = MaxDistanceVisible();
+	CFOR_EACH_IN_TEAM(s, OUR_TEAM)
+	{
+		if (s->bLife < OKLIFE || s->sGridNo == NOWHERE || !s->bInSector) continue;
+
+		INT16 sMercX, sMercY;
+		ConvertGridNoToXY(s->sGridNo, &sMercX, &sMercY);
+
+		const INT16 sMinX = std::max(sMercX - sScanRadius, 0);
+		const INT16 sMaxX = std::min(sMercX + sScanRadius, WORLD_COLS - 1);
+		const INT16 sMinY = std::max(sMercY - sScanRadius, 0);
+		const INT16 sMaxY = std::min(sMercY + sScanRadius, WORLD_ROWS - 1);
+
+		for (INT16 sY = sMinY; sY <= sMaxY; ++sY)
+		{
+			for (INT16 sX = sMinX; sX <= sMaxX; ++sX)
+			{
+				const INT16 sGridNo = FASTMAPROWCOLTOPOS(sY, sX);
+				if (gubAIExposedTile[sGridNo]) continue;
+
+				// outdoors and brighter than ambient (a LOWER level is brighter)
+				if (GetRoom((UINT16)sGridNo) != NO_ROOM) continue;
+				if (LightTrueLevel(sGridNo, s->bLevel) >= ubAmbient) continue;
+
+				const INT16 sDistVisible = DistanceVisible(s, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, s->bLevel);
+				if (SoldierTo3DLocationLineOfSightTest(s, sGridNo, s->bLevel, 3, sDistVisible, TRUE))
+				{
+					gubAIExposedTile[sGridNo] = TRUE;
+				}
+			}
+		}
+	}
+
+	gfAIAvoidExposedTiles = TRUE;
+}
+
+// Out of combat there is no turn boundary to snapshot on.
+static void RefreshAIExposedTileMap(void)
+{
+	if (gTacticalStatus.uiFlags & INCOMBAT) return; // snapshotted per turn
+	if (!gamepolicy(ai_avoid_lit_tiles_at_night)) return;
+
+	if (guiAIExposedTileMapBuilt != 0 &&
+		GetJA2Clock() - guiAIExposedTileMapBuilt < AI_EXPOSED_TILE_MAP_LIFETIME)
+	{
+		return;
+	}
+
+	BuildAIExposedTileMap();
+}
 
 static path_t *pathQ;
 static UINT16 gusPathShown,gusAPtsToMove;
@@ -728,6 +814,15 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 		}
 	}
 
+	// Unalerted soldiers walk normally, and one already in the light is let out.
+	BOOLEAN fAvoidExposedTiles = FALSE;
+	if ( !fPathingForPlayer && s->bTeam == ENEMY_TEAM && s->ubProfile == NO_PROFILE &&
+		s->bAlertStatus > STATUS_YELLOW && s->sGridNo != NOWHERE )
+	{
+		RefreshAIExposedTileMap();
+		fAvoidExposedTiles = gfAIAvoidExposedTiles && !gubAIExposedTile[ s->sGridNo ];
+	}
+
 	//setup Q and first path record
 
 	SETLOC( *pQueueHead, iOrigination );
@@ -894,6 +989,12 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 			if ( newLoc < 0 || newLoc >= GRIDSIZE )
 			{
 				SLOGW("Path Finding algorithm tried to go out of bounds at {}, in an attempt to find path from {} to {}", newLoc, iOrigination, iDestination);
+				goto NEXTDIR;
+			}
+
+			// lit tile in a player merc's sight
+			if ( fAvoidExposedTiles && gubAIExposedTile[ newLoc ] )
+			{
 				goto NEXTDIR;
 			}
 
