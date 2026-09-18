@@ -2233,9 +2233,8 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 								case CUNNINGAID:
 									if ( PythSpacesAway( pSoldier->usActionData, sClosestDisturbance ) < 5 || LocationToLocationLineOfSightTest( pSoldier->usActionData, pSoldier->bLevel, sClosestDisturbance, pSoldier->bLevel, (UINT8) MaxDistanceVisible(), TRUE ) )
 									{
-										// reserve APs for a possible crouch plus a shot, including the
-										// weapon raise the move itself makes necessary
-										pSoldier->usActionData = InternalGoAsFarAsPossibleTowards(pSoldier, sClosestDisturbance, (INT8) (MinAPsToAttack( pSoldier, sClosestDisturbance, ADDTURNCOST) + AP_CROUCH + APsToReadyWeaponAfterMoving( pSoldier )), AI_ACTION_SEEK_OPPONENT, FLAG_CAUTIOUS );
+										// reserve APs for a possible crouch plus a shot
+										pSoldier->usActionData = InternalGoAsFarAsPossibleTowards(pSoldier, sClosestDisturbance, (INT8) (MinAPsToAttack( pSoldier, sClosestDisturbance, ADDTURNCOST, AFTER_MOVING) + AP_CROUCH), AI_ACTION_SEEK_OPPONENT, FLAG_CAUTIOUS );
 										if ( pSoldier->usActionData != NOWHERE )
 										{
 											pSoldier->fAIFlags |= AI_CAUTIOUS;
@@ -2372,9 +2371,8 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 							if ( sClosestDisturbance != NOWHERE && ( SpacesAway( pSoldier->usActionData, sClosestDisturbance ) < 5 || SpacesAway( pSoldier->usActionData, sClosestDisturbance ) + 5 < SpacesAway( pSoldier->sGridNo, sClosestDisturbance ) ) )
 							{
 								// either moving significantly closer or into very close range
-								// ensure will we have enough APs for a possible crouch plus a shot,
-								// including the weapon raise the move itself makes necessary
-								if ( InternalGoAsFarAsPossibleTowards( pSoldier, pSoldier->usActionData, (INT8) (MinAPsToAttack( pSoldier, sClosestOpponent, ADDTURNCOST) + AP_CROUCH + APsToReadyWeaponAfterMoving( pSoldier )), AI_ACTION_TAKE_COVER, 0 ) == pSoldier->usActionData )
+								// ensure will we have enough APs for a possible crouch plus a shot
+								if ( InternalGoAsFarAsPossibleTowards( pSoldier, pSoldier->usActionData, (INT8) (MinAPsToAttack( pSoldier, sClosestOpponent, ADDTURNCOST, AFTER_MOVING) + AP_CROUCH), AI_ACTION_TAKE_COVER, 0 ) == pSoldier->usActionData )
 								{
 									return(AI_ACTION_TAKE_COVER);
 								}
