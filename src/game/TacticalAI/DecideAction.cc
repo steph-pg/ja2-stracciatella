@@ -47,6 +47,13 @@ static UINT32 guiRedSeekCounter = 0, guiRedHelpCounter = 0; guiRedHideCounter = 
 #define CENTER_OF_RING 11237
 static const SGPSector meduna(3, MAP_ROW_P);
 
+// Chance to really hit at which the AI stops weighing a burst against an aimed shot and
+// just bursts. GOOD: the unaimed shot already lands often enough that the aim clicks buy
+// little, so the extra bullets are worth more than the accuracy. POOR: even after aiming
+// the shot is a long shot, so spray and hope one round connects.
+#define AI_BURST_GOOD_CHANCE 60
+#define AI_BURST_POOR_CHANCE 15
+
 static void DoneScheduleAction(SOLDIERTYPE* pSoldier)
 {
 	pSoldier->fAIFlags &= (~AI_CHECK_SCHEDULE);
@@ -3455,6 +3462,13 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 				{
 					// Base chance of bursting is 25% if best shot was +0 aim, down to 8% at +4
 					if ( TANK( pSoldier ) )
+					{
+						iChance = 100;
+					}
+					// A burst is fired unaimed, so rate it against the chance the shot has
+					// with no aim clicks rather than against the aimed shot we picked.
+					else if (BestAttack.ubChanceToReallyHitUnaimed >= AI_BURST_GOOD_CHANCE ||
+						BestAttack.ubChanceToReallyHit < AI_BURST_POOR_CHANCE)
 					{
 						iChance = 100;
 					}
