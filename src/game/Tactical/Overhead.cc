@@ -5777,6 +5777,17 @@ static SOLDIERTYPE* InternalReduceAttackBusyCount(SOLDIERTYPE* const pSoldier, c
 		gfMuzzleFlashSighting = FALSE;
 	}
 
+	// A shot fired back at the firer spends the flash that gave them away: in turn-based
+	// combat the flag would otherwise stay up until their own team's next turn, so one shot
+	// in the dark lit them up for the rest of our turn and let the whole squad walk into
+	// position and fire at leisure. Once someone has shot at them the flash is used up and
+	// they drop back out of sight of everyone who cannot see that far unlit.
+	if ( gamepolicy(realistic_muzzle_flashes) &&
+		(gTacticalStatus.uiFlags & INCOMBAT) && pTarget && pTarget->fMuzzleFlash )
+	{
+		EndMuzzleFlash( pTarget );
+	}
+
 	// if we're in realtime, turn off the attacker's muzzle flash at this point
 	if ( !(gTacticalStatus.uiFlags & INCOMBAT) && pSoldier )
 	{
