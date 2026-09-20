@@ -119,6 +119,8 @@ void NoticeUnseenAttacker( SOLDIERTYPE * pAttacker, SOLDIERTYPE * pDefender, INT
 
 bool MercSeesCreature(SOLDIERTYPE const&);
 
+bool TeamHasSpotterFor(UINT8 ubTeam, SOLDIERTYPE* pOpponent);
+
 INT8 GetWatchedLocPoints( UINT8 ubID, INT16 sGridNo, INT8 bLevel );
 INT8 GetHighestVisibleWatchedLoc(const SOLDIERTYPE* s);
 INT8 GetHighestWatchedLocPoints(const SOLDIERTYPE* s);
