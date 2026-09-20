@@ -135,11 +135,16 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		// moment - and therefore that pOpponent->sGridNo, which the rest of the routine aims
 		// at, really is where they are.
 		//
+		// A collapsed team-mate is a witness as far as the opplist is concerned, and one of those
+		// can hold a sighting at SEEN_CURRENTLY for as long as they lie there, well after everyone
+		// upright has lost sight. So we ask for a spotter who is in a state to call the target out.
+		//
 		// Hearing is never enough, here or in the public list: every HEARD_ value sits below
 		// NOT_HEARD_OR_SEEN, and a noise only places an opponent roughly, which is no basis
 		// for aiming a bullet.
 		if (pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY &&
-			!(fShootUnseen && gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == SEEN_CURRENTLY))
+			!(fShootUnseen && gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == SEEN_CURRENTLY &&
+				TeamHasSpotterFor(pSoldier->bTeam, pOpponent)))
 		{
 			continue;  // next opponent
 		}

@@ -803,7 +803,7 @@ static void OurTeamRadiosRandomlyAbout(SOLDIERTYPE* const about)
 }
 
 
-static bool TeamNoLongerSeesMan(const UINT8 ubTeam, SOLDIERTYPE* const pOpponent, const SOLDIERTYPE* const exclude, const INT8 bIteration)
+static bool TeamNoLongerSeesMan(const UINT8 ubTeam, SOLDIERTYPE* const pOpponent, const SOLDIERTYPE* const exclude, const INT8 bIteration, const bool fCollapsedCounts = true)
 {
 	// look for all mercs on the same team, check opplists for this soldier
 	CFOR_EACH_IN_TEAM(pMate, ubTeam)
@@ -820,6 +820,11 @@ static bool TeamNoLongerSeesMan(const UINT8 ubTeam, SOLDIERTYPE* const pOpponent
 		if (!IsSoldierValidForSightings(*pMate) || pMate->bLife < OKLIFE)
 			continue; // next merc
 
+		// a collapsed merc keeps on seeing, so by default they keep a sighting alive for the
+		// team just like anyone else; callers who need a witness who can still act say so
+		if (!fCollapsedCounts && pMate->bCollapsed)
+			continue; // next merc
+
 		// if this teammate currently sees this opponent
 		if (pMate->bOppList[pOpponent->ubID] == SEEN_CURRENTLY)
 			return false; // that's all I need to know, get out of here
@@ -830,17 +835,27 @@ static bool TeamNoLongerSeesMan(const UINT8 ubTeam, SOLDIERTYPE* const pOpponent
 		if (ubTeam == OUR_TEAM && IsTeamActive(MILITIA_TEAM))
 		{
 			// check militia team as well
-			return TeamNoLongerSeesMan(MILITIA_TEAM, pOpponent, exclude, 1);
+			return TeamNoLongerSeesMan(MILITIA_TEAM, pOpponent, exclude, 1, fCollapsedCounts);
 		}
 		else if (ubTeam == MILITIA_TEAM && IsTeamActive(OUR_TEAM))
 		{
 			// check player team as well
-			return TeamNoLongerSeesMan(OUR_TEAM, pOpponent, exclude, 1);
+			return TeamNoLongerSeesMan(OUR_TEAM, pOpponent, exclude, 1, fCollapsedCounts);
 		}
 	}
 
 	// none of my friends is currently seeing the guy, so return success
 	return true;
+}
+
+
+// Is anyone on the team in a position to point a team-mate at this opponent? Seeing them is not
+// quite enough: a collapsed merc goes on seeing while they lie there, and the public opplist duly
+// keeps their sighting at SEEN_CURRENTLY, but face down and unable to act they are nobody's
+// spotter. Allies count, same as they do when the team loses sight.
+bool TeamHasSpotterFor(const UINT8 ubTeam, SOLDIERTYPE* const pOpponent)
+{
+	return !TeamNoLongerSeesMan(ubTeam, pOpponent, NULL, 0, false);
 }
 
 
