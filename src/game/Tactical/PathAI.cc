@@ -121,7 +121,7 @@ enum TrailFlags
 // candidate tile, so the set is snapshotted and only consulted here.
 #define AI_EXPOSED_TILE_MAP_LIFETIME	500 // ms, out of combat only
 
-static UINT8   gubAIExposedTile[WORLD_MAX];
+static UINT8   gubAIExposedTile[WORLD_MAX]; // ground level; a roof is never lit at night
 static BOOLEAN gfAIAvoidExposedTiles = FALSE;
 static UINT32  guiAIExposedTileMapBuilt = 0; // 0 == no snapshot
 
@@ -162,12 +162,15 @@ void BuildAIExposedTileMap(void)
 				const INT16 sGridNo = FASTMAPROWCOLTOPOS(sY, sX);
 				if (gubAIExposedTile[sGridNo]) continue;
 
-				// outdoors and brighter than ambient (a LOWER level is brighter)
-				if (GetRoom((UINT16)sGridNo) != NO_ROOM) continue;
-				if (LightTrueLevel(sGridNo, s->bLevel) >= ubAmbient) continue;
+				// The tile is judged where an enemy would walk it, on the ground, whatever
+				// level the merc watching it stands on.
+				if (GetRoom((UINT16)sGridNo) != NO_ROOM) continue; // indoors
 
-				const INT16 sDistVisible = DistanceVisible(s, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, s->bLevel);
-				if (SoldierTo3DLocationLineOfSightTest(s, sGridNo, s->bLevel, 3, sDistVisible, TRUE))
+				// brighter than ambient (a LOWER level is brighter)
+				if (LightTrueLevel(sGridNo, 0) >= ubAmbient) continue;
+
+				const INT16 sDistVisible = DistanceVisible(s, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, 0);
+				if (SoldierTo3DLocationLineOfSightTest(s, sGridNo, 0, 3, sDistVisible, TRUE))
 				{
 					gubAIExposedTile[sGridNo] = TRUE;
 				}
@@ -817,7 +820,7 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 	// Unalerted soldiers walk normally, and one already in the light is let out.
 	BOOLEAN fAvoidExposedTiles = FALSE;
 	if ( !fPathingForPlayer && s->bTeam == ENEMY_TEAM && s->ubProfile == NO_PROFILE &&
-		s->bAlertStatus > STATUS_YELLOW && s->sGridNo != NOWHERE )
+		s->bAlertStatus > STATUS_YELLOW && s->sGridNo != NOWHERE && s->bLevel == 0 )
 	{
 		RefreshAIExposedTileMap();
 		fAvoidExposedTiles = gfAIAvoidExposedTiles && !gubAIExposedTile[ s->sGridNo ];
