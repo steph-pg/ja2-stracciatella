@@ -111,6 +111,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	training_speed_modifier = gp.getOptionalUInt("training_speed_modifier", 100);
 	skyrider_explores_sectors = gp.getOptionalBool("skyrider_explores_sectors", false);
+	quest_experience_all_mercs = gp.getOptionalBool("quest_experience_all_mercs", true);
 
 	auto campaign = gp["campaign"].toObject();
 	ST::string sector_string = campaign.getOptionalString("start_sector");

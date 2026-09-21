@@ -331,6 +331,12 @@
   //  also buys safe passage.
   "skyrider_explores_sectors": true,
 
+  //  Who collects the experience a quest hands out when it is closed.
+  //    true  - every merc on the team, in whatever sector they happen to be.
+  //    false - vanilla behaviour: only the squad standing there at the time.
+  //  Mercs who are unconscious, still in transit or held prisoner never collect.
+  "quest_experience_all_mercs": true,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {
