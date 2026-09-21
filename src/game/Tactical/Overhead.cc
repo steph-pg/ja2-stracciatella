@@ -5922,7 +5922,7 @@ static SOLDIERTYPE* InternalReduceAttackBusyCount(SOLDIERTYPE* const pSoldier, c
 	// reveals the firer to. A shot in the dark is therefore not a free reaction for the
 	// whole squad. The attack busy count was decremented at the top of this function, so
 	// the shot itself no longer blocks the duel.
-	if ( gamepolicy(realistic_muzzle_flashes) &&
+	if ( gamepolicy(muzzle_flashes_reveal_location) &&
 		(gTacticalStatus.uiFlags & INCOMBAT) && pSoldier && pSoldier->fMuzzleFlash )
 	{
 		gfMuzzleFlashSighting = TRUE;
@@ -5935,7 +5935,7 @@ static SOLDIERTYPE* InternalReduceAttackBusyCount(SOLDIERTYPE* const pSoldier, c
 	// in the dark lit them up for the rest of our turn and let the whole squad walk into
 	// position and fire at leisure. Once someone has shot at them the flash is used up and
 	// they drop back out of sight of everyone who cannot see that far unlit.
-	if ( gamepolicy(realistic_muzzle_flashes) &&
+	if ( gamepolicy(muzzle_flashes_reveal_location) &&
 		(gTacticalStatus.uiFlags & INCOMBAT) && pTarget && pTarget->fMuzzleFlash )
 	{
 		EndMuzzleFlash( pTarget );

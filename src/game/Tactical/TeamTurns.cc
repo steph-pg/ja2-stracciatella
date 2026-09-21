@@ -1304,13 +1304,26 @@ BOOLEAN InterruptDuel( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pOpponent)
 	// flash hands that out far too readily though: it lights the firer up for everyone in
 	// range regardless of facing, and in the dark it is precisely the onlookers the firer
 	// cannot see who pick them up, so the whole squad would react for free. Under
-	// realistic_muzzle_flashes a sighting made by flash alone wins on points like any other.
+	// muzzle_flashes_reveal_location a sighting made by flash alone wins on points
+	// like any other.
 	BOOLEAN const fAllowFreeInterrupt =
-		!( gamepolicy(realistic_muzzle_flashes) && gfMuzzleFlashSighting );
+		!( gamepolicy(muzzle_flashes_reveal_location) && gfMuzzleFlashSighting );
 
 	// if opponent can't currently see us and we can see them
-	if ( fAllowFreeInterrupt && pSoldier->bOppList[ pOpponent->ubID ] == SEEN_CURRENTLY && pOpponent->bOppList[pSoldier->ubID] != SEEN_CURRENTLY )
+	BOOLEAN const fOnlyWeSee =
+		pSoldier->bOppList[ pOpponent->ubID ] == SEEN_CURRENTLY && pOpponent->bOppList[pSoldier->ubID] != SEEN_CURRENTLY;
+
+	if ( fOnlyWeSee && !fAllowFreeInterrupt )
 	{
+		SLOGD("INTERRUPT: {} sees {} by muzzle flash only, no free interrupt - duel decides ({} vs {} pts)",
+			pSoldier->ubID, pOpponent->ubID, pSoldier->bInterruptDuelPts, pOpponent->bInterruptDuelPts);
+	}
+
+	if ( fAllowFreeInterrupt && fOnlyWeSee )
+	{
+		SLOGD("INTERRUPT: free interrupt for {} on {} who cannot see back (flash sighting {}, policy {})",
+			pSoldier->ubID, pOpponent->ubID, gfMuzzleFlashSighting ? "on" : "off",
+			gamepolicy(muzzle_flashes_reveal_location) ? "on" : "off");
 		fResult = TRUE; // we automatically interrupt
 		// fix up our interrupt duel pts if necessary
 		if (pSoldier->bInterruptDuelPts < pOpponent->bInterruptDuelPts)
@@ -1580,8 +1593,10 @@ void ResolveInterruptsVs( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType)
 							case AUTOMATIC_INTERRUPT:	// interrupts occurs automatically
 								pSoldier->bInterruptDuelPts = 0;	// just to have a valid intDiff later
 								fIntOccurs = TRUE;
-								SLOGD("INTERRUPT: automatic interrupt on {} by {}",
-											pSoldier->ubID, pOpponent->ubID);
+								// this path skips InterruptDuel entirely, so the muzzle flash gate
+								// there cannot hold it back - say so when a flash is what is being seen
+								SLOGD("INTERRUPT: automatic interrupt on {} by {} (flash sighting {})",
+											pSoldier->ubID, pOpponent->ubID, gfMuzzleFlashSighting ? "on" : "off");
 								break;
 
 							default:		// interrupt is possible, run a duel

@@ -76,7 +76,7 @@
   //  In exchange a silenced gun makes no flash at all. In vanilla the flash only extended the range of a look that was
   //  happening anyway, and a silencer made no difference to it.
   //  vanilla setting: false
-  "realistic_muzzle_flashes": true,
+  "muzzle_flashes_reveal_location": true,
   
   //  Allow interrupts after being shot at on an earlier turn. In vanilla, being under fire blocks a
   //  soldier's interrupts until their own turn begins, so an attack silences them for the whole next
