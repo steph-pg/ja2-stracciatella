@@ -737,7 +737,7 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 		{
 			// a silencer hides the flash, so the shot does not give the firer's position
 			// away at night
-			BOOLEAN fFlash = !( gamepolicy(realistic_muzzle_flashes) && IsSilenced( *pSoldier ) );
+			BOOLEAN fFlash = !( gamepolicy(muzzle_flashes_reveal_location) && IsSilenced( *pSoldier ) );
 			switch ( pSoldier->inv[ pSoldier->ubAttackingHand ].ubGunAmmoType )
 			{
 				case AMMO_BUCKSHOT:
@@ -753,7 +753,7 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 			{
 				pSoldier->fMuzzleFlash = TRUE;
 			}
-			else if ( !gamepolicy(realistic_muzzle_flashes) )
+			else if ( !gamepolicy(muzzle_flashes_reveal_location) )
 			{
 				// vanilla clears the flash for a flashless shot. With the policy on the two
 				// hands of a two-pistol attack arrive here as separate shots, so a silenced

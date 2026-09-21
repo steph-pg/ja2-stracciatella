@@ -105,9 +105,9 @@ properties:
       (say your buddies took care of it), you'd still get skipped for any further interrupts. Annoying in ambushes or when sneaking.
 
       Vanilla setting: `false`
-  realistic_muzzle_flashes:
+  muzzle_flashes_reveal_location:
     type: boolean
-    title: Realistic muzzle flashes
+    title: Muzzle flashes reveal location
     description: |
       A gunshot lights up the shooter. Every other team gets a look at them while the flash lasts, which at night reaches
       much further than they could normally see, and whoever picks them up that way can fight the usual interrupt duel
