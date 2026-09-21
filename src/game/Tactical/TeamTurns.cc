@@ -358,7 +358,7 @@ void BeginTeamTurn( UINT8 ubTeam )
 		{
 			// snapshot before the enemy moves
 			if ( ubTeam == ENEMY_TEAM && ( gTacticalStatus.uiFlags & INCOMBAT )
-				&& gamepolicy(ai_avoid_lit_tiles_at_night) )
+				&& gamepolicy(avoid_light_tiles_at_night) )
 			{
 				BuildAIExposedTileMap();
 			}

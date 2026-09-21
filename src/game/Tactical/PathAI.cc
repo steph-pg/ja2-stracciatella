@@ -185,7 +185,7 @@ void BuildAIExposedTileMap(void)
 static void RefreshAIExposedTileMap(void)
 {
 	if (gTacticalStatus.uiFlags & INCOMBAT) return; // snapshotted per turn
-	if (!gamepolicy(ai_avoid_lit_tiles_at_night)) return;
+	if (!gamepolicy(avoid_light_tiles_at_night)) return;
 
 	if (guiAIExposedTileMapBuilt != 0 &&
 		GetJA2Clock() - guiAIExposedTileMapBuilt < AI_EXPOSED_TILE_MAP_LIFETIME)

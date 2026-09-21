@@ -70,7 +70,7 @@ public:
 	bool stay_on_rooftop;                 // AI on guard on rooftop are disallowed to go down
 	bool enemy_shoot_unseen;              // AI may shoot at an opponent a team-mate has in sight but it cannot see itself, and while only on red alert
 	bool ai_prioritize_cover;             // AI weighs cover against opponents who could stand up and shoot and against the tiles it has been shot at from, searches its whole radius for it, and reaches for it before seeking or watching (false = vanilla)
-	bool ai_avoid_lit_tiles_at_night;     // at night, AI soldiers path around lit tiles the player can see
+	bool avoid_light_tiles_at_night;      // at night, AI soldiers path around lit tiles the player can see
 
 	bool interrupt_after_being_under_fire; // only being shot at during the turn in progress blocks a soldier's interrupts; vanilla keeps them blocked through the next turn too, since the under-fire mark is only cleared once their own turn begins. Applies to mercs and AI alike
 

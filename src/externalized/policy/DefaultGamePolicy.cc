@@ -41,7 +41,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	stay_on_rooftop = ai.getOptionalBool("stay_on_rooftop");
 	enemy_shoot_unseen = ai.getOptionalBool("enemy_shoot_unseen");
 	ai_prioritize_cover = ai.getOptionalBool("prioritize_cover");
-	ai_avoid_lit_tiles_at_night = ai.getOptionalBool("avoid_lit_tiles_at_night");
+	avoid_light_tiles_at_night = ai.getOptionalBool("avoid_light_tiles_at_night");
 
 	interrupt_after_being_under_fire = gp.getOptionalBool("interrupt_after_being_under_fire", true);
 
