@@ -1623,14 +1623,22 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 	// Standing lit up only costs us with an opponent near enough to make use of it.
 	// On maps strewn with lights, bolting for the dark every time otherwise tears the
-	// approach apart.
+	// approach apart. Militia never bother at all: a whole team picking its way between
+	// streetlights drags out every militia turn.
 	if ( in_light_at_night && gamepolicy(ai_avoid_lit_tiles_at_night) )
 	{
-		const INT16 sKnownOpponent = ClosestKnownOpponent( pSoldier, NULL, NULL );
-		if ( sKnownOpponent == NOWHERE ||
-			PythSpacesAway( pSoldier->sGridNo, sKnownOpponent ) > MaxDistanceVisible() + STRAIGHT )
+		if ( pSoldier->bTeam == MILITIA_TEAM )
 		{
 			in_light_at_night = false;
+		}
+		else
+		{
+			const INT16 sKnownOpponent = ClosestKnownOpponent( pSoldier, NULL, NULL );
+			if ( sKnownOpponent == NOWHERE ||
+				PythSpacesAway( pSoldier->sGridNo, sKnownOpponent ) > MaxDistanceVisible() + STRAIGHT )
+			{
+				in_light_at_night = false;
+			}
 		}
 	}
 
