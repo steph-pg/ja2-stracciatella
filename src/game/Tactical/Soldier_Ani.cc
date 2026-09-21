@@ -741,6 +741,17 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 					if ( fStop )
 					{
+						// The flash for this round was lit one code earlier and no frame has
+						// been drawn since. Whatever stops the burst here - a jam, an empty
+						// magazine, or the last round of the burst already spent - means the
+						// round it was lit for is never fired, so put it out before it shows.
+						if (pSoldier->muzzle_flash != NULL)
+						{
+							LightSpriteDestroy(pSoldier->muzzle_flash);
+							pSoldier->muzzle_flash = NULL;
+						}
+						pSoldier->bMuzFlashCount = 0;
+
 						pSoldier->fDoSpread = FALSE;
 						pSoldier->bDoBurst = 1;
 
