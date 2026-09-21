@@ -124,7 +124,7 @@
 
     //  At night, AI soldiers path around lit tiles the player can see
     //  vanilla value: false
-    "avoid_lit_tiles_at_night": false
+    "avoid_light_tiles_at_night": false
   },
 
   //  How much variation should there be in elite soldier xp level?

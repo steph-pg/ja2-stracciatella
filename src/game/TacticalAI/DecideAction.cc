@@ -1625,7 +1625,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 	// On maps strewn with lights, bolting for the dark every time otherwise tears the
 	// approach apart. Militia never bother at all: a whole team picking its way between
 	// streetlights drags out every militia turn.
-	if ( in_light_at_night && gamepolicy(ai_avoid_lit_tiles_at_night) )
+	if ( in_light_at_night && gamepolicy(avoid_light_tiles_at_night) )
 	{
 		if ( pSoldier->bTeam == MILITIA_TEAM )
 		{
