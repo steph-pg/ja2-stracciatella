@@ -460,16 +460,13 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				case 441:
 				{
 					// CODE: Show mussel flash
-					// Vanilla only lights up a firer the player can already see. The whole point of
-					// the flash giving a position away is that it shows where an unseen shooter is,
-					// so with the policy on it is drawn for them too.
-					if (!gamepolicy(muzzle_flashes_reveal_location) && pSoldier->bVisible == -1) break;
+					// Vanilla only lights up a firer the player can already see. With the policy on
+					// that light is the one sign of an unseen shooter, so it is drawn for them too -
+					// unless a silencer hides the flash, and then there is nothing to light up.
+					if (gamepolicy(muzzle_flashes_reveal_location) ? IsSilenced(*pSoldier) : pSoldier->bVisible == -1) break;
 
 					// DO ONLY IF WE'RE AT A GOOD LEVEL
 					if (ubAmbientLightLevel < MIN_AMB_LEVEL_FOR_MERC_LIGHTS) break;
-
-					// a silencer hides the flash, so there is nothing to light up either
-					if (gamepolicy(muzzle_flashes_reveal_location) && IsSilenced(*pSoldier)) break;
 
 					// The previous round's flash may still be alive - a burst runs this
 					// code once per round, as does two-pistol shooting - and only one
