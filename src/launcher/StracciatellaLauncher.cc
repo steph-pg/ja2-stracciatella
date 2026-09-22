@@ -103,10 +103,13 @@ on their features.");
         o->labelcolor((Fl_Color)24);
         o->hide();
         { Fl_Group* o = new Fl_Group(10, 60, 500, 45);
-          { gameSettingsOutput = new Fl_Output(20, 75, 480, 30, "Game Settings:");
+          { gameSettingsOutput = new Fl_Output(20, 75, 385, 30, "Game Settings:");
             gameSettingsOutput->align(Fl_Align(FL_ALIGN_TOP_LEFT));
             Fl_Group::current()->resizable(gameSettingsOutput);
           } // Fl_Output* gameSettingsOutput
+          { editSettingsButton = new Fl_Button(410, 75, 90, 30, "Edit Settings");
+            editSettingsButton->tooltip("Open game.json in the system text editor");
+          } // Fl_Button* editSettingsButton
           o->end();
         } // Fl_Group* o
         { Fl_Group* o = new Fl_Group(10, 115, 500, 52);
