@@ -132,10 +132,13 @@ void Launcher::show() {
 	resolutionYInput->callback( (Fl_Callback*)widgetChanged, (void*)(this) );
 	RustPointer<char> game_json_path(findPathFromAssetsDir("externalized/game.json", true, true));
 	if (game_json_path) {
+		this->gameJsonPath = game_json_path.get();
 		gameSettingsOutput->value(game_json_path.get());
 	} else {
 		gameSettingsOutput->value("failed to find path to game.json");
+		editSettingsButton->deactivate();
 	}
+	editSettingsButton->callback( (Fl_Callback*)openGameSettings, (void*)(this) );
 	fullscreenCheckbox->callback( (Fl_Callback*)widgetChanged, (void*)(this) );
 	playSoundsCheckbox->callback( (Fl_Callback*)widgetChanged, (void*)(this) );
 	RustPointer<char> ja2_json_path(findPathFromStracciatellaHome(this->engineOptions.get(), "ja2.json", false, true));
@@ -370,6 +373,37 @@ void Launcher::openSaveGameDirectorySelector(Fl_Widget *btn, void *userdata) {
 			window->update(true);
 			break; // FILE CHOSEN
 		}
+	}
+}
+
+void Launcher::openGameSettings(Fl_Widget* btn, void* userdata) {
+	Launcher* window = static_cast< Launcher* >( userdata );
+	if (window->gameJsonPath.empty()) {
+		return;
+	}
+
+	// The handler registered for .json is rarely a text editor, so ask for one
+	// explicitly on the platforms that have the notion of a system text editor.
+#ifdef _WIN32
+	const char* editor = "notepad.exe";
+#elif defined(__APPLE__)
+	const char* editor = "/usr/bin/open";
+#else
+	const char* editor = "xdg-open";
+#endif
+
+	RustPointer<VecCString> args(VecCString_create());
+#ifdef __APPLE__
+	// -t picks the editor registered for plain text instead of the one for .json
+	VecCString_push(args.get(), "-t");
+#endif
+	VecCString_push(args.get(), window->gameJsonPath.c_str());
+
+	// Fire and forget. The editor outlives this handle, and keeping it in
+	// subProcess would make the launcher treat the game as running.
+	RustPointer<SubProcess> editorProcess(Subprocess_new(editor, args.get()));
+	if (!editorProcess) {
+		showRustError();
 	}
 }
 

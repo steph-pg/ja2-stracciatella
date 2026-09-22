@@ -120,7 +120,11 @@ class StracciatellaLauncher {open
           } {
             Fl_Output gameSettingsOutput {
               label {Game Settings:}
-              xywh {20 75 480 30} align 5 resizable
+              xywh {20 75 385 30} align 5 resizable
+            }
+            Fl_Button editSettingsButton {
+              label {Edit Settings}
+              tooltip {Open game.json in the system text editor} xywh {410 75 90 30}
             }
           }
           Fl_Group {} {open

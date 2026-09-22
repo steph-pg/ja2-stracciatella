@@ -35,6 +35,7 @@ private:
 	RustPointer<ModManager> modManager;
 	std::optional<RustPointer<SubProcess>> subProcess;
 	Fl_Text_Buffer logsBuffer;
+	ST::string gameJsonPath;
 
 	void populateChoices();
 	void startExecutable(bool asEditor);
@@ -47,6 +48,7 @@ private:
 	static bool checkGameDirectoryForCommonMistakes(const ST::string& gameDir);
 	static void openGameDirectorySelector(Fl_Widget *btn, void *userdata);
 	static void openSaveGameDirectorySelector(Fl_Widget *btn, void *userdata);
+	static void openGameSettings(Fl_Widget* btn, void* userdata);
 	static void startGame(Fl_Widget* btn, void* userdata);
 	static void startEditor(Fl_Widget* btn, void* userdata);
 	static void guessVersion(Fl_Widget* btn, void* userdata);
