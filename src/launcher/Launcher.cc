@@ -384,20 +384,31 @@ void Launcher::openGameSettings(Fl_Widget* btn, void* userdata) {
 
 	// The handler registered for .json is rarely a text editor, so ask for one
 	// explicitly on the platforms that have the notion of a system text editor.
+	RustPointer<VecCString> args(VecCString_create());
 #ifdef _WIN32
 	const char* editor = "notepad.exe";
-#elif defined(__APPLE__)
-	const char* editor = "/usr/bin/open";
-#else
-	const char* editor = "xdg-open";
-#endif
-
-	RustPointer<VecCString> args(VecCString_create());
-#ifdef __APPLE__
-	// -t picks the editor registered for plain text instead of the one for .json
-	VecCString_push(args.get(), "-t");
-#endif
 	VecCString_push(args.get(), window->gameJsonPath.c_str());
+#elif defined(__APPLE__)
+	// -t picks the editor registered for plain text instead of the one for .json
+	const char* editor = "/usr/bin/open";
+	VecCString_push(args.get(), "-t");
+	VecCString_push(args.get(), window->gameJsonPath.c_str());
+#else
+	// There is no system text editor here, and xdg-open dispatches on
+	// application/json, which browsers commonly claim. Launch the handler
+	// registered for plain text instead and keep xdg-open as the fallback for
+	// desktops without gtk-launch.
+	const char* editor = "/bin/sh";
+	VecCString_push(args.get(), "-c");
+	VecCString_push(args.get(),
+		"handler=$(xdg-mime query default text/plain 2>/dev/null); "
+		"if [ -n \"$handler\" ]; then "
+		"gtk-launch \"$handler\" \"$1\" 2>/dev/null && exit 0; "
+		"fi; "
+		"exec xdg-open \"$1\"");
+	VecCString_push(args.get(), "sh");
+	VecCString_push(args.get(), window->gameJsonPath.c_str());
+#endif
 
 	// Fire and forget. The editor outlives this handle, and keeping it in
 	// subProcess would make the launcher treat the game as running.
