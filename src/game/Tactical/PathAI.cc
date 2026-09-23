@@ -147,33 +147,21 @@ void BuildAIExposedTileMap(void)
 	{
 		if (s->bLife < OKLIFE || s->sGridNo == NOWHERE || !s->bInSector) continue;
 
-		INT16 sMercX, sMercY;
-		ConvertGridNoToXY(s->sGridNo, &sMercX, &sMercY);
-
-		const INT16 sMinX = std::max(sMercX - sScanRadius, 0);
-		const INT16 sMaxX = std::min(sMercX + sScanRadius, WORLD_COLS - 1);
-		const INT16 sMinY = std::max(sMercY - sScanRadius, 0);
-		const INT16 sMaxY = std::min(sMercY + sScanRadius, WORLD_ROWS - 1);
-
-		for (INT16 sY = sMinY; sY <= sMaxY; ++sY)
+		for (GridNo const sGridNo : GridSquare{ s->sGridNo, sScanRadius })
 		{
-			for (INT16 sX = sMinX; sX <= sMaxX; ++sX)
+			if (gubAIExposedTile[sGridNo]) continue;
+
+			// The tile is judged where an enemy would walk it, on the ground, whatever
+			// level the merc watching it stands on.
+			if (GetRoom((UINT16)sGridNo) != NO_ROOM) continue; // indoors
+
+			// brighter than ambient (a LOWER level is brighter)
+			if (LightTrueLevel(sGridNo, 0) >= ubAmbient) continue;
+
+			const INT16 sDistVisible = DistanceVisible(s, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, 0);
+			if (SoldierTo3DLocationLineOfSightTest(s, sGridNo, 0, 3, sDistVisible, TRUE))
 			{
-				const INT16 sGridNo = FASTMAPROWCOLTOPOS(sY, sX);
-				if (gubAIExposedTile[sGridNo]) continue;
-
-				// The tile is judged where an enemy would walk it, on the ground, whatever
-				// level the merc watching it stands on.
-				if (GetRoom((UINT16)sGridNo) != NO_ROOM) continue; // indoors
-
-				// brighter than ambient (a LOWER level is brighter)
-				if (LightTrueLevel(sGridNo, 0) >= ubAmbient) continue;
-
-				const INT16 sDistVisible = DistanceVisible(s, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, 0);
-				if (SoldierTo3DLocationLineOfSightTest(s, sGridNo, 0, 3, sDistVisible, TRUE))
-				{
-					gubAIExposedTile[sGridNo] = TRUE;
-				}
+				gubAIExposedTile[sGridNo] = TRUE;
 			}
 		}
 	}
