@@ -1577,6 +1577,39 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 		}
 	}
 
+	////////////////////////////////////////////////////////////////////////////
+	// RT: BANDAGE OURSELVES IF BLEEDING AND CARRYING A MEDKIT
+	////////////////////////////////////////////////////////////////////////////
+
+	if (!gfTurnBasedAI && !fCivilian && pSoldier->bTeam != OUR_TEAM)
+	{
+		if (pSoldier->service_partner == pSoldier)
+		{
+			// already bandaging, keep at it
+			pSoldier->usActionData = NOWHERE;
+			return(AI_ACTION_NONE);
+		}
+
+		// only bleeding above the threshold actually drains life
+		if (pSoldier->service_partner == NULL && pSoldier->bBleeding > MIN_BLEEDING_THRESHOLD && pSoldier->bMedical > 0)
+		{
+			INT8 const bSlot = FindObjClass(pSoldier, IC_MEDKIT);
+			if (bSlot != NO_SLOT)
+			{
+				// remember where the kit came from, so DecideAction can put the
+				// hand item back once the bandaging is over
+				pSoldier->bSlotItemTakenFrom = NO_SLOT;
+				if (bSlot != HANDPOS)
+				{
+					pSoldier->bSlotItemTakenFrom = bSlot;
+					SwapObjs(&pSoldier->inv[HANDPOS], &pSoldier->inv[bSlot]);
+				}
+				pSoldier->usActionData = pSoldier->sGridNo;
+				return(AI_ACTION_GIVE_AID);
+			}
+		}
+	}
+
 	if ( fCivilian && !( pSoldier->ubBodyType == COW || pSoldier->ubBodyType == CRIPPLECIV ) )
 	{
 		if ( FindAIUsableObjClass( pSoldier, IC_WEAPON ) == ITEM_NOT_FOUND )
@@ -3868,6 +3901,31 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 	return(AI_ACTION_NONE);
 }
 
+// Real-time self-bandaging is started from DecideActionRed. Break it off once
+// combat goes turn-based or an opponent comes into sight, and put the hand item
+// back once it is over, before any decision that needs the weapon in hand.
+static void HandleSelfBandageEnd(SOLDIERTYPE* const pSoldier)
+{
+	if (pSoldier->bTeam == OUR_TEAM) return;
+
+	if (pSoldier->service_partner == pSoldier && (gfTurnBasedAI || pSoldier->bOppCnt > 0))
+	{
+		InternalGivingSoldierCancelServices(pSoldier, FALSE);
+		if (pSoldier->usAnimState == GIVING_AID) SoldierGotoStationaryStance(pSoldier);
+	}
+
+	// the hand is empty if the kit got used up
+	INT8   const bSlot    = pSoldier->bSlotItemTakenFrom;
+	UINT16 const usInHand = pSoldier->inv[HANDPOS].usItem;
+	if (pSoldier->service_partner == NULL && bSlot > HANDPOS && bSlot < NUM_INV_SLOTS &&
+		(usInHand == NOTHING || GCM->getItem(usInHand)->getItemClass() == IC_MEDKIT))
+	{
+		SwapObjs(&pSoldier->inv[HANDPOS], &pSoldier->inv[bSlot]);
+		pSoldier->bSlotItemTakenFrom = NO_SLOT;
+	}
+}
+
+
 INT8 DecideAction(SOLDIERTYPE *pSoldier)
 {
 	INT8 bAction = AI_ACTION_NONE;
@@ -3878,6 +3936,8 @@ INT8 DecideAction(SOLDIERTYPE *pSoldier)
 
 	// turn off cautious flag
 	pSoldier->fAIFlags &= (~AI_CAUTIOUS);
+
+	HandleSelfBandageEnd(pSoldier);
 
 	// if status over-ride is set, bypass RED/YELLOW and go directly to GREEN!
 	if ((pSoldier->bBypassToGreen) && (pSoldier->bAlertStatus < STATUS_BLACK))

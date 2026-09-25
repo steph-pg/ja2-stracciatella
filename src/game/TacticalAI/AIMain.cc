@@ -1740,6 +1740,13 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 				CancelAIAction(pSoldier);
 				EndAIGuysTurn(*pSoldier);
 			}
+			else if (!gTacticalStatus.fAutoBandageMode && pSoldier->service_partner == pSoldier)
+			{
+				// realtime self-bandaging: the aid animation carries on by itself,
+				// so free the soldier up for new decisions (DecideActionRed waits
+				// it out, DecideAction breaks it off)
+				ActionDone(pSoldier);
+			}
 			break;
 		}
 
