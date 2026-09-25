@@ -878,8 +878,11 @@ UINT32 CalculateCarriedWeight(SOLDIERTYPE const* const s)
 	}
 
 	// For now, assume soldiers can carry 500 grams per strength point
-	// without penalty. Multiply by 100 for the percentage.
-	return (100 * total_weight) / (strength_for_carrying * 500);
+	// without penalty, scaled by the carry capacity modifier. Multiply by 100
+	// for the percentage.
+	grams const capacity = std::max<grams>(
+		strength_for_carrying * 500 * gamepolicy(carry_capacity_modifier) / 100, 1);
+	return (100 * total_weight) / capacity;
 }
 
 

@@ -69,6 +69,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	range_bonus_barrel_extender = gp.getOptionalInt("range_bonus_barrel_extender", 100);
 
 	thrown_range_modifier = gp.getOptionalInt("thrown_range_modifier", 100);
+	carry_capacity_modifier = gp.getOptionalInt("carry_capacity_modifier", 100);
 
 	always_show_cursor_in_tactical = gp.getOptionalBool("always_show_cursor_in_tactical", false);
 	show_hit_chance = gp.getOptionalBool("show_hit_chance", false);

@@ -94,6 +94,7 @@ public:
 	int16_t range_bonus_barrel_extender;   // Aim bonus from extender
 
 	int16_t thrown_range_modifier;        // % modifier to the maximum range of hand-thrown items (100 = vanilla); does not affect launchers or unaerodynamic items
+	int16_t carry_capacity_modifier;      // % modifier to the weight a merc can carry before their load counts as 100% (100 = vanilla)
 
 	bool always_show_cursor_in_tactical;  // Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
 	bool show_hit_chance;                 // Show chance-to-hit when pressing 'F' and next to mouse cursor when preparing an attack

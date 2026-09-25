@@ -421,6 +421,18 @@ properties:
       flagged unaerodynamic, which can never be thrown further than one tile.
 
       Vanilla setting: `100`
+  carry_capacity_modifier:
+    $ref: types/int16.schema.yaml
+    title: Carry capacity modifier
+    description: |
+      Percentage modifier to how much a merc can carry. `100` leaves the vanilla capacity
+      untouched, `150` lets every merc carry half as much again, `70` cuts it by 30%.
+
+      The vanilla capacity is 500 grams per point of Strength, with each point above 80 counting
+      double. The load a merc carries is shown and applied as a percentage of this capacity, so
+      the modifier moves every weight penalty along with it.
+
+      Vanilla setting: `100`
   always_show_cursor_in_tactical:
     type: boolean
     title: Always show cursor in tactical
@@ -803,6 +815,7 @@ required:
   - range_penalty_silencer
   - range_bonus_barrel_extender
   - thrown_range_modifier
+  - carry_capacity_modifier
   - always_show_cursor_in_tactical
   - show_hit_chance
   - website_loading_time_scale

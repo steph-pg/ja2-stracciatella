@@ -214,6 +214,11 @@
   //  vanilla setting: 100
   "thrown_range_modifier": 70,
 
+  //  Percentage modifier to how much a merc can carry before their load counts as 100%.
+  //  Vanilla capacity is 500 grams per point of Strength, with each point above 80 counting double.
+  //  vanilla setting: 100
+  "carry_capacity_modifier": 100,
+
   //  Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
   //  vanilla setting: false
   "always_show_cursor_in_tactical": false,
