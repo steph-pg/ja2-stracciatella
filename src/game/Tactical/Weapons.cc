@@ -2529,7 +2529,7 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 		bBandaged = pSoldier->bLifeMax - pSoldier->bLife - pSoldier->bBleeding;
 
 		// injury penalty is based on % damage taken (max 2/3rds chance)
-		iPenalty = (iChance * 2 * (pSoldier->bLifeMax - pSoldier->bLife + (bBandaged / 2))) /
+		iPenalty = (iChance * 2 * (pSoldier->bLifeMax - (pSoldier->bLife + (bBandaged / 2)))) /
 						(3 * pSoldier->bLifeMax);
 
 		// reduce injury penalty due to merc's experience level (he can take it!)
@@ -3347,7 +3347,7 @@ static UINT32 CalcChanceHTH(SOLDIERTYPE* pAttacker, SOLDIERTYPE* pDefender, UINT
 		// if bandaged, give 1/2 of the bandaged life points back into equation
 		ubBandaged = pAttacker->bLifeMax - pAttacker->bLife - pAttacker->bBleeding;
 
-		iAttRating -= (2 * iAttRating * (pAttacker->bLifeMax - pAttacker->bLife + (ubBandaged / 2))) /
+		iAttRating -= (2 * iAttRating * (pAttacker->bLifeMax - (pAttacker->bLife + (ubBandaged / 2)))) /
 				(3 * pAttacker->bLifeMax);
 	}
 
@@ -3416,7 +3416,7 @@ static UINT32 CalcChanceHTH(SOLDIERTYPE* pAttacker, SOLDIERTYPE* pDefender, UINT
 		// if bandaged, give 1/2 of the bandaged life points back into equation
 		ubBandaged = pDefender->bLifeMax - pDefender->bLife - pDefender->bBleeding;
 
-		iDefRating -= (2 * iDefRating * (pDefender->bLifeMax - pDefender->bLife + (ubBandaged / 2))) /
+		iDefRating -= (2 * iDefRating * (pDefender->bLifeMax - (pDefender->bLife + (ubBandaged / 2)))) /
 		(3 * pDefender->bLifeMax);
 
 	}
@@ -3746,7 +3746,7 @@ UINT32 CalcThrownChanceToHit(SOLDIERTYPE *pSoldier, INT16 sGridNo, UINT8 ubAimTi
 		bBandaged = pSoldier->bLifeMax - pSoldier->bLife - pSoldier->bBleeding;
 
 		// injury penalty is based on % damage taken (max 2/3rds iChance)
-		bPenalty = (2 * iChance * (pSoldier->bLifeMax - pSoldier->bLife + (bBandaged / 2))) /
+		bPenalty = (2 * iChance * (pSoldier->bLifeMax - (pSoldier->bLife + (bBandaged / 2)))) /
 				(3 * pSoldier->bLifeMax);
 
 		// for mechanically-fired projectiles, reduce penalty in half
