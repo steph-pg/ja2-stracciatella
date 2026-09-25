@@ -307,7 +307,9 @@ FireWeaponResult CheckForGunJam(SOLDIERTYPE * const pSoldier)
 			}
 			else if (obj.bGunAmmoStatus < 0)
 			{
-				// try to unjam gun
+				// try to unjam gun, whether it works or not
+				DeductPoints(pSoldier, AP_UNJAM, 0);
+
 				if (SkillCheck(pSoldier, UNJAM_GUN_CHECK,
 					GCM->getItem(obj.usItem)->getReliability() * 4) > 0)
 				{
@@ -331,6 +333,18 @@ FireWeaponResult CheckForGunJam(SOLDIERTYPE * const pSoldier)
 		}
 	}
 	return FireWeaponResult::FIREABLE;
+}
+
+
+bool IsUnjamAttempt(SOLDIERTYPE const& s)
+{
+	// Same conditions as CheckForGunJam(), for the weapon about to be used
+	if (!(s.uiStatusFlags & SOLDIER_PC) || s.bWeaponMode == WM_ATTACHED) return false;
+
+	OBJECTTYPE const& obj = s.inv[HANDPOS];
+	return GCM->getItem(obj.usItem)->getItemClass() == IC_GUN &&
+		!EXPLOSIVE_GUN(obj.usItem) &&
+		obj.bGunAmmoStatus < 0;
 }
 
 

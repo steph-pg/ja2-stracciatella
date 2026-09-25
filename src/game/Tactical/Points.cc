@@ -30,6 +30,7 @@
 #include "ContentManager.h"
 #include "GameInstance.h"
 #include "WeaponModels.h"
+#include "Weapons.h"
 
 #include "Logger.h"
 
@@ -886,6 +887,9 @@ UINT8 CalcTotalAPsToAttack(SOLDIERTYPE * const s, GridNo const grid_no, bool con
 {
 	UINT16            ap_cost = 0;
 	OBJECTTYPE const& in_hand = s->inv[HANDPOS];
+	// Clearing a jam is all the attack does, and it fires nothing
+	if (IsUnjamAttempt(*s)) return AP_UNJAM;
+
 	switch (GCM->getItem(in_hand.usItem)->getItemClass())
 	{
 		case IC_GUN:

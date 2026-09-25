@@ -98,7 +98,7 @@ static FLOAT HopFenceMoveDist(const SOLDIERTYPE* const pSoldier, const DOUBLE (&
 
 static void CheckForAndHandleSoldierIncompacitated(SOLDIERTYPE* pSoldier);
 static BOOLEAN CheckForImproperFireGunEnd(SOLDIERTYPE* pSoldier);
-static BOOLEAN HandleUnjamAnimation(SOLDIERTYPE* pSoldier);
+static BOOLEAN HandleUnjamAnimation(SOLDIERTYPE* pSoldier, UINT16 usReturnState, UINT16 usReturnCode);
 
 
 BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
@@ -686,9 +686,11 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 				case 448:
 
+				{
 					// CODE: HANDLE BURST
 					// FIRST CHECK IF WE'VE REACHED MAX FOR GUN
 					fStop = FALSE;
+					FireWeaponResult weaponJammed = FireWeaponResult::FIREABLE;
 
 					if ( pSoldier->bDoBurst > GCM->getWeapon( pSoldier->usAttackingWeapon )->ubShotsPerBurst )
 					{
@@ -707,8 +709,11 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					else if (pSoldier->bDoBurst == 1)
 					{
 						// CHECK FOR GUN JAM
-						auto const weaponJammed = CheckForGunJam(pSoldier);
-						if (weaponJammed == FireWeaponResult::JAMMED)
+						weaponJammed = CheckForGunJam(pSoldier);
+						// A cleared jam ends the attack as well, the burst waits for the
+						// next order
+						if (weaponJammed == FireWeaponResult::JAMMED ||
+							weaponJammed == FireWeaponResult::UNJAMMED)
 						{
 							fStop = TRUE;
 							// stop shooting!
@@ -720,7 +725,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 								SoundStop( pSoldier->uiBurstSoundID );
 							}
 
-							if (pSoldier->bTeam == OUR_TEAM)
+							if (pSoldier->bTeam == OUR_TEAM && weaponJammed == FireWeaponResult::JAMMED)
 							{
 								PlayLocationJA2Sample(pSoldier->sGridNo, S_DRYFIRE1, MIDVOLUME, 1);
 								//ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Gun jammed!" );
@@ -728,14 +733,6 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 							SLOGD("Freeing up attacker - aborting start of attack due to burst gun jam");
 							FreeUpAttacker(pSoldier);
-						}
-						else if (weaponJammed == FireWeaponResult::UNJAMMED)
-						{
-							// Play intermediate animation...
-							if ( HandleUnjamAnimation( pSoldier ) )
-							{
-								return( TRUE );
-							}
 						}
 					}
 
@@ -782,6 +779,12 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 								default:          return TRUE;
 							}
 						}
+						// Clear the jam on the way to aiming...
+						if (weaponJammed == FireWeaponResult::UNJAMMED &&
+							HandleUnjamAnimation(pSoldier, state, 0))
+						{
+							return( TRUE );
+						}
 						ChangeSoldierState(pSoldier, state, 0, FALSE);
 						return( TRUE );
 					}
@@ -796,6 +799,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						}
 					}
 					break;
+				}
 
 				case 449:
 
@@ -1112,7 +1116,9 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				{
 					// CODE: CHECK FOR OK WEAPON SHOT!
 					auto const okFireWeapon = OKFireWeapon(pSoldier);
-					if (okFireWeapon == FireWeaponResult::JAMMED)
+					// A cleared jam skips the shot too, it waits for the next order
+					if (okFireWeapon == FireWeaponResult::JAMMED ||
+						okFireWeapon == FireWeaponResult::UNJAMMED)
 					{
 						SLOGD("Fire Weapon: Gun Cannot fire, code 470");
 
@@ -1135,16 +1141,18 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 						pSoldier->bBulletsLeft -= bBulletsThisShot;
 
-						PlayLocationJA2Sample(pSoldier->sGridNo, S_DRYFIRE1, MIDVOLUME, 1);
+						if (okFireWeapon == FireWeaponResult::JAMMED)
+						{
+							PlayLocationJA2Sample(pSoldier->sGridNo, S_DRYFIRE1, MIDVOLUME, 1);
+						}
 
 						// Free-up!
 						SLOGD("Freeing up attacker - gun failed to fire");
 						FreeUpAttacker(pSoldier);
-					}
-					else if (okFireWeapon == FireWeaponResult::UNJAMMED)
-					{
-						// Play intermediate animation...
-						if ( HandleUnjamAnimation( pSoldier ) )
+
+						// Play intermediate animation, then carry on past the skipped shot
+						if (okFireWeapon == FireWeaponResult::UNJAMMED &&
+							HandleUnjamAnimation(pSoldier, pSoldier->usAnimState, pSoldier->usAniCode + 1))
 						{
 							return( TRUE );
 						}
@@ -1243,7 +1251,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				case 476:
 
 					// CODE: GOTO PREVIOUS ANIMATION
-					ChangeSoldierState( pSoldier, ( pSoldier->sPendingActionData2 ), (UINT8)( pSoldier->uiPendingActionData1 + 1 ), FALSE );
+					ChangeSoldierState( pSoldier, ( pSoldier->sPendingActionData2 ), (UINT16)( pSoldier->uiPendingActionData1 ), FALSE );
 					return( TRUE );
 
 				case 477:
@@ -3324,12 +3332,12 @@ static BOOLEAN CheckForImproperFireGunEnd(SOLDIERTYPE* pSoldier)
 }
 
 
-static BOOLEAN HandleUnjamAnimation(SOLDIERTYPE* pSoldier)
+static BOOLEAN HandleUnjamAnimation(SOLDIERTYPE* pSoldier, UINT16 const usReturnState, UINT16 const usReturnCode)
 {
-	// OK, play intermediate animation here..... save in pending animation data, the current
-	// code we are at!
-	pSoldier->uiPendingActionData1 = pSoldier->usAniCode;
-	pSoldier->sPendingActionData2  = pSoldier->usAnimState;
+	// OK, play intermediate animation here..... save in pending animation data where
+	// to go once it is done, code 476 picks it up
+	pSoldier->uiPendingActionData1 = usReturnCode;
+	pSoldier->sPendingActionData2  = usReturnState;
 	// Check what animatnion we should do.....
 	UINT16 state;
 	switch (pSoldier->usAnimState)

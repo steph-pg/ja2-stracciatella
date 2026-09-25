@@ -1423,7 +1423,8 @@ void EVENT_InitNewSoldierAnim(SOLDIERTYPE* const pSoldier, UINT16 usNewState, UI
 		case READY_DUAL_PRONE:
 
 			// OK, get points to ready weapon....
-			if ( !pSoldier->fDontChargeReadyAPs )
+			// Raising a jammed gun to clear it is part of AP_UNJAM
+			if ( !pSoldier->fDontChargeReadyAPs && !IsUnjamAttempt( *pSoldier ) )
 			{
 				sAPCost = GetAPsToReadyWeapon( pSoldier, usNewState );
 				DeductPoints( pSoldier, sAPCost, sBPCost );

@@ -164,6 +164,8 @@ extern void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo,
 
 FireWeaponResult OKFireWeapon(SOLDIERTYPE *);
 FireWeaponResult CheckForGunJam(SOLDIERTYPE *);
+// Whether attacking now would only try to clear a jammed gun instead of shooting
+bool IsUnjamAttempt(SOLDIERTYPE const&);
 
 INT32 CalcMaxTossRange(const SOLDIERTYPE* pSoldier, UINT16 usItem, BOOLEAN fArmed);
 extern UINT32 CalcThrownChanceToHit(SOLDIERTYPE *pSoldier, INT16 sGridNo, UINT8 ubAimTime, UINT8 ubAimPos );
