@@ -3844,7 +3844,11 @@ void HandlePlayerServices(SOLDIERTYPE& s)
 	bool done = FALSE;
 	if (tgt->bBleeding == 0 && tgt->bLife >= OKLIFE)
 	{
-		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(TacticalStr[MERC_IS_ALL_BANDAGED_STR], tgt->name));
+		// AI soldiers bandage themselves in realtime, keep that off the message log
+		if (s.bTeam == OUR_TEAM)
+		{
+			ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(TacticalStr[MERC_IS_ALL_BANDAGED_STR], tgt->name));
+		}
 		// Cancel all services for this guy!
 		ReceivingSoldierCancelServices(tgt);
 		done = TRUE;
@@ -3877,7 +3881,10 @@ void HandlePlayerServices(SOLDIERTYPE& s)
 	}
 	else
 	{
-		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(TacticalStr[MERC_IS_OUT_OF_BANDAGES_STR], s.name));
+		if (s.bTeam == OUR_TEAM)
+		{
+			ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, st_format_printf(TacticalStr[MERC_IS_OUT_OF_BANDAGES_STR], s.name));
+		}
 		GivingSoldierCancelServices(&s);
 		if (!gTacticalStatus.fAutoBandageMode)
 		{

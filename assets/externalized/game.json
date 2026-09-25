@@ -126,7 +126,12 @@
 
     //  At night, AI soldiers path around lit tiles the player can see
     //  vanilla value: false
-    "avoid_light_tiles_at_night": false
+    "avoid_light_tiles_at_night": false,
+
+    //  In realtime, a bleeding soldier with a medkit and some medical skill bandages themselves,
+    //  breaking off once combat goes turn-based or an opponent comes into sight
+    //  vanilla value: false
+    "self_bandage_in_realtime": false
   },
 
   //  How much variation should there be in elite soldier xp level?
