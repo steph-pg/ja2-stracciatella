@@ -1902,6 +1902,7 @@ void InitAttackType(ATTACKTYPE *pAttack)
 	pAttack->sTarget             = NOWHERE;
 	pAttack->iAttackValue        = 0;
 	pAttack->ubAPCost            = 0;
+	pAttack->bAimShotLocation    = AIM_SHOT_RANDOM;
 }
 
 void HandleInitialRedAlert(INT8 bTeam)

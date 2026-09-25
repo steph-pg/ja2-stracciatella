@@ -112,6 +112,7 @@
     //  is selected during the hit. The chances are: head 5%; torso 80%; legs 15%;
     //  With this setting on when possible enemies select target location when threshold cth is reached against that
     //  body part, with head being higher priority.
+    //  Stabs and punches go for the head whenever that is worth more than the torso, never the legs.
     //  vanilla values: false, N/A, N/A
     "better_aiming_choice": true,
     "threshold_cth_head": 67,

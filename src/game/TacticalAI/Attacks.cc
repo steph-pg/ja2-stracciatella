@@ -1056,39 +1056,45 @@ void CalcBestStab(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestStab, BOOLEAN fBladeAt
 		}
 
 
-		iBestHitRate = 0;                     // reset best hit rate to minimum
-
 		// calculate the maximum possible aiming time
 		ubMaxPossibleAimTime = std::min(AP_MAX_AIM_ATTACK,pSoldier->bActionPoints - ubMinAPCost);
 
-		// consider the various aiming times
-		for (ubAimTime = AP_MIN_AIM_ATTACK; ubAimTime <= ubMaxPossibleAimTime; ubAimTime++)
+		// find the aiming time with the best hit rate against the body part in
+		// bAimShotLocation (CalcChanceHTH makes a head stab harder to land)
+		auto const findBestAim = [&]()
 		{
-			//HandleMyMouseCursor(KEYBOARDALSO);
-			if (!fSurpriseStab)
+			iBestHitRate = 0;                     // reset best hit rate to minimum
+
+			// consider the various aiming times
+			for (ubAimTime = AP_MIN_AIM_ATTACK; ubAimTime <= ubMaxPossibleAimTime; ubAimTime++)
 			{
-				if (fBladeAttack)
+				//HandleMyMouseCursor(KEYBOARDALSO);
+				if (!fSurpriseStab)
 				{
-					ubChanceToHit = (UINT8) CalcChanceToStab(pSoldier,pOpponent,ubAimTime);
+					if (fBladeAttack)
+					{
+						ubChanceToHit = (UINT8) CalcChanceToStab(pSoldier,pOpponent,ubAimTime);
+					}
+					else
+					{
+						ubChanceToHit = (UINT8) CalcChanceToPunch(pSoldier,pOpponent,ubAimTime);
+					}
 				}
 				else
+					ubChanceToHit = MAXCHANCETOHIT;
+
+				iHitRate = (pSoldier->bActionPoints * ubChanceToHit) / (ubRawAPCost + ubAimTime);
+
+				// if aiming for this amount of time produces a better hit rate
+				if (iHitRate > iBestHitRate)
 				{
-					ubChanceToHit = (UINT8) CalcChanceToPunch(pSoldier,pOpponent,ubAimTime);
+					iBestHitRate = iHitRate;
+					ubBestAimTime = ubAimTime;
+					ubBestChanceToHit = ubChanceToHit;
 				}
 			}
-			else
-				ubChanceToHit = MAXCHANCETOHIT;
-
-			iHitRate = (pSoldier->bActionPoints * ubChanceToHit) / (ubRawAPCost + ubAimTime);
-
-			// if aiming for this amount of time produces a better hit rate
-			if (iHitRate > iBestHitRate)
-			{
-				iBestHitRate = iHitRate;
-				ubBestAimTime = ubAimTime;
-				ubBestChanceToHit = ubChanceToHit;
-			}
-		}
+		};
+		findBestAim();
 
 
 		// if we can't get any kind of hit rate at all
@@ -1110,6 +1116,40 @@ void CalcBestStab(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestStab, BOOLEAN fBladeAt
 		// highest possible value before division should be about 1 billion...
 		// normal value before division should be about 5 million...
 		iAttackValue = ( iEstDamage * iBestHitRate * ubChanceToReallyHit * iThreatValue) / 1000;
+
+		// Rate a stab at the head as well: harder to land, but it hits for the
+		// head damage multiplier, so against a helpless or unaware target it is
+		// the obvious pick. Legs are never worth it - less damage for the same
+		// chance to hit.
+		INT8 bAimLocation = AIM_SHOT_RANDOM;
+		if (gamepolicy(ai_better_aiming_choice) && !CREATURE_OR_BLOODCAT(pSoldier))
+		{
+			INT32 const iBodyHitRate  = iBestHitRate;
+			UINT8 const ubBodyAimTime = ubBestAimTime;
+			UINT8 const ubBodyChance  = ubBestChanceToHit;
+
+			INT8 const bOldAimLocation = pSoldier->bAimShotLocation;
+			pSoldier->bAimShotLocation = AIM_SHOT_HEAD;
+			findBestAim();
+			pSoldier->bAimShotLocation = bOldAimLocation;
+
+			INT32 const iHeadDamage = (INT32)(EstimateStabDamage(pSoldier, pOpponent, ubBestChanceToHit, fBladeAttack) *
+				gamepolicy(critical_damage_head_multiplier));
+			INT32 const iHeadValue = (iHeadDamage * iBestHitRate * ubBestChanceToHit * iThreatValue) / 1000;
+
+			if (iHeadValue > iAttackValue)
+			{
+				bAimLocation        = AIM_SHOT_HEAD;
+				ubChanceToReallyHit = ubBestChanceToHit;
+				iAttackValue        = iHeadValue;
+			}
+			else
+			{
+				iBestHitRate      = iBodyHitRate;
+				ubBestAimTime     = ubBodyAimTime;
+				ubBestChanceToHit = ubBodyChance;
+			}
+		}
 
 		// if we can hurt the guy, OR probably not, but at least it's our best
 		// chance to actually hit him and maybe scare him, knock him down, etc.
@@ -1146,6 +1186,7 @@ void CalcBestStab(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestStab, BOOLEAN fBladeAt
 			pBestStab->bTargetLevel        = pOpponent->bLevel;
 			pBestStab->iAttackValue        = iAttackValue;
 			pBestStab->ubAPCost            = ubMinAPCost + ubBestAimTime;
+			pBestStab->bAimShotLocation    = bAimLocation;
 		}
 	}
 

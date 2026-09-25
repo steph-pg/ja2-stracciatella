@@ -104,6 +104,7 @@ struct ATTACKTYPE
 	INT8  bTargetLevel;        // target level of this attack
 	UINT8 ubAPCost;            // how many APs the attack will use up
 	INT8  bWeaponIn;           // the inv slot of the weapon in question
+	INT8  bAimShotLocation;    // body part to aim at, AIM_SHOT_RANDOM to leave it to the attack code
 };
 
 extern THREATTYPE Threat[MAXMERCS];

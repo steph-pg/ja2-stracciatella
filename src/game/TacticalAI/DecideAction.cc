@@ -3438,6 +3438,12 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 		pSoldier->bAimTime = BestAttack.ubAimTime;
 		pSoldier->bDoBurst = 0;
 
+		// CalcBestStab may have picked the head
+		if (ubBestAttackAction == AI_ACTION_KNIFE_MOVE)
+		{
+			pSoldier->bAimShotLocation = BestAttack.bAimShotLocation;
+		}
+
 		if (ubBestAttackAction == AI_ACTION_FIRE_GUN)
 		{
 			// Do we need to change stance?  NB We'll have to ready our gun again
