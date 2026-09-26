@@ -369,6 +369,23 @@ static void ReevaluateBestSightingPosition(SOLDIERTYPE* pSoldier, INT8 bInterrup
 }
 
 
+// True if any conscious hostile currently has one of our mercs in sight
+static bool HostileSeesOurTeam()
+{
+	FOR_EACH_MERC(i)
+	{
+		const SOLDIERTYPE& s = **i;
+		if (s.bTeam == OUR_TEAM || !IsHostileToOurTeam(s) || s.bLife < OKLIFE) continue;
+
+		FOR_EACH_IN_TEAM(j, OUR_TEAM)
+		{
+			if (s.bOppList[(*j)->ubID] == SEEN_CURRENTLY) return true;
+		}
+	}
+	return false;
+}
+
+
 static void HandleBestSightingPositionInRealtime(void)
 {
 	// This function is called for handling interrupts when opening a door in non-combat or
@@ -384,7 +401,15 @@ static void HandleBestSightingPositionInRealtime(void)
 	{
 		SLOGD("HBSPIR called and there is someone in the list" );
 
-		//if (gfHumanSawSomeoneInRealtime)
+		if (gamepolicy(realtime_sneak) &&
+			gBestToMakeSighting[0]->bTeam == OUR_TEAM &&
+			!HostileSeesOurTeam())
+		{
+			// We spotted them unseen: keep sneaking in real-time. Combat starts
+			// once a hostile spots one of our mercs or someone attacks.
+			SLOGD("HBSPIR: realtime sneak, not entering combat");
+		}
+		else
 		{
 			if (gBestToMakeSighting[1] == NULL)
 			{

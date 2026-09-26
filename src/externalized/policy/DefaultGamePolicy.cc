@@ -20,6 +20,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	f_all_dropped_visible = gp.getOptionalBool("all_drops_visible");
 
 	multiple_interrupts = gp.getOptionalBool("multiple_interrupts");
+	realtime_sneak = gp.getOptionalBool("realtime_sneak");
 
 	fixed_cost_to_shoot = gp.getOptionalBool("fixed_cost_to_shoot");
 

@@ -69,6 +69,12 @@
   //  (say your buddies took care of it), you'd still get skipped for any further interrupts. Annoying in ambushes or when sneaking.
   //  vanilla setting: false
   "multiple_interrupts": false,
+
+  //  Spotting enemies in real-time mode does not start turn-based mode, as long as no hostile
+  //  currently sees any of your mercs. Combat starts as usual once an enemy spots one of them,
+  //  or when either side attacks. Combine with "can_enter_turnbased" to switch on demand.
+  //  vanilla setting: false
+  "realtime_sneak": false,
   
   //  Allow interrupts after being shot at on an earlier turn. In vanilla, being under fire blocks a
   //  soldier's interrupts until their own turn begins, so an attack silences them for the whole next
