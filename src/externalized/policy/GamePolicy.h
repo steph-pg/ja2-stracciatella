@@ -44,6 +44,7 @@ public:
 
 	bool multiple_interrupts;             // can interrupt more than once per turn
 	bool muzzle_flashes_reveal_location;   // a muzzle flash gives the firer away to the other teams at the flash's extended sighting range, and a silencer hides the flash entirely
+	bool realtime_sneak;                  // spotting enemies who do not see us does not start turn-based mode; a real-time attack that starts combat costs APs
 
 	bool fixed_cost_to_shoot;    // Changes the formula for APs to shoot
 

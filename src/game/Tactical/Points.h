@@ -292,6 +292,7 @@ BOOLEAN EnoughPoints(const SOLDIERTYPE* pSoldier, INT16 sAPCost, INT16 sBPCost, 
 // Pass fExertion as FALSE when the breath is not spent by the soldier's own effort
 // (falls, wounds, drugs), so that involuntary breath loss does not train the body.
 void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT16 sBPCost, BOOLEAN fExertion = TRUE );
+void DeductAttackPoints(SOLDIERTYPE* pSoldier, INT16 sAPCost);
 void UnusedAPsToBreath(SOLDIERTYPE *pSold);
 INT16 TerrainBreathPoints(SOLDIERTYPE * pSoldier, INT16 sGridno,INT8 bDir, UINT16 usMovementMode);
 // after_moving: the attack happens at the end of a move, which lowers the weapon, so

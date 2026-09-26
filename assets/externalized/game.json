@@ -77,6 +77,13 @@
   //  happening anyway, and a silencer made no difference to it.
   //  vanilla setting: false
   "muzzle_flashes_reveal_location": true,
+
+  //  Spotting enemies in real-time mode does not start turn-based mode, as long as no hostile
+  //  currently sees any of your mercs. Combat starts as usual once an enemy spots one of them,
+  //  or when either side attacks. An attack that starts combat is paid for out of the
+  //  attacker's first turn. Combine with "can_enter_turnbased" to switch on demand.
+  //  vanilla setting: false
+  "realtime_sneak": false,
   
   //  Allow interrupts after being shot at on an earlier turn. In vanilla, being under fire blocks a
   //  soldier's interrupts until their own turn begins, so an attack silences them for the whole next
