@@ -3429,6 +3429,12 @@ BOOLEAN EVENT_InternalGetNewSoldierPath( SOLDIERTYPE *pSoldier, UINT16 sDestGrid
 		}
 	}
 
+	// A new order drops any speed borrowed from a teammate on the previous move
+	if ( fFromUI == 1 )
+	{
+		pSoldier->fUseMoverrideMoveSpeed = FALSE;
+	}
+
 	// ATE: if a civ, and from UI, and were cowering, remove from cowering
 	if ( AM_AN_EPC( pSoldier ) && fFromUI )
 	{
@@ -4869,7 +4875,7 @@ static void CalculateSoldierAniSpeed(SOLDIERTYPE* pSoldier, SOLDIERTYPE* pStatsS
 			30 // DEEP WATER
 		};
 
-		uiTerrainDelay = terrainTypeSpeedModifiers[pStatsSoldier->bOverTerrainType];
+		uiTerrainDelay = terrainTypeSpeedModifiers[pSoldier->bOverTerrainType];
 	}
 	else
 	{
@@ -4908,7 +4914,7 @@ static void CalculateSoldierAniSpeed(SOLDIERTYPE* pSoldier, SOLDIERTYPE* pStatsS
 	if ( !( gTacticalStatus.uiFlags & INCOMBAT ) )
 	{
 		// ATE: If realtime, and stealth mode...
-		if ( pStatsSoldier->bStealthMode )
+		if ( pSoldier->bStealthMode )
 		{
 			pSoldier->sAniDelay = (INT16)( pSoldier->sAniDelay * 2 );
 		}

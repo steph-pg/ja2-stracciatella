@@ -750,6 +750,9 @@ void ExecuteOverhead(void)
 									// Cancel reverse
 									pSoldier->bReverse = FALSE;
 
+									// Turn off multi-move speed override
+									pSoldier->fUseMoverrideMoveSpeed = FALSE;
+
 									// OK, if we are the selected soldier, refresh some UI stuff
 									if (pSoldier == GetSelectedMan()) gfUIRefreshArrows = TRUE;
 
