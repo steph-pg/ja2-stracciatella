@@ -2779,7 +2779,29 @@ static SOLDIERCELL* ChooseTarget(SOLDIERCELL* pAttacker)
 }
 
 
-static BOOLEAN FireAShot(SOLDIERCELL* pAttacker)
+// Chance that an attacker with a burst capable gun fires a burst instead of a single shot
+#define AUTORESOLVE_BURST_CHANCE 30
+
+
+static ST::string GetAutoResolveBurstSound(OBJECTTYPE const& gun, UINT8 const ubBullets)
+{
+	auto const* const weapon = GCM->getWeapon(gun.usItem);
+	bool const fSilenced = FindAttachment(&gun, SILENCER) != NO_SLOT;
+	auto const& burstSound = fSilenced ? weapon->silencedBurstSound : weapon->burstSound;
+	if (!burstSound.empty())
+	{
+		auto const sound = st_format_printf(burstSound, ubBullets);
+		if (GCM->doesGameResExists(sound))
+		{
+			return sound;
+		}
+	}
+	return "sounds/weapons/bursttype1.wav";
+}
+
+
+// Returns the number of bullets fired, 0 if the attacker has no loaded gun.
+static UINT8 FireAShot(SOLDIERCELL* pAttacker)
 {
 	OBJECTTYPE *pItem;
 	SOLDIERTYPE *pSoldier;
@@ -2791,7 +2813,7 @@ static BOOLEAN FireAShot(SOLDIERCELL* pAttacker)
 	{
 		PlayAutoResolveSample(ACR_SPIT, 50, 1, MIDDLEPAN);
 		pAttacker->bWeaponSlot = SECONDHANDPOS;
-		return TRUE;
+		return 1;
 	}
 	for( i = 0; i < NUM_INV_SLOTS; i++ )
 	{
@@ -2810,20 +2832,28 @@ static BOOLEAN FireAShot(SOLDIERCELL* pAttacker)
 			}
 			if( pItem->ubGunShotsLeft )
 			{
-				PlayAutoResolveSample(GCM->getWeapon(pItem->usItem)->sound, 50, 1, MIDDLEPAN);
+				UINT8 ubBullets = 1;
+				if (pItem->ubGunShotsLeft > 1 && IsGunBurstCapable(pSoldier, (UINT8)i) && Chance(AUTORESOLVE_BURST_CHANCE))
+				{
+					ubBullets = std::min(GCM->getWeapon(pItem->usItem)->ubShotsPerBurst, pItem->ubGunShotsLeft);
+				}
+				if (ubBullets > 1)
+					PlayAutoResolveSample(GetAutoResolveBurstSound(*pItem, ubBullets), 50, 1, MIDDLEPAN);
+				else
+					PlayAutoResolveSample(GCM->getWeapon(pItem->usItem)->sound, 50, 1, MIDDLEPAN);
 				if( pAttacker->uiFlags & CELL_MERC )
 				{
-					gMercProfiles[ pAttacker->pSoldier->ubProfile ].usShotsFired++;
+					gMercProfiles[ pAttacker->pSoldier->ubProfile ].usShotsFired += ubBullets;
 					// MARKSMANSHIP GAIN: Attacker fires a shot
 					StatChange(*pAttacker->pSoldier, MARKAMT, 3, FROM_SUCCESS);
 				}
-				pItem->ubGunShotsLeft--;
-				return TRUE;
+				pItem->ubGunShotsLeft -= ubBullets;
+				return ubBullets;
 			}
 		}
 	}
 	pAttacker->bWeaponSlot = -1;
-	return FALSE;
+	return 0;
 }
 
 
@@ -2851,20 +2881,78 @@ static BOOLEAN TargetHasLoadedGun(SOLDIERTYPE* pSoldier)
 }
 
 
-static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
+static void ShootBullet(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget, UINT16 usAttack, UINT16 usDefence)
 {
-	UINT16 usAttack;
-	UINT16 usDefence;
 	UINT8 ubImpact;
 	UINT8 ubLocation;
 	UINT8 ubAccuracy;
 	INT32 iRandom;
 	INT32 iImpact;
+	INT8	bAttackIndex = -1;
+
+	//Set up a random delay for the hit or miss.
+	if( !pTarget->usNextHit[0] )
+	{
+		bAttackIndex = 0;
+	}
+	else if( !pTarget->usNextHit[1] )
+	{
+		bAttackIndex = 1;
+	}
+	else if( !pTarget->usNextHit[2] )
+	{
+		bAttackIndex = 2;
+	}
+	if ( bAttackIndex != -1 )
+	{
+		pTarget->usNextHit[ bAttackIndex ] = (UINT16)( 50 + PreRandom( 400 ) );
+		pTarget->pAttacker[ bAttackIndex ] = pAttacker;
+		// Clear the damage of an earlier bullet, or a miss would land with it
+		pTarget->usHitDamage[ bAttackIndex ] = 0;
+	}
+	if( usAttack < usDefence )
+	{
+		if( pTarget->pSoldier->bLife >= OKLIFE || !PreRandom( 5 ) )
+		{	//Attacker misses -- the round is already used up.  If target is unconcious, then 80% chance of hitting.
+			pTarget->uiFlags |= CELL_DODGEDATTACK | CELL_DIRTY;
+			return;
+		}
+	}
+	//Attacker hits
+	ubImpact = GCM->getWeapon(pAttacker->pSoldier->inv[pAttacker->bWeaponSlot].usItem)->ubImpact;
+	iRandom = PreRandom( 100 );
+	if( iRandom < 15 )
+		ubLocation = AIM_SHOT_HEAD;
+	else if( iRandom < 30 )
+		ubLocation = AIM_SHOT_LEGS;
+	else
+		ubLocation = AIM_SHOT_TORSO;
+	ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence ) )/10);
+	iImpact = BulletImpact( pAttacker->pSoldier, pTarget->pSoldier, ubLocation, ubImpact, ubAccuracy, NULL );
+
+	if ( bAttackIndex == -1 )
+	{
+		// tack damage on to end of last hit
+		pTarget->usHitDamage[2] += (UINT16) iImpact;
+	}
+	else
+	{
+		pTarget->usHitDamage[ bAttackIndex ] = (UINT16) iImpact;
+	}
+}
+
+
+static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
+{
+	UINT16 usAttack;
+	UINT16 usDefence;
+	UINT8 ubAccuracy;
+	INT32 iImpact;
 	INT32 iNewLife;
+	UINT8 ubBullets = 0;
 	BOOLEAN fMelee = FALSE;
 	BOOLEAN fKnife = FALSE;
 	BOOLEAN fClaw = FALSE;
-	INT8	bAttackIndex = -1;
 
 	pAttacker->uiFlags |= CELL_FIREDATTARGET | CELL_DIRTY;
 	if( pAttacker->usAttack < 950 )
@@ -2886,7 +2974,7 @@ static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
 		fMelee = TRUE;
 		fClaw = TRUE;
 	}
-	else if( !FireAShot( pAttacker ) )
+	else if( (ubBullets = FireAShot( pAttacker )) == 0 )
 	{ //Maybe look for a weapon, such as a knife or grenade?
 		fMelee = TRUE;
 		fKnife = AttackerHasKnife( pAttacker );
@@ -2901,188 +2989,148 @@ static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
 			}
 		}
 	}
-	//Set up a random delay for the hit or miss.
 	if( !fMelee )
 	{
-		if( !pTarget->usNextHit[0] )
+		UINT8 const ubBurstPenalty = GCM->getWeapon(pAttacker->pSoldier->inv[pAttacker->bWeaponSlot].usItem)->ubBurstPenalty;
+		for (UINT8 ubBullet = 0; ubBullet < ubBullets; ubBullet++)
 		{
-			bAttackIndex = 0;
+			// Every bullet after the first loses accuracy, as in a tactical burst
+			INT32 const iPenalty = std::min(ubBurstPenalty * ubBullet, 100);
+			ShootBullet(pAttacker, pTarget, (UINT16)(usAttack * (100 - iPenalty) / 100), usDefence);
 		}
-		else if( !pTarget->usNextHit[1] )
-		{
-			bAttackIndex = 1;
-		}
-		else if( !pTarget->usNextHit[2] )
-		{
-			bAttackIndex = 2;
-		}
-		if ( bAttackIndex != -1 )
-		{
-			pTarget->usNextHit[ bAttackIndex ] = (UINT16)( 50 + PreRandom( 400 ) );
-			pTarget->pAttacker[ bAttackIndex ] = pAttacker;
-		}
+		return;
 	}
 	if( usAttack < usDefence )
 	{
 		if( pTarget->pSoldier->bLife >= OKLIFE || !PreRandom( 5 ) )
-		{	//Attacker misses -- use up a round of ammo.  If target is unconcious, then 80% chance of hitting.
+		{	//Attacker misses.  If target is unconcious, then 80% chance of hitting.
 			pTarget->uiFlags |= CELL_DODGEDATTACK | CELL_DIRTY;
-			if( fMelee )
+			if( fKnife )
+				PlayAutoResolveSample(MISS_KNIFE, 50, 1, MIDDLEPAN);
+			else if( fClaw )
 			{
-				if( fKnife )
-					PlayAutoResolveSample(MISS_KNIFE, 50, 1, MIDDLEPAN);
-				else if( fClaw )
+				if( Chance( 50 ) )
 				{
-					if( Chance( 50 ) )
-					{
-						PlayAutoResolveSample(ACR_SWIPE, 50, 1, MIDDLEPAN);
-					}
-					else
-					{
-						PlayAutoResolveSample(ACR_LUNGE, 50, 1, MIDDLEPAN);
-					}
+					PlayAutoResolveSample(ACR_SWIPE, 50, 1, MIDDLEPAN);
 				}
 				else
-					PlayAutoResolveSample(SoundRange<SWOOSH_1, SWOOSH_6>(), 50, 1, MIDDLEPAN);
-				if (pTarget->uiFlags & CELL_MERC && pTarget->pSoldier->bLife >= OKLIFE)
-					// AGILITY GAIN: Target "dodged" an attack
-					StatChange(*pTarget->pSoldier, AGILAMT, 5, FROM_SUCCESS);
+				{
+					PlayAutoResolveSample(ACR_LUNGE, 50, 1, MIDDLEPAN);
+				}
 			}
+			else
+				PlayAutoResolveSample(SoundRange<SWOOSH_1, SWOOSH_6>(), 50, 1, MIDDLEPAN);
+			if (pTarget->uiFlags & CELL_MERC && pTarget->pSoldier->bLife >= OKLIFE)
+				// AGILITY GAIN: Target "dodged" an attack
+				StatChange(*pTarget->pSoldier, AGILAMT, 5, FROM_SUCCESS);
 			return;
 		}
 	}
 	//Attacker hits
-	if( !fMelee )
-	{
-		ubImpact = GCM->getWeapon(pAttacker->pSoldier->inv[pAttacker->bWeaponSlot].usItem)->ubImpact;
-		iRandom = PreRandom( 100 );
-		if( iRandom < 15 )
-			ubLocation = AIM_SHOT_HEAD;
-		else if( iRandom < 30 )
-			ubLocation = AIM_SHOT_LEGS;
-		else
-			ubLocation = AIM_SHOT_TORSO;
-		ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence ) )/10);
-		iImpact = BulletImpact( pAttacker->pSoldier, pTarget->pSoldier, ubLocation, ubImpact, ubAccuracy, NULL );
-
-		if ( bAttackIndex == -1 )
-		{
-			// tack damage on to end of last hit
-			pTarget->usHitDamage[2] += (UINT16) iImpact;
-		}
-		else
-		{
-			pTarget->usHitDamage[ bAttackIndex ] = (UINT16) iImpact;
-		}
-
+	OBJECTTYPE *pItem;
+	PlayAutoResolveSample(SoundRange<BULLET_IMPACT_1, BULLET_IMPACT_3>(), 50, 1, MIDDLEPAN);
+	if( !pTarget->pSoldier->bLife )
+	{ //Soldier already dead (can't kill him again!)
+		return;
 	}
-	else
+
+	ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence ) )/10);
+
+	//Determine attacking weapon.
+	pAttacker->pSoldier->usAttackingWeapon = 0;
+	if( pAttacker->bWeaponSlot != -1 )
 	{
-		OBJECTTYPE *pItem;
-		PlayAutoResolveSample(SoundRange<BULLET_IMPACT_1, BULLET_IMPACT_3>(), 50, 1, MIDDLEPAN);
-		if( !pTarget->pSoldier->bLife )
-		{ //Soldier already dead (can't kill him again!)
-			return;
-		}
+		pItem = &pAttacker->pSoldier->inv[ pAttacker->bWeaponSlot ];
+		if( GCM->getItem(pItem->usItem)->isWeapon() )
+			pAttacker->pSoldier->usAttackingWeapon = pAttacker->pSoldier->inv[ pAttacker->bWeaponSlot ].usItem;
+	}
 
-		ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence ) )/10);
+	iImpact = HTHImpact(pAttacker->pSoldier, pTarget->pSoldier, ubAccuracy, fKnife | fClaw);
 
-		//Determine attacking weapon.
-		pAttacker->pSoldier->usAttackingWeapon = 0;
-		if( pAttacker->bWeaponSlot != -1 )
-		{
-			pItem = &pAttacker->pSoldier->inv[ pAttacker->bWeaponSlot ];
-			if( GCM->getItem(pItem->usItem)->isWeapon() )
-				pAttacker->pSoldier->usAttackingWeapon = pAttacker->pSoldier->inv[ pAttacker->bWeaponSlot ].usItem;
-		}
+	iNewLife = pTarget->pSoldier->bLife - iImpact;
 
-		iImpact = HTHImpact(pAttacker->pSoldier, pTarget->pSoldier, ubAccuracy, fKnife | fClaw);
-
-		iNewLife = pTarget->pSoldier->bLife - iImpact;
-
+	if( pAttacker->uiFlags & CELL_MERC )
+	{ //Attacker is a player, so increment the number of shots that hit.
+		gMercProfiles[ pAttacker->pSoldier->ubProfile ].usShotsHit++;
+		// MARKSMANSHIP GAIN: Attacker's shot hits
+		StatChange(*pAttacker->pSoldier, MARKAMT, 6, FROM_SUCCESS); // in addition to 3 for taking a shot
+	}
+	if( pTarget->uiFlags & CELL_MERC )
+	{ //Target is a player, so increment the times he has been wounded.
+		gMercProfiles[ pTarget->pSoldier->ubProfile ].usTimesWounded++;
+		// EXPERIENCE GAIN: Took some damage
+		StatChange(*pTarget->pSoldier, EXPERAMT, 5 * (iImpact / 10), FROM_SUCCESS);
+	}
+	if( pTarget->pSoldier->bLife >= CONSCIOUSNESS || pTarget->uiFlags & CELL_CREATURE )
+	{
+		if( gpAR->fSound )
+			DoMercBattleSound(pTarget->pSoldier, BATTLE_SOUND_HIT1);
+	}
+	if( !(pTarget->uiFlags & CELL_CREATURE) && iNewLife < OKLIFE && pTarget->pSoldier->bLife >= OKLIFE )
+	{ //the hit caused the merc to fall.  Play the falling sound
+		PlayAutoResolveSample(FALL_1, 50, 1, MIDDLEPAN);
+		pTarget->uiFlags &= ~CELL_RETREATING;
+	}
+	if( iNewLife <= 0 )
+	{ //soldier has been killed
 		if( pAttacker->uiFlags & CELL_MERC )
-		{ //Attacker is a player, so increment the number of shots that hit.
-			gMercProfiles[ pAttacker->pSoldier->ubProfile ].usShotsHit++;
-			// MARKSMANSHIP GAIN: Attacker's shot hits
-			StatChange(*pAttacker->pSoldier, MARKAMT, 6, FROM_SUCCESS); // in addition to 3 for taking a shot
+		{ //Player killed the enemy soldier -- update his stats as well as any assisters.
+			gMercProfiles[ pAttacker->pSoldier->ubProfile ].usKills++;
+			gStrategicStatus.usPlayerKills++;
 		}
-		if( pTarget->uiFlags & CELL_MERC )
-		{ //Target is a player, so increment the times he has been wounded.
-			gMercProfiles[ pTarget->pSoldier->ubProfile ].usTimesWounded++;
-			// EXPERIENCE GAIN: Took some damage
-			StatChange(*pTarget->pSoldier, EXPERAMT, 5 * (iImpact / 10), FROM_SUCCESS);
-		}
-		if( pTarget->pSoldier->bLife >= CONSCIOUSNESS || pTarget->uiFlags & CELL_CREATURE )
+		else if( pAttacker->uiFlags & CELL_MILITIA )
 		{
-			if( gpAR->fSound )
-				DoMercBattleSound(pTarget->pSoldier, BATTLE_SOUND_HIT1);
+			pAttacker->pSoldier->ubMilitiaKills += 2;
 		}
-		if( !(pTarget->uiFlags & CELL_CREATURE) && iNewLife < OKLIFE && pTarget->pSoldier->bLife >= OKLIFE )
-		{ //the hit caused the merc to fall.  Play the falling sound
-			PlayAutoResolveSample(FALL_1, 50, 1, MIDDLEPAN);
-			pTarget->uiFlags &= ~CELL_RETREATING;
-		}
-		if( iNewLife <= 0 )
-		{ //soldier has been killed
-			if( pAttacker->uiFlags & CELL_MERC )
-			{ //Player killed the enemy soldier -- update his stats as well as any assisters.
-				gMercProfiles[ pAttacker->pSoldier->ubProfile ].usKills++;
-				gStrategicStatus.usPlayerKills++;
-			}
-			else if( pAttacker->uiFlags & CELL_MILITIA )
-			{
-				pAttacker->pSoldier->ubMilitiaKills += 2;
-			}
-			if( pTarget->uiFlags & CELL_MERC && gpAR->fSound )
-			{
-				PlayAutoResolveSample(DOORCR_1, HIGHVOLUME, 1, MIDDLEPAN);
-				PlayAutoResolveSample(HEADCR_1, HIGHVOLUME, 1, MIDDLEPAN);
-			}
-		}
-		//Adjust the soldiers stats based on the damage.
-		pTarget->pSoldier->bLife = (INT8)std::max(iNewLife, 0);
-		if( pTarget->uiFlags & CELL_MERC && gpAR->pRobotCell)
+		if( pTarget->uiFlags & CELL_MERC && gpAR->fSound )
 		{
-			UpdateRobotControllerGivenRobot( gpAR->pRobotCell->pSoldier );
+			PlayAutoResolveSample(DOORCR_1, HIGHVOLUME, 1, MIDDLEPAN);
+			PlayAutoResolveSample(HEADCR_1, HIGHVOLUME, 1, MIDDLEPAN);
 		}
-		if( fKnife || fClaw )
-		{
-			if( pTarget->pSoldier->bLifeMax - pTarget->pSoldier->bBleeding - iImpact >= pTarget->pSoldier->bLife )
-				pTarget->pSoldier->bBleeding += (INT8)iImpact;
-			else
-				pTarget->pSoldier->bBleeding = (INT8)(pTarget->pSoldier->bLifeMax - pTarget->pSoldier->bLife);
-		}
-		if( !pTarget->pSoldier->bLife )
-		{
-			gpAR->fRenderAutoResolve = TRUE;
-
-			if( pTarget->uiFlags & CELL_MERC )
-			{
-				gpAR->usPlayerAttack -= pTarget->usAttack;
-				gpAR->usPlayerDefence -= pTarget->usDefence;
-				gpAR->ubAliveMercs--;
-				pTarget->usAttack = 0;
-				pTarget->usDefence = 0;
-			}
-			else if( pTarget->uiFlags & CELL_MILITIA )
-			{
-				gpAR->usPlayerAttack -= pTarget->usAttack;
-				gpAR->usPlayerDefence -= pTarget->usDefence;
-				gpAR->ubAliveCivs--;
-				pTarget->usAttack = 0;
-				pTarget->usDefence = 0;
-			}
-			else if( pTarget->uiFlags & (CELL_ENEMY|CELL_CREATURE) )
-			{
-				gpAR->usEnemyAttack -= pTarget->usAttack;
-				gpAR->usEnemyDefence -= pTarget->usDefence;
-				gpAR->ubAliveEnemies--;
-				pTarget->usAttack = 0;
-				pTarget->usDefence = 0;
-			}
-		}
-		pTarget->uiFlags |= CELL_HITBYATTACKER | CELL_DIRTY;
 	}
+	//Adjust the soldiers stats based on the damage.
+	pTarget->pSoldier->bLife = (INT8)std::max(iNewLife, 0);
+	if( pTarget->uiFlags & CELL_MERC && gpAR->pRobotCell)
+	{
+		UpdateRobotControllerGivenRobot( gpAR->pRobotCell->pSoldier );
+	}
+	if( fKnife || fClaw )
+	{
+		if( pTarget->pSoldier->bLifeMax - pTarget->pSoldier->bBleeding - iImpact >= pTarget->pSoldier->bLife )
+			pTarget->pSoldier->bBleeding += (INT8)iImpact;
+		else
+			pTarget->pSoldier->bBleeding = (INT8)(pTarget->pSoldier->bLifeMax - pTarget->pSoldier->bLife);
+	}
+	if( !pTarget->pSoldier->bLife )
+	{
+		gpAR->fRenderAutoResolve = TRUE;
+
+		if( pTarget->uiFlags & CELL_MERC )
+		{
+			gpAR->usPlayerAttack -= pTarget->usAttack;
+			gpAR->usPlayerDefence -= pTarget->usDefence;
+			gpAR->ubAliveMercs--;
+			pTarget->usAttack = 0;
+			pTarget->usDefence = 0;
+		}
+		else if( pTarget->uiFlags & CELL_MILITIA )
+		{
+			gpAR->usPlayerAttack -= pTarget->usAttack;
+			gpAR->usPlayerDefence -= pTarget->usDefence;
+			gpAR->ubAliveCivs--;
+			pTarget->usAttack = 0;
+			pTarget->usDefence = 0;
+		}
+		else if( pTarget->uiFlags & (CELL_ENEMY|CELL_CREATURE) )
+		{
+			gpAR->usEnemyAttack -= pTarget->usAttack;
+			gpAR->usEnemyDefence -= pTarget->usDefence;
+			gpAR->ubAliveEnemies--;
+			pTarget->usAttack = 0;
+			pTarget->usDefence = 0;
+		}
+	}
+	pTarget->uiFlags |= CELL_HITBYATTACKER | CELL_DIRTY;
 }
 
 
