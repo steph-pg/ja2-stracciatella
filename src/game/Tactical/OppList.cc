@@ -379,7 +379,7 @@ static bool HostileSeesOurTeam()
 
 		FOR_EACH_IN_TEAM(j, OUR_TEAM)
 		{
-			if (s.bOppList[(*j)->ubID] == SEEN_CURRENTLY) return true;
+			if (s.bOppList[j->ubID] == SEEN_CURRENTLY) return true;
 		}
 	}
 	return false;
