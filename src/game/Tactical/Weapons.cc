@@ -486,6 +486,18 @@ void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT 
 			{
 				pSoldier->bAimShotLocation = AIM_SHOT_HEAD;
 			}
+
+			SLOGD("Aim choice: soldier {} at {} (end height {}), aim time {}: head ctgt {} eff {}, torso ctgt {} eff {}, legs ctgt {} eff {} -> location {}",
+				pSoldier->ubID, pTargetSoldier->ubID, gAnimControl[pTargetSoldier->usAnimState].ubEndHeight, pSoldier->bAimTime,
+				cth_ctgt_head, cth_aim_shot_head, cth_ctgt_torso, cth_aim_shot_torso, cth_ctgt_legs, cth_aim_shot_legs,
+				pSoldier->bAimShotLocation);
+		}
+
+		if (bAimShotLocation != pSoldier->bAimShotLocation)
+		{
+			SLOGD("Aim location: soldier {} at {}: {} -> {} (better_aiming_choice {})",
+				pSoldier->ubID, pTargetSoldier->ubID, bAimShotLocation, pSoldier->bAimShotLocation,
+				gamepolicy(ai_better_aiming_choice));
 		}
 
 		switch( pSoldier->bAimShotLocation )
@@ -658,6 +670,11 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 	else
 	{
 		uiHitChance = CalcChanceToHitGun( pSoldier, sTargetGridNo, pSoldier->bAimTime, pSoldier->bAimShotLocation, true );
+		SLOGD("Gun CTH: soldier {} at gridno {}, aim time {}, location {}: {} (as random/cursor {}, torso {}, head {})",
+			pSoldier->ubID, sTargetGridNo, pSoldier->bAimTime, pSoldier->bAimShotLocation, uiHitChance,
+			CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_RANDOM, false),
+			CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_TORSO, false),
+			CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_HEAD, false));
 	}
 
 	//ATE: Added if we are in meanwhile, we always hit...

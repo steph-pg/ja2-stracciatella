@@ -1957,6 +1957,9 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 			}
 		}
 
+		SLOGD("Bullet hit: soldier {} hit by {}, end height {}, aimed location {}, hit location {}",
+			tgt.ubID, pFirer->ubID, gAnimControl[tgt.usAnimState].ubEndHeight, pFirer->bAimShotLocation, ubHitLocation);
+
 		if (ubAmmoType == AMMO_MONSTER && (ubHitLocation == AIM_SHOT_HEAD) && !(tgt.uiStatusFlags & SOLDIER_MONSTER))
 		{
 			UINT8 ubOppositeDirection;
