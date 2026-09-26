@@ -43,7 +43,7 @@ public:
 	bool f_all_dropped_visible;           /**< All dropped equipment is visible right away. */
 
 	bool multiple_interrupts;             // can interrupt more than once per turn
-	bool realtime_sneak;                  // spotting enemies who do not see us does not start turn-based mode
+	bool realtime_sneak;                  // spotting enemies who do not see us does not start turn-based mode; a real-time attack that starts combat costs APs
 
 	bool fixed_cost_to_shoot;    // Changes the formula for APs to shoot
 

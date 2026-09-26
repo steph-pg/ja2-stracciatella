@@ -72,7 +72,8 @@
 
   //  Spotting enemies in real-time mode does not start turn-based mode, as long as no hostile
   //  currently sees any of your mercs. Combat starts as usual once an enemy spots one of them,
-  //  or when either side attacks. Combine with "can_enter_turnbased" to switch on demand.
+  //  or when either side attacks. An attack that starts combat is paid for out of the
+  //  attacker's first turn. Combine with "can_enter_turnbased" to switch on demand.
   //  vanilla setting: false
   "realtime_sneak": false,
   

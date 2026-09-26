@@ -602,7 +602,7 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 			pSoldier->uiBurstSoundID = PlayLocationJA2SampleFromFile(pSoldier->sGridNo,
 				burstSound.c_str(), HIGHVOLUME, 1);
 
-			DeductPoints( pSoldier, sAPCost, 0 );
+			DeductAttackPoints(pSoldier, sAPCost);
 		}
 
 	}
@@ -614,12 +614,12 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 			// only deduct APs when the main gun fires
 			if ( pSoldier->ubAttackingHand == HANDPOS )
 			{
-				DeductPoints( pSoldier, sAPCost, 0 );
+				DeductAttackPoints(pSoldier, sAPCost);
 			}
 		}
 		else
 		{
-			DeductPoints( pSoldier, sAPCost, 0 );
+			DeductAttackPoints(pSoldier, sAPCost);
 		}
 
 		auto weapon = GCM->getWeapon( usItemNum );
@@ -906,7 +906,7 @@ static void UseBlade(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 	// Deduct points!
 	sAPCost = CalcTotalAPsToAttack( pSoldier, sTargetGridNo, FALSE, pSoldier->bAimTime );
 
-	DeductPoints( pSoldier, sAPCost, 0 );
+	DeductAttackPoints(pSoldier, sAPCost);
 
 	// See if a guy is here!
 	SOLDIERTYPE* const pTargetSoldier = WhoIsThere2(sTargetGridNo, pSoldier->bTargetLevel);
@@ -1051,7 +1051,7 @@ void UseHandToHand(SOLDIERTYPE* const pSoldier, INT16 const sTargetGridNo, BOOLE
 	{
 		sAPCost = CalcTotalAPsToAttack( pSoldier, sTargetGridNo, FALSE, pSoldier->bAimTime );
 
-		DeductPoints( pSoldier, sAPCost, 0 );
+		DeductAttackPoints(pSoldier, sAPCost);
 	}
 
 	// See if a guy is here!
@@ -1419,7 +1419,7 @@ static void UseLauncher(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo
 		sAPCost = MinAPsToThrow(*pSoldier, sTargetGridNo, FALSE);
 	}
 
-	DeductPoints( pSoldier, sAPCost, 0 );
+	DeductAttackPoints(pSoldier, sAPCost);
 
 	CalculateLaunchItemParamsForThrow( pSoldier, pSoldier->sTargetGridNo, pSoldier->bTargetLevel, pSoldier->bTargetLevel * HEIGHT_UNITS, &Launchable, (INT8)(uiDiceRoll - uiHitChance), THROW_ARM_ITEM, 0 );
 

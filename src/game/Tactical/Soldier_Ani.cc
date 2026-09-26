@@ -842,7 +842,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						if ( pSoldier->pThrowParams->ubActionCode == THROW_ARM_ITEM )
 						{
 							// ATE: Deduct points!
-							DeductPoints(pSoldier, MinAPsToThrow(*pSoldier, pSoldier->sTargetGridNo, FALSE), 0);
+							DeductAttackPoints(pSoldier, MinAPsToThrow(*pSoldier, pSoldier->sTargetGridNo, FALSE));
 						}
 						else
 						{

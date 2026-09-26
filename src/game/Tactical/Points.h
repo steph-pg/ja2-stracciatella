@@ -289,6 +289,7 @@ INT16 EstimateActionPointCost( SOLDIERTYPE *pSoldier, INT16 sGridNo, INT8 bDir, 
 
 BOOLEAN EnoughPoints(const SOLDIERTYPE* pSoldier, INT16 sAPCost, INT16 sBPCost, BOOLEAN fDisplayMsg);
 void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT16 sBPCost );
+void DeductAttackPoints(SOLDIERTYPE* pSoldier, INT16 sAPCost);
 void UnusedAPsToBreath(SOLDIERTYPE *pSold);
 INT16 TerrainBreathPoints(SOLDIERTYPE * pSoldier, INT16 sGridno,INT8 bDir, UINT16 usMovementMode);
 UINT8 MinAPsToAttack(SOLDIERTYPE *, GridNo, bool add_turning_cost);

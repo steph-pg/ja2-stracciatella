@@ -485,6 +485,19 @@ BOOLEAN EnoughPoints(const SOLDIERTYPE* pSoldier, INT16 sAPCost, INT16 sBPCost, 
 static INT16 AdjustBreathPts(SOLDIERTYPE* pSold, INT16 sBPCost);
 
 
+// Real time charges no APs, so with realtime sneak remember what the attack
+// would have cost. If the attack starts combat, the attacker pays it out of
+// their first turn.
+void DeductAttackPoints(SOLDIERTYPE* const pSoldier, INT16 const sAPCost)
+{
+	if (gamepolicy(realtime_sneak) && !(gTacticalStatus.uiFlags & INCOMBAT))
+	{
+		pSoldier->bRealtimeAttackAPs = (INT8)sAPCost;
+	}
+	DeductPoints(pSoldier, sAPCost, 0);
+}
+
+
 void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT16 sBPCost )
 {
 	INT16 sNewAP = 0;

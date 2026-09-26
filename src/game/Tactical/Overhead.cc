@@ -3936,6 +3936,10 @@ void CommonEnterCombatModeCode( )
 			// ATE: Refresh APs
 			CalcNewActionPoints( pSoldier );
 
+			// Pay for the real-time attack that started this combat
+			pSoldier->bActionPoints = std::max(0, pSoldier->bActionPoints - pSoldier->bRealtimeAttackAPs);
+			pSoldier->bRealtimeAttackAPs = 0;
+
 			if ( pSoldier->ubProfile != NO_PROFILE )
 			{
 				if ( pSoldier->bTeam == CIV_TEAM && pSoldier->bNeutral )
@@ -5704,6 +5708,8 @@ static SOLDIERTYPE* InternalReduceAttackBusyCount(SOLDIERTYPE* const pSoldier, c
 		}
 
 		pSoldier->uiStatusFlags &= (~SOLDIER_ATTACK_NOTICED);
+		// The attack is over; if it started no combat, it stays free
+		pSoldier->bRealtimeAttackAPs = 0;
 	}
 
 	TacticalStatusType* const ts = &gTacticalStatus;

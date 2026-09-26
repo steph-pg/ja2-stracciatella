@@ -571,6 +571,7 @@ struct SOLDIERTYPE
 	INT8 ubDoorHandleCode;
 	UINT32 uiPendingActionData4;
 	INT8 bInterruptDuelPts;
+	INT8 bRealtimeAttackAPs; // AP cost of an attack made in real time, charged if combat starts before it ends; not saved
 	INT8 bPassedLastInterrupt;
 	INT8 bIntStartAPs;
 	INT8 bMoved;
