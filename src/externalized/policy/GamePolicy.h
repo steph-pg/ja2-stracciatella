@@ -138,6 +138,7 @@ public:
 	uint16_t training_speed_modifier;     // % modifier to the training points a merc earns from practice and from being taught by a teammate (100 = vanilla, 200 = twice as fast)
 	bool skyrider_explores_sectors;       // true: Skyrider maps every sector the helicopter flies over, revealing it on the strategic map. false: vanilla, only sectors where mercs actually set foot count as explored.
 	bool quest_experience_all_mercs;      // true: quest experience rewards go to every merc on the team. false: vanilla, only the squad present when the quest is closed
+	uint8_t enemy_autoresolve_retreat_health_percent; // Health (in percent of maximum) below which enemy soldiers flee an autoresolve battle; 0 disables enemy retreating
 
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
