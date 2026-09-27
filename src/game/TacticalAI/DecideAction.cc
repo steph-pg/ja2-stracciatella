@@ -27,6 +27,7 @@
 #include "StrategicMap.h"
 #include "Structure.h"
 #include "Structure_Wrap.h"
+#include "TeamTurns.h"
 #include "Timer_Control.h"
 #include "WeaponModels.h"
 #include "Weapons.h"
@@ -1926,6 +1927,13 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 				if ( bWatchPts <= 0 )
 				{
 					// no watching
+					bWatchPts = -99;
+				}
+
+				// watching ends the turn waiting for an interrupt, which is pointless
+				// while being under fire rules the interrupt out
+				if (UnderFireBlocksInterrupts(*pSoldier))
+				{
 					bWatchPts = -99;
 				}
 

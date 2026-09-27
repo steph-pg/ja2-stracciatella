@@ -10,6 +10,7 @@ extern BOOLEAN gfHiddenTurnbased;
 
 #define INTERRUPT_QUEUED (gubOutOfTurnPersons > 0)
 
+bool UnderFireBlocksInterrupts(SOLDIERTYPE const&);
 BOOLEAN StandardInterruptConditionsMet(const SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pOpponent, INT8 bOldOppList);
 INT8 CalcInterruptDuelPts(const SOLDIERTYPE* pSoldier, const SOLDIERTYPE* opponent, BOOLEAN fUseWatchSpots);
 extern void EndAITurn( void );

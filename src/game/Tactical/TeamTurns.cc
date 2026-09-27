@@ -914,6 +914,17 @@ static void EndInterrupt(BOOLEAN fMarkInterruptOccurred)
 }
 
 
+// bUnderFire is set to 2 by the attack and decayed by EVENT_BeginMercTurn, which
+// only runs for the soldier's own team. So 2 means "shot at during the turn now in
+// progress" and 1 means "shot at a turn ago". With interrupt_after_being_under_fire
+// only the former counts as a life & death battle; vanilla tests bUnderFire outright
+// and keeps the soldier flinching through the whole turn after the attack as well.
+bool UnderFireBlocksInterrupts(SOLDIERTYPE const& s)
+{
+	return gamepolicy(interrupt_after_being_under_fire) ? s.bUnderFire == 2 : s.bUnderFire != 0;
+}
+
+
 BOOLEAN StandardInterruptConditionsMet(const SOLDIERTYPE* const pSoldier, const SOLDIERTYPE* const pOpponent, const INT8 bOldOppList)
 {
 	//UINT8 ubAniType;
@@ -990,13 +1001,7 @@ BOOLEAN StandardInterruptConditionsMet(const SOLDIERTYPE* const pSoldier, const 
 
 	// a soldier already engaged in a life & death battle is too busy doing his
 	// best to survive to worry about "getting the jump" on additional threats
-	//
-	// bUnderFire is set to 2 by the attack and decayed by EVENT_BeginMercTurn, which
-	// only runs for the soldier's own team. So 2 means "shot at during the turn now in
-	// progress" and 1 means "shot at a turn ago". With interrupt_after_being_under_fire
-	// only the former counts as a life & death battle; vanilla tests bUnderFire outright
-	// and keeps the soldier flinching through the whole turn after the attack as well.
-	if (gamepolicy(interrupt_after_being_under_fire) ? pSoldier->bUnderFire == 2 : pSoldier->bUnderFire != 0)
+	if (UnderFireBlocksInterrupts(*pSoldier))
 	{
 		return(FALSE);
 	}
