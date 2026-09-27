@@ -2920,6 +2920,14 @@ static void CheckForEnemyRetreat(SOLDIERCELL* const pCell)
 }
 
 
+// How well a hit landed. A forced hit on an unconscious target can come with an
+// attack roll below the defence roll, which counts as no accuracy at all.
+static UINT8 CalcHitAccuracy(INT32 const iMargin)
+{
+	return (UINT8)(std::max(iMargin, 0) / 10);
+}
+
+
 static void ShootBullet(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget, UINT16 usAttack, UINT16 usDefence)
 {
 	UINT8 ubImpact;
@@ -2966,14 +2974,13 @@ static void ShootBullet(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget, UINT16 usA
 		ubLocation = AIM_SHOT_LEGS;
 	else
 		ubLocation = AIM_SHOT_TORSO;
-	UINT32 const uiRoll = PreRandom( usDefence - pTarget->usDefence );
-	ubAccuracy = (UINT8)((usAttack - usDefence + uiRoll )/10);
+	INT32 const iMargin = usAttack - usDefence + (INT32)PreRandom( usDefence - pTarget->usDefence );
+	ubAccuracy = CalcHitAccuracy(iMargin);
 	iImpact = BulletImpact( pAttacker->pSoldier, pTarget->pSoldier, ubLocation, ubImpact, ubAccuracy, NULL );
-	if (usAttack - usDefence + (INT32)uiRoll < 0)
+	if (iMargin < 0)
 	{
-		SLOGD("Autoresolve: bullet accuracy wrapped on target {} (life {}): attack {}, defence {}, roll {}, margin {}, accuracy {}, impact {}",
-			pTarget->pSoldier->ubID, pTarget->pSoldier->bLife, usAttack, usDefence, uiRoll,
-			usAttack - usDefence + (INT32)uiRoll, ubAccuracy, iImpact);
+		SLOGD("Autoresolve: bullet accuracy clamped on target {} (life {}): attack {}, defence {}, margin {}, accuracy {}, impact {}",
+			pTarget->pSoldier->ubID, pTarget->pSoldier->bLife, usAttack, usDefence, iMargin, ubAccuracy, iImpact);
 	}
 
 	if ( bAttackIndex == -1 )
@@ -3074,13 +3081,12 @@ static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
 		return;
 	}
 
-	UINT32 const uiRoll = PreRandom( usDefence - pTarget->usDefence );
-	ubAccuracy = (UINT8)((usAttack - usDefence + uiRoll )/10);
-	if (usAttack - usDefence + (INT32)uiRoll < 0)
+	INT32 const iMargin = usAttack - usDefence + (INT32)PreRandom( usDefence - pTarget->usDefence );
+	ubAccuracy = CalcHitAccuracy(iMargin);
+	if (iMargin < 0)
 	{
-		SLOGD("Autoresolve: melee accuracy wrapped on target {} (life {}): attack {}, defence {}, roll {}, margin {}, accuracy {}",
-			pTarget->pSoldier->ubID, pTarget->pSoldier->bLife, usAttack, usDefence, uiRoll,
-			usAttack - usDefence + (INT32)uiRoll, ubAccuracy);
+		SLOGD("Autoresolve: melee accuracy clamped on target {} (life {}): attack {}, defence {}, margin {}, accuracy {}",
+			pTarget->pSoldier->ubID, pTarget->pSoldier->bLife, usAttack, usDefence, iMargin, ubAccuracy);
 	}
 
 	//Determine attacking weapon.
