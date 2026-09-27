@@ -255,6 +255,11 @@
 
   "enable_stat_healing": false,
 
+  //  Percentage bonus to blast damage at 100 Explosives, scaling linearly with the
+  //  skill of whoever threw, fired or planted the explosive.
+  //  vanilla setting: 0
+  "explosives_skill_damage_bonus": 0,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {

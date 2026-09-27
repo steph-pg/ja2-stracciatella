@@ -8,6 +8,7 @@
 #include "ExplosionAnimationModel.h"
 #include "FOV.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "GameSettings.h"
 #include "Handle_Doors.h"
 #include "Handle_Items.h"
@@ -35,6 +36,7 @@
 #include "RenderWorld.h"
 #include "Render_Fun.h"
 #include "Rotting_Corpses.h"
+#include "SkillCheck.h"
 #include "SaveLoadMap.h"
 #include "Smell.h"
 #include "SmokeEffects.h"
@@ -926,6 +928,12 @@ static BOOLEAN ExpAffect(const INT16 sBombGridNo, const INT16 sGridNo, const UIN
 	{
 		// Calculate wound amount
 		sWoundAmt = blastEffect->damage + (INT16) ( (blastEffect->damage * uiRoll) / 100 );
+		// Whoever threw, fired or planted the explosive adds a bonus that
+		// scales with their Explosives skill
+		if (owner)
+		{
+			sWoundAmt += (INT16)(sWoundAmt * gamepolicy(explosives_skill_damage_bonus) * EffectiveExplosive(owner) / 10000);
+		}
 		sWoundAmt = ReduceDamageAmount(sWoundAmt, blastEffect->radius, uiDist);
 
 		if (sWoundAmt > 0) {

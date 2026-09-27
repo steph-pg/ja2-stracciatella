@@ -121,6 +121,8 @@ public:
 
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
 
+	uint8_t explosives_skill_damage_bonus; // % blast damage bonus at 100 Explosives (0 = vanilla)
+
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
 
