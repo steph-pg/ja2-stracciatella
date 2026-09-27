@@ -1895,6 +1895,29 @@ static void CollectKey(SOLDIERTYPE const& s, OBJECTTYPE const& o)
 }
 
 
+/* Money carries its quantity in uiMoneyAmount rather than in a count of
+ * objects, and a slot only holds so much of it. Move as much as bPos still has
+ * room for, leaving any remainder in obj for the caller to place elsewhere. */
+static void FillMoneySlot(OBJECTTYPE& inSlot, OBJECTTYPE& obj, INT8 const bPos)
+{
+	if (inSlot.ubNumberOfObjects == 0)
+	{
+		inSlot                   = obj;
+		inSlot.ubNumberOfObjects = 1;
+		inSlot.uiMoneyAmount     = 0;
+	}
+
+	UINT32 const uiLimit = MoneySlotLimit( bPos );
+	UINT32 const uiRoom  = uiLimit > inSlot.uiMoneyAmount ? uiLimit - inSlot.uiMoneyAmount : 0;
+	UINT32 const uiMoved = std::min( obj.uiMoneyAmount, uiRoom );
+
+	inSlot.uiMoneyAmount += uiMoved;
+	obj.uiMoneyAmount    -= uiMoved;
+
+	if (obj.uiMoneyAmount == 0) DeleteObj( &obj );
+}
+
+
 BOOLEAN PlaceObject( SOLDIERTYPE * pSoldier, INT8 bPos, OBJECTTYPE * pObj )
 {
 	// returns object to have in hand after placement... same as original in the
@@ -1937,67 +1960,51 @@ BOOLEAN PlaceObject( SOLDIERTYPE * pSoldier, INT8 bPos, OBJECTTYPE * pObj )
 
 	OBJECTTYPE * const pInSlot{ &pSoldier->inv[bPos] };
 
-	if (pInSlot->ubNumberOfObjects == 0)
+	if (pInSlot->ubNumberOfObjects == 0 && item->isMoney())
 	{
-		if (item->isMoney())
+		/* A slot only takes MoneySlotLimit() worth of money, but the generic
+		 * path below copies the object over wholesale and never looks at
+		 * uiMoneyAmount, so any amount at all would fit into any pocket. */
+		FillMoneySlot( *pInSlot, *pObj, bPos );
+	}
+	else if (pInSlot->ubNumberOfObjects == 0)
+	{
+		// placement in an empty slot
+		ubNumberToDrop = pObj->ubNumberOfObjects;
+
+		if (ubNumberToDrop > std::max(ubSlotLimit, 1))
 		{
-			// money carries its quantity in uiMoneyAmount, and a slot only holds so
-			// much of it, so only part of the amount may fit in here
-			UINT32 const uiMoneyMax = MoneySlotLimit( bPos );
+			// drop as many as possible into pocket
+			ubNumberToDrop = std::max(ubSlotLimit, 1);
+		}
 
-			*pInSlot = *pObj;
-			pInSlot->ubNumberOfObjects = 1;
+		// could be wrong type of object for slot... need to check...
+		// but assuming it isn't
+		*pInSlot = *pObj;
 
-			if (pObj->uiMoneyAmount > uiMoneyMax)
+		if (ubNumberToDrop != pObj->ubNumberOfObjects)
+		{
+			// in the InSlot copy, zero out all the objects we didn't drop
+			for (ubLoop = ubNumberToDrop; ubLoop < pObj->ubNumberOfObjects; ubLoop++)
 			{
-				// fill this slot up and leave the remainder for the caller to place
-				pInSlot->uiMoneyAmount = uiMoneyMax;
-				pObj->uiMoneyAmount -= uiMoneyMax;
-			}
-			else
-			{
-				DeleteObj( pObj );
+				pInSlot->bStatus[ubLoop] = 0;
 			}
 		}
-		else
+		pInSlot->ubNumberOfObjects = ubNumberToDrop;
+
+		// remove a like number of objects from pObj
+		RemoveObjs( pObj, ubNumberToDrop );
+		if (pObj->ubNumberOfObjects == 0)
 		{
-			// placement in an empty slot
-			ubNumberToDrop = pObj->ubNumberOfObjects;
-
-			if (ubNumberToDrop > std::max(ubSlotLimit, 1))
+			// dropped everything
+			if (bPos == HANDPOS && GCM->getItem(pInSlot->usItem)->isTwoHanded())
 			{
-				// drop as many as possible into pocket
-				ubNumberToDrop = std::max(ubSlotLimit, 1);
-			}
-
-			// could be wrong type of object for slot... need to check...
-			// but assuming it isn't
-			*pInSlot = *pObj;
-
-			if (ubNumberToDrop != pObj->ubNumberOfObjects)
-			{
-				// in the InSlot copy, zero out all the objects we didn't drop
-				for (ubLoop = ubNumberToDrop; ubLoop < pObj->ubNumberOfObjects; ubLoop++)
+				// We just performed a successful drop of a two-handed object into the
+				// main hand
+				if (pSoldier->inv[SECONDHANDPOS].usItem != 0)
 				{
-					pInSlot->bStatus[ubLoop] = 0;
-				}
-			}
-			pInSlot->ubNumberOfObjects = ubNumberToDrop;
-
-			// remove a like number of objects from pObj
-			RemoveObjs( pObj, ubNumberToDrop );
-			if (pObj->ubNumberOfObjects == 0)
-			{
-				// dropped everything
-				if (bPos == HANDPOS && GCM->getItem(pInSlot->usItem)->isTwoHanded())
-				{
-					// We just performed a successful drop of a two-handed object into the
-					// main hand
-					if (pSoldier->inv[SECONDHANDPOS].usItem != 0)
-					{
-						// swap what WAS in the second hand into the cursor
-						SwapObjs( pObj, &(pSoldier->inv[SECONDHANDPOS]));
-					}
+					// swap what WAS in the second hand into the cursor
+					SwapObjs( pObj, &(pSoldier->inv[SECONDHANDPOS]));
 				}
 			}
 		}
@@ -2011,24 +2018,9 @@ BOOLEAN PlaceObject( SOLDIERTYPE * pSoldier, INT8 bPos, OBJECTTYPE * pObj )
 		{
 			if (item->isMoney())
 			{
-
-				UINT32 uiMoneyMax = MoneySlotLimit( bPos );
-
 				// always allow money to be combined!
 				// IGNORE STATUS!
-
-				if (pInSlot->uiMoneyAmount + pObj->uiMoneyAmount > uiMoneyMax)
-				{
-					// remove X dollars
-					pObj->uiMoneyAmount -= (uiMoneyMax - pInSlot->uiMoneyAmount);
-					// set in slot to maximum
-					pInSlot->uiMoneyAmount = uiMoneyMax;
-				}
-				else
-				{
-					pInSlot->uiMoneyAmount += pObj->uiMoneyAmount;
-					DeleteObj( pObj );
-				}
+				FillMoneySlot( *pInSlot, *pObj, bPos );
 			}
 			else if ( ubSlotLimit == 1 || (ubSlotLimit == 0 && bPos >= HANDPOS && bPos <= BIGPOCK4POS ) )
 			{
