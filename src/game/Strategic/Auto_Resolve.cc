@@ -2855,7 +2855,7 @@ static UINT8 FireAShot(SOLDIERCELL* pAttacker)
 					PlayAutoResolveSample(GCM->getWeapon(pItem->usItem)->sound, 50, 1, MIDDLEPAN);
 				if( pAttacker->uiFlags & CELL_MERC )
 				{
-					gMercProfiles[ pAttacker->pSoldier->ubProfile ].usShotsFired += ubBullets;
+					gMercProfiles[ pAttacker->pSoldier->ubProfile ].usShotsFired++;
 					// MARKSMANSHIP GAIN: Attacker fires a shot
 					StatChange(*pAttacker->pSoldier, MARKAMT, 3, FROM_SUCCESS);
 				}
@@ -2988,7 +2988,6 @@ static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
 	UINT8 ubAccuracy;
 	INT32 iImpact;
 	INT32 iNewLife;
-	UINT8 ubBullets = 0;
 	BOOLEAN fMelee = FALSE;
 	BOOLEAN fKnife = FALSE;
 	BOOLEAN fClaw = FALSE;
@@ -3013,7 +3012,7 @@ static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
 		fMelee = TRUE;
 		fClaw = TRUE;
 	}
-	else if( (ubBullets = FireAShot( pAttacker )) == 0 )
+	else if( !FireAShot( pAttacker ) )
 	{ //Maybe look for a weapon, such as a knife or grenade?
 		fMelee = TRUE;
 		fKnife = AttackerHasKnife( pAttacker );
@@ -3030,13 +3029,8 @@ static void AttackTarget(SOLDIERCELL* pAttacker, SOLDIERCELL* pTarget)
 	}
 	if( !fMelee )
 	{
-		UINT8 const ubBurstPenalty = GCM->getWeapon(pAttacker->pSoldier->inv[pAttacker->bWeaponSlot].usItem)->ubBurstPenalty;
-		for (UINT8 ubBullet = 0; ubBullet < ubBullets; ubBullet++)
-		{
-			// Every bullet after the first loses accuracy, as in a tactical burst
-			INT32 const iPenalty = std::min(ubBurstPenalty * ubBullet, 100);
-			ShootBullet(pAttacker, pTarget, (UINT16)(usAttack * (100 - iPenalty) / 100), usDefence);
-		}
+		// A burst only resolves one bullet, it just costs more rounds
+		ShootBullet(pAttacker, pTarget, usAttack, usDefence);
 		return;
 	}
 	if( usAttack < usDefence )
