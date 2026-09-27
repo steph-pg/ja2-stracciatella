@@ -740,6 +740,15 @@ properties:
       Set to `0` for the vanilla behaviour, where enemies always fight to the
       death.
 
+  explosives_skill_damage_bonus:
+    $ref: types/uint8.schema.yaml
+    title: Explosives skill damage bonus
+    description: |
+      Percentage bonus to blast damage at 100 Explosives. The bonus scales
+      linearly with the Explosives skill of whoever threw, fired or planted
+      the explosive, applies to enemies too, and also raises damage to
+      structures and items. Stun damage is not affected.
+
       Vanilla setting: `0`
 
   campaign:
