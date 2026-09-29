@@ -112,6 +112,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	unhired_merc_deaths_medium = gp.getOptionalInt("unhired_merc_deaths_medium", 2);
 	unhired_merc_deaths_hard = gp.getOptionalInt("unhired_merc_deaths_hard", 3);
 
+	blast_penetration = gp.getOptionalUInt("blast_penetration", 0);
+
 	enable_stat_healing = gp.getOptionalBool("enable_stat_healing", false);
 
 	training_speed_modifier = gp.getOptionalUInt("training_speed_modifier", 100);

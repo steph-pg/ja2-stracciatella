@@ -333,6 +333,12 @@
   "unhired_merc_deaths_medium": 2,
   "unhired_merc_deaths_hard": 3,
 
+  //  Percentage of blast damage that passes through a wall, closed door or roof
+  //  with no armour. Tougher materials let proportionally less through, e.g.
+  //  about 3/4 of this for wood, 1/3 for concrete and none for indestructible walls.
+  //  vanilla setting: 0 (walls stop the blast, roofs let only a little debris through)
+  "blast_penetration": 0,
+
   "enable_stat_healing": false,
 
   //  Percentage modifier to the training points a merc earns each hour from

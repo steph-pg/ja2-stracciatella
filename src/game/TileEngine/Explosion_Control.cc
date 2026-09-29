@@ -886,8 +886,52 @@ INT16 ReduceDamageAmount(INT16 damage, UINT8 radius, UINT32 distance) {
 	return newDamage;
 }
 
+// Percentage of a blast that passes through a wall, closed door or roof,
+// shrinking with the armour of its material
+static UINT8 BlastLeakThrough(STRUCTURE const* const s)
+{
+	if (!s) return 0;
+	UINT8 const armour = gubMaterialArmour[s->pDBStructureRef->pDBStructure->ubArmour];
+	if (armour >= 100) return 0;
+	return gamepolicy(blast_penetration) * (100 - armour) / 100;
+}
+
+// Finds the toughest wall or door a blast ray may cross when it steps into
+// to_grid_no in direction dir
+static STRUCTURE* FindBlastBarrier(GridNo const to_grid_no, UINT8 const dir)
+{
+	GridNo const from_grid_no = to_grid_no - DirectionInc(dir);
+	GridNo candidates[] = { from_grid_no, to_grid_no, NOWHERE, NOWHERE };
+	if (dir & 1)
+	{
+		// A diagonal step passes the corner of the two tiles beside it
+		candidates[2] = NewGridNo(from_grid_no, DirectionInc((dir + 7) % 8));
+		candidates[3] = NewGridNo(from_grid_no, DirectionInc((dir + 1) % 8));
+	}
+
+	STRUCTURE* barrier = NULL;
+	UINT8 barrier_armour = 0;
+	for (GridNo const grid_no : candidates)
+	{
+		if (grid_no == NOWHERE) continue;
+		for (STRUCTURE* s = gpWorldLevelData[grid_no].pStructureHead; s; s = s->pNext)
+		{
+			if (s->sCubeOffset != STRUCTURE_ON_GROUND) continue;
+			if (!(s->fFlags & STRUCTURE_WALLSTUFF)) continue;
+			UINT8 const armour = gubMaterialArmour[s->pDBStructureRef->pDBStructure->ubArmour];
+			if (!barrier || armour > barrier_armour)
+			{
+				barrier        = s;
+				barrier_armour = armour;
+			}
+		}
+	}
+	return barrier;
+}
+
 // Spreads the effects of explosions...
-static BOOLEAN ExpAffect(const INT16 sBombGridNo, const INT16 sGridNo, const UINT32 uiDist, const UINT16 usItem, SOLDIERTYPE* const owner, const INT16 sSubsequent, BOOLEAN* const pfMercHit, const INT8 bLevel, const SMOKEEFFECT* const smoke)
+// leak is the percentage of the blast left after the walls it passed through
+static BOOLEAN ExpAffect(const INT16 sBombGridNo, const INT16 sGridNo, const UINT32 uiDist, const UINT16 usItem, SOLDIERTYPE* const owner, const INT16 sSubsequent, BOOLEAN* const pfMercHit, const INT8 bLevel, const SMOKEEFFECT* const smoke, const UINT8 leak)
 {
 	INT16 sWoundAmt = 0, sBreathAmt = 0;
 	BOOLEAN fRecompileMovementCosts = FALSE;
@@ -935,6 +979,7 @@ static BOOLEAN ExpAffect(const INT16 sBombGridNo, const INT16 sGridNo, const UIN
 			sWoundAmt += (INT16)(sWoundAmt * gamepolicy(explosives_skill_damage_bonus) * EffectiveExplosive(owner) / 10000);
 		}
 		sWoundAmt = ReduceDamageAmount(sWoundAmt, blastEffect->radius, uiDist);
+		sWoundAmt = sWoundAmt * leak / 100;
 
 		if (sWoundAmt > 0) {
 			// damage structures
@@ -991,6 +1036,7 @@ static BOOLEAN ExpAffect(const INT16 sBombGridNo, const INT16 sGridNo, const UIN
 		// Calculate breath amount ( if stun damage applicable )
 		sBreathAmt = ( stunEffect->breathDamage * 100 ) + (INT16) ( ( ( stunEffect->breathDamage / 2 ) * 100 * uiRoll ) / 100 );
 		sBreathAmt = ReduceDamageAmount(sBreathAmt, stunEffect->radius, uiDist);
+		sBreathAmt = sBreathAmt * leak / 100;
 	}
 	if (smokeEffect)
 	{
@@ -1029,7 +1075,18 @@ static BOOLEAN ExpAffect(const INT16 sBombGridNo, const INT16 sGridNo, const UIN
 				SOLDIERTYPE* const tgt_below = WhoIsThere2(sGridNo, 0);
 				if (tgt_below != NULL)
 				{
-					if ( (sWoundAmt / 2) > 20 )
+					UINT8 const roof_leak = BlastLeakThrough(FindStructure(sGridNo, STRUCTURE_ROOF));
+					if (roof_leak > 0)
+					{
+						// the blast punches through the roof
+						INT16 const wound  = sWoundAmt  * roof_leak / 100;
+						INT16 const breath = sBreathAmt * roof_leak / 100;
+						if (wound || breath)
+						{
+							DamageSoldierFromBlast(tgt_below, owner, sBombGridNo, wound, breath, uiDist, usItem);
+						}
+					}
+					else if ( (sWoundAmt / 2) > 20 )
 					{
 						// debris damage!
 						const INT16 breath = sBreathAmt / 2 - 20 > 0 ? Random(sBreathAmt / 2 - 20) : 1;
@@ -1052,7 +1109,9 @@ static BOOLEAN ExpAffect(const INT16 sBombGridNo, const INT16 sGridNo, const UIN
 }
 
 
-static void GetRayStopInfo(UINT32 uiNewSpot, UINT8 ubDir, INT8 bLevel, BOOLEAN fSmokeEffect, INT32 uiCurRange, INT32* piMaxRange, UINT8* pubKeepGoing)
+// pubLeak is the percentage of the blast still carried by the ray, or NULL
+// when walls stop it outright
+static void GetRayStopInfo(UINT32 uiNewSpot, UINT8 ubDir, INT8 bLevel, BOOLEAN fSmokeEffect, INT32 uiCurRange, INT32* piMaxRange, UINT8* pubKeepGoing, UINT8* pubLeak)
 {
 	INT8      bStructHeight;
 	UINT8     ubMovementCost;
@@ -1063,6 +1122,7 @@ static void GetRayStopInfo(UINT32 uiNewSpot, UINT8 ubDir, INT8 bLevel, BOOLEAN f
 	STRUCTURE *pBlockingStructure;
 	BOOLEAN   fBlowWindowSouth = FALSE;
 	BOOLEAN   fReduceRay = TRUE;
+	BOOLEAN   fCaveWall = FALSE;
 
 	ubMovementCost = gubWorldMovementCosts[ uiNewSpot ][ ubDir ][ bLevel ];
 
@@ -1094,6 +1154,7 @@ static void GetRayStopInfo(UINT32 uiNewSpot, UINT8 ubDir, INT8 bLevel, BOOLEAN f
 		{
 			// block completely!
 			fTravelCostObs = TRUE;
+			fCaveWall      = TRUE;
 		}
 		else if ( pBlockingStructure->pDBStructureRef->pDBStructure->ubDensity <= 15 )
 		{
@@ -1267,6 +1328,13 @@ static void GetRayStopInfo(UINT32 uiNewSpot, UINT8 ubDir, INT8 bLevel, BOOLEAN f
 		}
 	}
 
+	// A blast can punch through a wall or closed door, losing strength
+	if (!(*pubKeepGoing) && fTravelCostObs && !fCaveWall && pubLeak && *pubLeak > 0)
+	{
+		*pubLeak = *pubLeak * BlastLeakThrough(FindBlastBarrier(uiNewSpot, ubDir)) / 100;
+		if (*pubLeak > 0) *pubKeepGoing = TRUE;
+	}
+
 	if (bLevel == 1)
 	{
 		// We check for roof-level and structure to prevent smoke spreading over roof
@@ -1289,10 +1357,13 @@ void SpreadEffect(const INT16 sGridNo, const UINT8 ubRadius, const UINT16 usItem
 	BOOLEAN fRecompileMovement = FALSE;
 	BOOLEAN fAnyMercHit = FALSE;
 	BOOLEAN fSmokeEffect = FALSE;
+	// Gas stays behind walls, only blasts can punch through them
+	BOOLEAN fPenetrates  = FALSE;
 
 	if (usItem != NOTHING) {
 		auto explosive = GCM->getExplosive(usItem);
 		fSmokeEffect = explosive->getSmokeEffect() != NULL && smoke != NULL;
+		fPenetrates  = explosive->getSmokeEffect() == NULL && gamepolicy(blast_penetration) > 0;
 	}
 
 	// Set values for recompile region to optimize area we need to recompile for MPs
@@ -1305,7 +1376,7 @@ void SpreadEffect(const INT16 sGridNo, const UINT8 ubRadius, const UINT16 usItem
 	sRange = ubRadius * 2;
 
 	// first, affect main spot
-	if (ExpAffect(sGridNo, sGridNo, 0, usItem, owner, fSubsequent, &fAnyMercHit, bLevel, smoke))
+	if (ExpAffect(sGridNo, sGridNo, 0, usItem, owner, fSubsequent, &fAnyMercHit, bLevel, smoke, 100))
 	{
 		fRecompileMovement = TRUE;
 	}
@@ -1315,6 +1386,8 @@ void SpreadEffect(const INT16 sGridNo, const UINT8 ubRadius, const UINT16 usItem
 		uiTempSpot = sGridNo;
 
 		uiTempRange = sRange;
+
+		UINT8 ubLeak = 100;
 
 		INT32 cnt;
 		if (ubDir & 1)
@@ -1339,7 +1412,7 @@ void SpreadEffect(const INT16 sGridNo, const UINT8 ubRadius, const UINT16 usItem
 			else
 			{
 				// Check if struct is a tree, etc and reduce range...
-				GetRayStopInfo( uiNewSpot, ubDir, bLevel, fSmokeEffect, cnt, &uiTempRange, &ubKeepGoing );
+				GetRayStopInfo( uiNewSpot, ubDir, bLevel, fSmokeEffect, cnt, &uiTempRange, &ubKeepGoing, fPenetrates ? &ubLeak : NULL );
 			}
 
 			if (ubKeepGoing)
@@ -1348,7 +1421,7 @@ void SpreadEffect(const INT16 sGridNo, const UINT8 ubRadius, const UINT16 usItem
 
 				SLOGD("Explosion affects {}", uiNewSpot);
 				// ok, do what we do here...
-				if (ExpAffect(sGridNo, uiNewSpot, cnt / 2, usItem, owner, fSubsequent, &fAnyMercHit, bLevel, smoke))
+				if (ExpAffect(sGridNo, uiNewSpot, cnt / 2, usItem, owner, fSubsequent, &fAnyMercHit, bLevel, smoke, ubLeak))
 				{
 					fRecompileMovement = TRUE;
 				}
@@ -1360,6 +1433,7 @@ void SpreadEffect(const INT16 sGridNo, const UINT8 ubRadius, const UINT16 usItem
 				{
 					// ok, there's a branch here. Mark where we start this branch.
 					uiBranchSpot = uiNewSpot;
+					UINT8 ubBranchLeak = ubLeak;
 
 					// figure the branch direction - which is one dir clockwise
 					ubBranchDir = (ubDir + 1) % 8;
@@ -1381,13 +1455,13 @@ void SpreadEffect(const INT16 sGridNo, const UINT8 ubRadius, const UINT16 usItem
 						if (uiNewSpot != uiBranchSpot)
 						{
 							// Check if struct is a tree, etc and reduce range...
-							GetRayStopInfo( uiNewSpot, ubBranchDir, bLevel, fSmokeEffect, branchCnt, &ubBranchRange, &ubKeepGoing );
+							GetRayStopInfo( uiNewSpot, ubBranchDir, bLevel, fSmokeEffect, branchCnt, &ubBranchRange, &ubKeepGoing, fPenetrates ? &ubBranchLeak : NULL );
 
 							if ( ubKeepGoing )
 							{
 								// ok, do what we do here
 								SLOGD("Explosion affects {}", uiNewSpot);
-								if (ExpAffect(sGridNo, uiNewSpot, (INT16)((cnt + branchCnt) / 2), usItem, owner, fSubsequent, &fAnyMercHit, bLevel, smoke))
+								if (ExpAffect(sGridNo, uiNewSpot, (INT16)((cnt + branchCnt) / 2), usItem, owner, fSubsequent, &fAnyMercHit, bLevel, smoke, ubBranchLeak))
 								{
 									fRecompileMovement = TRUE;
 								}

@@ -136,6 +136,8 @@ public:
 	int8_t unhired_merc_deaths_medium;       // Maximum unhired mercs KIA difficulty Medium
 	int8_t unhired_merc_deaths_hard;       // Maximum unhired mercs KIA difficulty Hard
 
+	uint8_t blast_penetration; // % of blast damage passing an unarmoured wall, closed door or roof (0 = vanilla)
+
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
 
 	uint16_t training_speed_modifier;     // % modifier to the training points a merc earns from practice and from being taught by a teammate (100 = vanilla, 200 = twice as fast)
