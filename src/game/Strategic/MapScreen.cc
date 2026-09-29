@@ -3021,6 +3021,8 @@ static void HandleModShift(UINT const key)
 
 			if (!CommonTimeCompressionChecks())
 			{
+				// remember the player's compression, unless a run is already pending
+				if (!gfStopTimeCompressionNextHour) giTimeCompressModeAfterNextHour = giTimeCompressMode;
 				SetGameTimeCompressionLevel(TIME_COMPRESS_60MINS);
 				// only arm the stop if we were actually allowed to start compressing
 				gfStopTimeCompressionNextHour = IsTimeCompressionOn();

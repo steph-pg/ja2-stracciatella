@@ -87,6 +87,7 @@ static BOOLEAN gfTimeCompressionOn = FALSE;
 UINT32         guiLockPauseStateLastReasonId = 0;
 // run time compression until the next hour, then stop it
 bool           gfStopTimeCompressionNextHour = false;
+INT32          giTimeCompressModeAfterNextHour = TIME_COMPRESS_X0;
 //***When adding new saved time variables, make sure you remove the appropriate amount from the paddingbytes and
 //   more IMPORTANTLY, add appropriate code in Save/LoadGameClock()!
 #define TIME_PADDINGBYTES 20

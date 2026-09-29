@@ -41,7 +41,14 @@ void HandleHourlyUpdate()
 	// the player asked for time compression to run only until the next hour
 	if ( gfStopTimeCompressionNextHour )
 	{
-		SetGameTimeCompressionLevel( TIME_COMPRESS_X0 );
+		// stop the clock like plain Space does, keeping the compression the player
+		// had before, so the next Space resumes at that rate
+		giTimeCompressMode = giTimeCompressModeAfterNextHour;
+		StopTimeCompression();
+		gfStopTimeCompressionNextHour = false;
+		// drop the rest of the current clock slice, otherwise a long frame lets
+		// the clock run several minutes past the hour before it stops
+		InterruptTime();
 	}
 
 	// hourly update of team assignments
