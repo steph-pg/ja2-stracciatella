@@ -391,6 +391,27 @@ properties:
       How much (in percent) does the to-hit chance increase if using a laser scope?
 
       Vanilla setting: `20`
+  aim_bonus_bipod:
+    $ref: types/int8.schema.yaml
+    title: Aim bonus from bipod
+    description: |
+      Extra to-hit bonus for a bipod when shooting prone, in percent of the prone bonus itself.
+
+      Vanilla setting: `50`
+  sniperscope_min_distance:
+    $ref: types/int16.schema.yaml
+    title: Sniper scope minimum distance
+    description: |
+      Distance to the target beyond which a sniper scope starts to help. 10 per 1 tile.
+
+      Vanilla setting: `60`
+  laserscope_max_distance:
+    $ref: types/int16.schema.yaml
+    title: Laser scope maximum distance
+    description: |
+      Distance to the target up to which a laser scope still gives its bonus. 10 per 1 tile. `0` means no limit.
+
+      Vanilla setting: `0`
   range_penalty_silencer:
     $ref: types/int16.schema.yaml
     title: Range penalty from silencer
@@ -836,6 +857,9 @@ required:
   - aim_bonus_per_std_ap
   - aim_bonus_sniperscope
   - aim_bonus_laserscope
+  - aim_bonus_bipod
+  - sniperscope_min_distance
+  - laserscope_max_distance
   - range_penalty_silencer
   - range_bonus_barrel_extender
   - thrown_range_modifier

@@ -91,6 +91,9 @@ public:
 	int8_t aim_bonus_per_std_ap;          // Aim bonus % for first 4 AP (aim clicks) spent
 	int8_t aim_bonus_sniperscope;         // Flat bonus after at suitable range
 	int8_t aim_bonus_laserscope;          // Aim bonus in the dark
+	int8_t aim_bonus_bipod;               // Extra prone bonus from a bipod, in percent of the prone bonus
+	int16_t sniperscope_min_distance;      // Distance beyond which the sniper scope helps
+	int16_t laserscope_max_distance;       // Distance up to which the laser scope helps, 0 = unlimited
 	int16_t range_penalty_silencer;        // Absolute penalty to range from silencer
 	int16_t range_bonus_barrel_extender;   // Aim bonus from extender
 

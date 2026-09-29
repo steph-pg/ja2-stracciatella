@@ -210,6 +210,16 @@
   "aim_bonus_sniperscope": 8,
   "aim_bonus_laserscope": 16,
 
+  //  Extra aim bonus for a bipod when prone, in percent of the prone bonus.
+  //  vanilla setting (%): 50
+  "aim_bonus_bipod": 50,
+
+  //  Distance beyond which a sniper scope starts to help, and up to which
+  //  a laser scope still helps (0 means no limit). 10 per 1 tile.
+  //  vanilla setting: 60, 0
+  "sniperscope_min_distance": 60,
+  "laserscope_max_distance": 0,
+
   //  Range bonuses and penalties. 10 per 1 tile.
   //  vanilla setting: 0, 100
   "range_penalty_silencer": 0,

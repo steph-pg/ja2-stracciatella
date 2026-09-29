@@ -55,7 +55,7 @@
 #define BASIC_DEPRECIATE_CHANCE	15
 
 #define NORMAL_RANGE		90 // # world units considered an 'avg' shot
-#define MIN_SCOPE_RANGE	60 // # world units after which scope's useful
+#define MIN_SCOPE_RANGE	gamepolicy(sniperscope_min_distance) // # world units after which scope's useful
 
 #define MIN_TANK_RANGE		120 // range at which tank starts really having trouble aiming
 
@@ -63,6 +63,10 @@
 #define SNIPERSCOPE_AIM_BONUS	gamepolicy(aim_bonus_sniperscope)
 // bonus to hit with working laser scope
 #define LASERSCOPE_BONUS	gamepolicy(aim_bonus_laserscope)
+// # world units up to which the laser scope is useful, 0 means unlimited
+#define MAX_LASERSCOPE_RANGE	gamepolicy(laserscope_max_distance)
+// extra prone bonus for a bipod, in percent of the prone bonus
+#define BIPOD_AIM_BONUS	gamepolicy(aim_bonus_bipod)
 
 #define CRITICAL_HIT_THRESHOLD	30
 
@@ -2119,8 +2123,8 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 			bAttachPos = FindAttachment( pInHand, BIPOD );
 			if (bAttachPos != ITEM_NOT_FOUND)
 			{
-				// extra bonus to hit for a bipod, up to half the prone bonus itself
-				iBonus += (iBonus * WEAPON_STATUS_MOD(pInHand->bAttachStatus[bAttachPos]) / 100) / 2;
+				// extra bonus to hit for a bipod, up to BIPOD_AIM_BONUS percent of the prone bonus itself
+				iBonus += (iBonus * WEAPON_STATUS_MOD(pInHand->bAttachStatus[bAttachPos]) / 100) * BIPOD_AIM_BONUS / 100;
 			}
 			iChance += iBonus;
 		}
@@ -2316,8 +2320,9 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 		}
 
 		bAttachPos = FindAttachment( pInHand, LASERSCOPE );
-		if (usInHand == ROCKET_RIFLE || usInHand == AUTO_ROCKET_RIFLE ||
-			bAttachPos != NO_SLOT) // rocket rifle has one built in
+		if ((usInHand == ROCKET_RIFLE || usInHand == AUTO_ROCKET_RIFLE ||
+			bAttachPos != NO_SLOT) && // rocket rifle has one built in
+			(MAX_LASERSCOPE_RANGE == 0 || iRange <= MAX_LASERSCOPE_RANGE))
 		{
 			INT8 bLaserStatus;
 

@@ -66,6 +66,9 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	aim_bonus_per_std_ap = gp.getOptionalInt("aim_bonus_per_std_ap", 10);
 	aim_bonus_sniperscope = gp.getOptionalInt("aim_bonus_sniperscope", 20);
 	aim_bonus_laserscope = gp.getOptionalInt("aim_bonus_laserscope", 20);
+	aim_bonus_bipod = gp.getOptionalInt("aim_bonus_bipod", 50);
+	sniperscope_min_distance = gp.getOptionalInt("sniperscope_min_distance", 60);
+	laserscope_max_distance = gp.getOptionalInt("laserscope_max_distance", 0);
 	range_penalty_silencer = gp.getOptionalInt("range_penalty_silencer", 0);
 	range_bonus_barrel_extender = gp.getOptionalInt("range_bonus_barrel_extender", 100);
 
