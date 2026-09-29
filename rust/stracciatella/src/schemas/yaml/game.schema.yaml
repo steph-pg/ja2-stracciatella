@@ -531,6 +531,19 @@ properties:
 
       Vanilla setting: `3`
   
+  blast_penetration:
+    $ref: types/uint8.schema.yaml
+    title: Blast penetration
+    description: |
+      Percentage of blast and stun damage that passes through a wall, closed
+      door or roof with no armour. The share is reduced by the material's
+      armour: about 3/4 of it for wood, 1/2 for stone, 1/3 for concrete and
+      none for indestructible walls. Several walls in a row compound. When 0,
+      walls stop the blast completely and soldiers under a roof only take a
+      little debris damage.
+
+      Vanilla setting: `0`
+
   enable_stat_healing:
     type: boolean
     title: Enable stat healing
