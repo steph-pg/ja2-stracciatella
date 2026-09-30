@@ -1,6 +1,7 @@
 #ifndef _MAP_INTERFACE_MAP_INVEN_H
 #define _MAP_INTERFACE_MAP_INVEN_H
 
+#include "JA2Types.h"
 #include "Types.h"
 #include "World_Items.h"
 
@@ -35,6 +36,15 @@ extern std::vector<WORLDITEM> pInventoryPoolList;
 
 // autoplace down object
 void AutoPlaceObjectInInventoryStash(OBJECTTYPE* pItemPtr);
+
+// whether this left click is a ctrl+click that moves items between the merc and the sector inventory
+bool IsSectorInventoryCtrlClick();
+
+// whether s can drop items into the sector inventory on display, tells the player why not otherwise
+bool CanDropItemsInSectorInventory(SOLDIERTYPE const& s);
+
+// put all of o into the sector inventory on display, as dropped there by s
+void PlaceObjectInSectorInventory(OBJECTTYPE& o, SOLDIERTYPE const& s);
 
 // the current inventory item
 extern INT32 iCurrentlyHighLightedItem;

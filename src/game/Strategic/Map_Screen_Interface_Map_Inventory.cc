@@ -1,3 +1,4 @@
+#include "Assignments.h"
 #include "Auto_Resolve.h"
 #include "Directories.h"
 #include "Font.h"
@@ -21,6 +22,8 @@
 #include "Interface_Utils.h"
 #include "Text.h"
 #include "Font_Control.h"
+#include "GamePolicy.h"
+#include "Input.h"
 #include "StrategicMap.h"
 #include "World_Items.h"
 #include "Tactical_Save.h"
@@ -506,6 +509,7 @@ static void MapInvenPoolSlotsMove(MOUSE_REGION* pRegion, UINT32 iReason)
 
 
 static void BeginInventoryPoolPtr(OBJECTTYPE* pInventorySlot);
+static void MoveStashObjectToMerc(OBJECTTYPE& slot_o, SOLDIERTYPE& s);
 static BOOLEAN CanPlayerUseSectorInventory(void);
 static BOOLEAN PlaceObjectInInventoryStash(OBJECTTYPE* pInventorySlot, OBJECTTYPE* pItemPtr);
 
@@ -528,7 +532,7 @@ static void MapInvenPoolSlotsPrimary(MOUSE_REGION* const pRegion, const UINT32 i
 	}
 
 	// Valid character?
-	const SOLDIERTYPE* const s = GetSelectedInfoChar();
+	SOLDIERTYPE* const s = GetSelectedInfoChar();
 	if (s == NULL)
 	{
 		DoMapMessageBox(MSG_BOX_BASIC_STYLE, pMapInventoryErrorString[0], MAP_SCREEN, MSG_BOX_FLAG_OK, NULL);
@@ -559,7 +563,14 @@ static void MapInvenPoolSlotsPrimary(MOUSE_REGION* const pRegion, const UINT32 i
 	if (gpItemPointer == NULL)
 	{
 		sObjectSourceGridNo = slot.sGridNo;
-		BeginInventoryPoolPtr(&slot.o);
+		if (IsSectorInventoryCtrlClick())
+		{
+			MoveStashObjectToMerc(slot.o, *s);
+		}
+		else
+		{
+			BeginInventoryPoolPtr(&slot.o);
+		}
 	}
 	else
 	{
@@ -766,6 +777,58 @@ static void BeginInventoryPoolPtr(OBJECTTYPE* pInventorySlot)
 }
 
 
+// ctrl+click: hand the item (or the whole stack with shift) straight to the merc
+static void MoveStashObjectToMerc(OBJECTTYPE& slot_o, SOLDIERTYPE& s)
+{
+	if (!MapCharacterHasAccessibleInventory(s)) return;
+
+	OBJECTTYPE o{};
+	if (_KeyDown(SHIFT))
+	{
+		RemoveObjectFromStashSlot(&slot_o, &o);
+	}
+	else
+	{
+		GetObjFromInventoryStashSlot(&slot_o, &o);
+	}
+	if (o.ubNumberOfObjects == 0) return;
+
+	UINT16 old_items[NUM_INV_SLOTS];
+	for (UINT32 i = 0; i != NUM_INV_SLOTS; ++i) old_items[i] = s.inv[i].usItem;
+
+	AutoPlaceObject(&s, &o, FALSE);
+
+	for (UINT32 i = 0; i != NUM_INV_SLOTS; ++i)
+	{
+		if (s.inv[i].usItem != old_items[i])
+		{
+			HandleTacticalEffectsOfEquipmentChange(&s, i, old_items[i], s.inv[i].usItem);
+		}
+	}
+
+	// whatever did not fit goes back where it came from
+	if (o.ubNumberOfObjects > 0)
+	{
+		if (slot_o.ubNumberOfObjects == 0)
+		{
+			slot_o = o;
+		}
+		else
+		{
+			StackObjs(&o, &slot_o, o.ubNumberOfObjects);
+		}
+	}
+
+	fInterfacePanelDirty     = DIRTYLEVEL2;
+	fCharacterInfoPanelDirty = TRUE;
+	fTeamPanelDirty          = TRUE;
+	fMapPanelDirty           = TRUE;
+
+	// re-evaluate repairs
+	gfReEvaluateEveryonesNothingToDo = TRUE;
+}
+
+
 // get this item out of the stash slot
 static BOOLEAN GetObjFromInventoryStashSlot(OBJECTTYPE* pInventorySlot, OBJECTTYPE* pItemPtr)
 {
@@ -915,6 +978,80 @@ void AutoPlaceObjectInInventoryStash(OBJECTTYPE* pItemPtr)
 
 	// remove a like number of objects from pObj
 	RemoveObjs( pItemPtr, ubNumberToDrop );
+}
+
+
+bool IsSectorInventoryCtrlClick()
+{
+	return fShowMapInventoryPool && _KeyDown(CTRL) &&
+		gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_CTRL, HK_LEFT_CLICK));
+}
+
+
+bool CanDropItemsInSectorInventory(SOLDIERTYPE const& s)
+{
+	if (s.sSector.x != sSelMap.x           ||
+			s.sSector.y != sSelMap.y           ||
+			s.sSector.z != iCurrentMapSectorZ ||
+			s.fBetweenSectors)
+	{
+		ST::string buf = st_format_printf(pMapInventoryErrorString[4], s.name);
+		DoMapMessageBox(MSG_BOX_BASIC_STYLE, buf, MAP_SCREEN, MSG_BOX_FLAG_OK, NULL);
+		return false;
+	}
+
+	// If in battle inform player they will have to do this in tactical
+	if (!CanPlayerUseSectorInventory())
+	{
+		DoMapMessageBox(MSG_BOX_BASIC_STYLE, pMapInventoryErrorString[3], MAP_SCREEN, MSG_BOX_FLAG_OK, NULL);
+		return false;
+	}
+
+	return true;
+}
+
+
+void PlaceObjectInSectorInventory(OBJECTTYPE& o, SOLDIERTYPE const& s)
+{
+	const ItemModel* const item       = GCM->getItem(o.usItem);
+	UINT8            const slot_limit = item->getPerPocket();
+
+	// top up the stacks already there first
+	if (item->isMoney() || slot_limit >= 2)
+	{
+		for (WORLDITEM& wi : pInventoryPoolList)
+		{
+			if (o.ubNumberOfObjects == 0) break;
+			if (wi.o.ubNumberOfObjects == 0 || wi.o.usItem != o.usItem) continue;
+			if (!(wi.usFlags & WORLD_ITEM_REACHABLE)) continue;
+			if (!item->isMoney() && wi.o.ubNumberOfObjects >= slot_limit) continue;
+			PlaceObjectInInventoryStash(&wi.o, &o);
+		}
+	}
+
+	// then fill empty slots, adding a page when the list runs out
+	for (size_t i = 0; o.ubNumberOfObjects > 0; ++i)
+	{
+		if (i == pInventoryPoolList.size())
+		{
+			pInventoryPoolList.insert(pInventoryPoolList.end(), MAP_INVENTORY_POOL_SLOT_COUNT, WORLDITEM{});
+		}
+
+		WORLDITEM& wi = pInventoryPoolList[i];
+		if (wi.o.ubNumberOfObjects != 0) continue;
+
+		PlaceObjectInInventoryStash(&wi.o, &o);
+		wi.sGridNo                  = s.sGridNo;
+		wi.ubLevel                  = s.bLevel;
+		wi.usFlags                  = WORLD_ITEM_REACHABLE;
+		wi.bRenderZHeightAboveLevel = 0;
+		if (s.sGridNo == NOWHERE)
+		{
+			wi.usFlags |= WORLD_ITEM_GRIDNO_NOT_SET_USE_ENTRY_POINT;
+		}
+	}
+
+	fMapPanelDirty = TRUE;
 }
 
 

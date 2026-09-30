@@ -184,6 +184,7 @@ bool DefaultGamePolicy::isHotkeyEnabled(UIMode mode, HotkeyModifier modifier, ui
 			switch(key)
 			{
 				case 'i':         return extra_hotkeys;
+				case HK_LEFT_CLICK: return extra_hotkeys; // move items to/from the sector inventory
 			}
 		}
 		else if(modifier == HKMOD_SHIFT)

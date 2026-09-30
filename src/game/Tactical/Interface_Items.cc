@@ -1994,6 +1994,27 @@ static void ItemDescAttachmentsCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iRe
 			DoAttachment();
 		}
 	}
+	else if (guiCurrentItemDescriptionScreen == MAP_SCREEN && gpItemDescSoldier && IsSectorInventoryCtrlClick())
+	{
+		// ctrl+click: drop the attachment straight into the sector inventory
+		if (gpItemDescObject->usAttachItem[uiItemPos] == NOTHING) return;
+		if (!CanDropItemsInSectorInventory(*gpItemDescSoldier)) return;
+
+		OBJECTTYPE o{};
+		if (RemoveAttachment(gpItemDescObject, (UINT8)uiItemPos, &o))
+		{
+			PlaceObjectInSectorInventory(o, *gpItemDescSoldier);
+
+			fInterfacePanelDirty = DIRTYLEVEL2;
+			fTeamPanelDirty = TRUE;
+
+			// re-evaluate repairs
+			gfReEvaluateEveryonesNothingToDo = TRUE;
+
+			UpdateItemHatches();
+			SetAttachmentTooltips();
+		}
+	}
 	else
 	{
 		// ATE: Make sure we have enough AP's to drop it if we pick it up!
