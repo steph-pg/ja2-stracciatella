@@ -13,6 +13,9 @@
   //  Press 'alt+r' to reload
   //  Press 'ctrl+q' to swap hand items
   //  Press 'shift+j' to climb through open window
+  //  With the sector inventory open in strategic view, 'ctrl+left click' moves an item between the merc
+  //  and the sector inventory ('ctrl+shift+left click' moves the whole stack), including an attachment
+  //  clicked in the item description box.
   "extra_hotkeys": true,
 
   //  Press d in realtime mode to manually start turn based mode.

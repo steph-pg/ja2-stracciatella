@@ -3659,6 +3659,37 @@ void MAPInternalInitItemDescriptionBox(OBJECTTYPE* pObject, UINT8 ubStatusIndex,
 static void MAPBeginItemPointer(SOLDIERTYPE* pSoldier, UINT8 ubHandPos);
 
 
+// ctrl+click: drop the item (or the whole stack with shift) straight into the sector inventory
+static void MAPMoveItemToSectorInventory(SOLDIERTYPE* const pSoldier, UINT8 const ubHandPos)
+{
+	if (!CanDropItemsInSectorInventory(*pSoldier)) return;
+
+	UINT16 const usOldItemIndex = pSoldier->inv[ubHandPos].usItem;
+
+	OBJECTTYPE o{};
+	if (_KeyDown(SHIFT))
+	{
+		RemoveObjectFromSlot(pSoldier, ubHandPos, &o);
+	}
+	else
+	{
+		GetObjFrom(&pSoldier->inv[ubHandPos], 0, &o);
+	}
+	if (o.ubNumberOfObjects == 0) return;
+
+	PlaceObjectInSectorInventory(o, *pSoldier);
+
+	HandleTacticalEffectsOfEquipmentChange(pSoldier, ubHandPos, usOldItemIndex, pSoldier->inv[ubHandPos].usItem);
+
+	fInterfacePanelDirty = DIRTYLEVEL2;
+	fCharacterInfoPanelDirty = TRUE;
+	fTeamPanelDirty = TRUE;
+
+	// re-evaluate repairs
+	gfReEvaluateEveryonesNothingToDo = TRUE;
+}
+
+
 // this is Map Screen's version of SMInvClickCallback()
 static void MAPInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 {
@@ -3680,6 +3711,12 @@ static void MAPInvClickCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason)
 		//ATE: Put this here to handle Nails refusal....
 		if ( HandleNailsVestFetish( pSoldier, uiHandPos, NOTHING ) )
 		{
+			return;
+		}
+
+		if (IsSectorInventoryCtrlClick())
+		{
+			MAPMoveItemToSectorInventory(pSoldier, (UINT8)uiHandPos);
 			return;
 		}
 
