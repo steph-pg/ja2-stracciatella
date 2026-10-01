@@ -1856,7 +1856,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 		// look for a shot as well: it will find one when a team-mate has the opponent in
 		// sight. Not every turn, though - an enemy that shoots the moment it has any
 		// target at all never advances or takes cover.
-		if (gamepolicy(enemy_shoot_unseen) && PreChance(60))
+		if (gamepolicy(enemy_shoot_unseen))
 		{
 			BestShot.ubPossible = FALSE;
 
@@ -1936,7 +1936,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 						bool const fCanBurst = IsGunBurstCapable(pSoldier, HANDPOS) &&
 							pSoldier->inv[HANDPOS].ubGunShotsLeft > 1 && bAPsForAttack >= ubBurstAPs;
 
-						if (fTooUnlikelyForSingle && fCanBurst)
+						if (fTooUnlikelyForSingle && fCanBurst && Chance(60))
 						{
 							pSoldier->bDoBurst = 1;
 							pSoldier->bAimTime = 0;

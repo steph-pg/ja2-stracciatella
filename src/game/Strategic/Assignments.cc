@@ -2259,7 +2259,7 @@ static void HandleTrainingInSector(const SGPSector& sector)
 								// teaching sharpens the instructor too - FROM_SUCCESS, because
 								// the instructor is not the one being trained
 								StatChange(*pTrainer, LDRAMT,    sTrainingPtsDueToInstructor, FROM_SUCCESS);
-								StatChange(*pTrainer, WISDOMAMT, sTrainingPtsDueToInstructor, FROM_SUCCESS);
+								// StatChange(*pTrainer, WISDOMAMT, sTrainingPtsDueToInstructor, FROM_SUCCESS);
 
 								// add the bonus to what merc can learn on his own
 								sTotalTrainingPts += sTrainingPtsDueToInstructor;
@@ -2669,7 +2669,7 @@ static void TrainSoldierWithPts(SOLDIERTYPE* const s, const INT16 train_pts)
 	StatChange(*s, stat, train_pts, FROM_TRAINING);
 
 	// wisdom improves at half the rate of the skill being studied
-	if (fSharpensWisdom) StatChange(*s, WISDOMAMT, train_pts / 2, FROM_TRAINING);
+	// if (fSharpensWisdom) StatChange(*s, WISDOMAMT, train_pts / 2, FROM_TRAINING);
 }
 
 
@@ -2682,7 +2682,7 @@ static BOOLEAN TrainTownInSector(SOLDIERTYPE* pTrainer, const SGPSector& sector,
 
 	// trainer gains leadership and wisdom - training argument is FROM_SUCCESS, because the trainer is not the one training!
 	StatChange(*pTrainer, LDRAMT,    1 + sTrainingPts / 200, FROM_SUCCESS);
-	StatChange(*pTrainer, WISDOMAMT, 1 + sTrainingPts / 400, FROM_SUCCESS);
+	// StatChange(*pTrainer, WISDOMAMT, 1 + sTrainingPts / 400, FROM_SUCCESS);
 
 	// increase town's training completed percentage
 	pSectorInfo -> ubMilitiaTrainingPercentDone += (sTrainingPts / 100);

@@ -3700,7 +3700,7 @@ void MoveBullet(BULLET* const pBullet)
 						if (tgt.bSide != pBullet->pFirer->bSide || pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS)
 						{
 							// buckshot has only a 1 in 2 chance of applying a suppression point
-							if ( !(pBullet->usFlags & BULLET_FLAG_BUCKSHOT) || Random( 2 ) )
+							// if ( !(pBullet->usFlags & BULLET_FLAG_BUCKSHOT) || Random( 2 ) )
 							{
 								// bullet goes whizzing by this guy!
 								switch (gAnimControl[tgt.usAnimState].ubEndHeight)

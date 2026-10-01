@@ -412,7 +412,7 @@
         "volatility": 2,
         "isPressureTriggered": true,
         "ubWeight": 8,
-        "ubPerPocket": 1,
+        "ubPerPocket": 4,
         "usPrice": 300,
         "ubCoolness": 5,
         "bReliability": 0,

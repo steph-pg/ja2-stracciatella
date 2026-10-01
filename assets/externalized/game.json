@@ -86,7 +86,7 @@
   //  or when either side attacks. An attack that starts combat is paid for out of the
   //  attacker's first turn. Combine with "can_enter_turnbased" to switch on demand.
   //  vanilla setting: false
-  "realtime_sneak": false,
+  "realtime_sneak": true,
   
   //  Allow interrupts after being shot at on an earlier turn. In vanilla, being under fire blocks a
   //  soldier's interrupts until their own turn begins, so an attack silences them for the whole next
@@ -123,7 +123,7 @@
     //  With this setting on when possible enemies select target location when threshold cth is reached against that
     //  body part, with head being higher priority.
     //  vanilla values: false, N/A, N/A
-    "better_aiming_choice": true,
+    "better_aiming_choice": false,
     "threshold_cth_head": 67,
     "threshold_cth_legs": 67,
     //  When already facing its focus, lay down if nothing else.
@@ -153,7 +153,7 @@
     //  vanilla value: false
     "enemy_shoot_unseen": true,
     "prioritize_cover":  true,
-    "avoid_light_tiles_at_night": false
+    "avoid_light_tiles_at_night": true
   },
 
   //  How much variation should there be in elite soldier xp level?
@@ -174,7 +174,7 @@
   //  Enables extra GUI features. Currently includes:
   //  Progress Bars for the Mercs stats in tactical Mode.
   //  vanilla_setting: false
-  "gui_extras": true,
+  "gui_extras": false,
 
   //  Holding ALT over a visible enemy shows a box with their weapon type, armour pieces
   //  and head gear. Weapon and armour are only named by type, head gear is named exactly.
@@ -204,28 +204,28 @@
   //  vanilla_setting: 1, 99, 1.5, 0.5
   "chance_to_hit_minimum": 1,
   "chance_to_hit_maximum": 80,
-  "tactical_head_damage_multiplier": 1.5,
-  "tactical_legs_damage_multiplier": 0.5,
+  "tactical_head_damage_multiplier": 1.7,
+  "tactical_legs_damage_multiplier": 0.7,
 
   //  Aim bonus per spent AP and for using scopes
   //  vanilla setting (%): 10, 20, 20
-  "aim_bonus_per_std_ap": 5,
-  "aim_bonus_sniperscope": 8,
-  "aim_bonus_laserscope": 16,
+  "aim_bonus_per_std_ap": 8,
+  "aim_bonus_sniperscope": 16,
+  "aim_bonus_laserscope": 20,
 
   //  Extra aim bonus for a bipod when prone, in percent of the prone bonus.
   //  vanilla setting (%): 50
-  "aim_bonus_bipod": 50,
+  "aim_bonus_bipod": 80,
 
   //  Distance beyond which a sniper scope starts to help, and up to which
   //  a laser scope still helps (0 means no limit). 10 per 1 tile.
   //  vanilla setting: 60, 0
-  "sniperscope_min_distance": 60,
-  "laserscope_max_distance": 0,
+  "sniperscope_min_distance": 200,
+  "laserscope_max_distance": 200,
 
   //  Range bonuses and penalties. 10 per 1 tile.
   //  vanilla setting: 0, 100
-  "range_penalty_silencer": 0,
+  "range_penalty_silencer": 10,
   "range_bonus_barrel_extender": 100,
 
   //  Percentage modifier to the maximum range of hand-thrown items (grenades, throwing knives).
@@ -237,7 +237,7 @@
   //  Percentage modifier to how much a merc can carry before their load counts as 100%.
   //  Vanilla capacity is 500 grams per point of Strength, with each point above 80 counting double.
   //  vanilla setting: 100
-  "carry_capacity_modifier": 100,
+  "carry_capacity_modifier": 90,
 
   //  Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
   //  vanilla setting: false
@@ -372,12 +372,12 @@
   //  an autoresolve battle and run for it. Survivors are handed back to the
   //  queen's pool of reinforcements. Militia and creatures never retreat.
   //  vanilla setting: 0 (enemies always fight to the death)
-  "enemy_autoresolve_retreat_health_percent": 0,
+  "enemy_autoresolve_retreat_health_percent": 40,
 
   //  Percentage bonus to blast damage at 100 Explosives, scaling linearly with the
   //  skill of whoever threw, fired or planted the explosive.
   //  vanilla setting: 0
-  "explosives_skill_damage_bonus": 0,
+  "explosives_skill_damage_bonus": 20,
 
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
@@ -404,7 +404,7 @@
   //  Threshold (numerator) above which a suppressed soldier drops to a lower stance.
   //  Set to 0 to make soldiers always react (1.13 behaviour); raise it to make them even more resistant (it's not the same as suppression tolerance).
   //  vanilla setting: 130
-  "suppression_fire_reaction_threshold": 130,
+  "suppression_fire_reaction_threshold": 0,
 
   //  Night vision gear runs on batteries.
   //    true  - NV and UV goggles only extend sight while batteries are attached
@@ -415,5 +415,5 @@
   //            extra_attachments option is on, so a merc can carry some there.
   //    false - vanilla behaviour, the goggles work forever.
   //  vanilla setting: false
-  "night_goggles_need_batteries": true
+  "night_goggles_need_batteries": false
 }
