@@ -1224,6 +1224,26 @@ static void HandleDoctorsInSector(const SGPSector& sector)
 {
 	// will handle doctor/patient relationship in sector
 
+	// patients under treatment this hour pick up a little medical know-how,
+	// checked before healing so the last hour of treatment still counts
+	FOR_EACH_IN_TEAM(p, OUR_TEAM)
+	{
+		if (p->sSector != sector) continue;
+		if (p->bAssignment != PATIENT) continue;
+		CFOR_EACH_IN_TEAM(d, OUR_TEAM)
+		{
+			if (d->sSector != sector) continue;
+			if (d->bAssignment != DOCTOR) continue;
+			if (SleptThroughPastHour(*d)) continue;
+			if (!CanCharacterDoctor(d))    continue;
+			if (!EnoughTimeOnAssignment(*d)) continue;
+			if (!CanSoldierBeHealedByDoctor(p, d, HEALABLE_THIS_HOUR, FALSE, FALSE)) continue;
+			StatChange(*p, MEDICALAMT, 1, FROM_SUCCESS);
+			StatChange(*p, EXPERAMT,   1, FROM_SUCCESS);
+			break;
+		}
+	}
+
 	// go through list of characters, find all doctors in sector
 	FOR_EACH_IN_TEAM(i, OUR_TEAM)
 	{
