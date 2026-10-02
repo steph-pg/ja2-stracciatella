@@ -184,6 +184,11 @@
   //  vanilla setting: false
   "diagonally_interactable_doors": false,
 
+  //  Shooting open a container lock can damage what is inside. Each bullet that hits the lock
+  //  also hits one random item in the container, at half the damage dealt to the lock.
+  //  vanilla setting: false
+  "shot_locks_damage_contents": false,
+
   //  IMP creation tweaks
   "imp": {
     //  IMP attribute point defaults:

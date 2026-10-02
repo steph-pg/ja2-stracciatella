@@ -2260,6 +2260,32 @@ static INT32 StructureResistanceIncreasedByRange(INT32 iImpactReduction, INT32 i
 }
 
 
+// A bullet that hits the lock of a container may go through into one of the
+// items stored inside
+static void DamageShotContainerContents(STRUCTURE const* const pStructure, GridNo const sGridNo, INT16 const sLockDamage, SOLDIERTYPE* const owner)
+{
+	// Doors also carry STRUCTURE_OPENABLE, but have nothing inside
+	if (pStructure->fFlags & (STRUCTURE_ANYDOOR & ~STRUCTURE_OPENABLE)) return;
+
+	INT8 const bLevel = pStructure->sCubeOffset == STRUCTURE_ON_ROOF ? 1 : 0;
+	std::vector<ITEM_POOL*> contents;
+	for (ITEM_POOL* pItemPool = GetItemPool(sGridNo, bLevel); pItemPool; pItemPool = pItemPool->pNext)
+	{
+		UINT16 const usItem = GetWorldItem(pItemPool->iItemIndex).o.usItem;
+		if (usItem == ACTION_ITEM || usItem == OWNERSHIP) continue;
+		contents.push_back(pItemPool);
+	}
+	if (contents.empty()) return;
+
+	WORLDITEM& wi = GetWorldItem(contents[PreRandom(contents.size())]->iItemIndex);
+	if (DamageItemOnGround(&wi.o, sGridNo, bLevel, sLockDamage / 2, owner))
+	{
+		// item was destroyed
+		RemoveItemFromPool(wi);
+	}
+}
+
+
 static INT32 HandleBulletStructureInteraction(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN* pfHit)
 {
 	DOOR  *pDoor;
@@ -2311,6 +2337,12 @@ static INT32 HandleBulletStructureInteraction(BULLET* pBullet, STRUCTURE* pStruc
 				sLockDamage += (INT16) PreRandom( sLockDamage );
 
 				ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, TacticalStr[ LOCK_HAS_BEEN_HIT ] );
+
+				// before damageLock, which may remove pDoor from the door table
+				if (gamepolicy(shot_locks_damage_contents))
+				{
+					DamageShotContainerContents(pStructure, pDoor->sGridNo, sLockDamage, pBullet->pFirer);
+				}
 
 				// Check if it has been shot!
 				if (pDoor->damageLock(sLockDamage))
