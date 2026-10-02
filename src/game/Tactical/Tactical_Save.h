@@ -52,6 +52,7 @@ void AddRottingCorpseToUnloadedSectorsRottingCorpseFile(const SGPSector& sMap, R
 #define ADD_DEAD_SOLDIER_TO_SWEETSPOT			0x00000002 // Finds the closet free gridno
 
 #define ADD_DEAD_SOLDIER__USE_JFK_HEADSHOT_CORPSE	0x00000040 // Will ue the JFK headshot
+#define ADD_DEAD_SOLDIER_FULL_DROPS			0x00000080 // Drop items at the tactical rate, not the reduced autoresolve one
 
 
 

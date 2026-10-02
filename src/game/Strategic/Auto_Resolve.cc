@@ -1790,6 +1790,10 @@ static void RemoveAutoResolveInterface()
 	}
 
 	// Record and process all enemy deaths
+	/* With mercs in the fight the enemies drop their gear as they would in
+	 * tactical; militia fighting alone keep the reduced autoresolve rate. */
+	UINT32 const enemy_corpse_flags = ADD_DEAD_SOLDIER_TO_SWEETSPOT |
+		(ar.ubMercs ? ADD_DEAD_SOLDIER_FULL_DROPS : 0);
 	for (INT32 i = 0; i != 32; ++i)
 	{
 		if (!gpEnemies[i].pSoldier) continue;
@@ -1806,7 +1810,7 @@ static void RemoveAutoResolveInterface()
 		TrackEnemiesKilled(ENEMY_KILLED_IN_AUTO_RESOLVE, s.ubSoldierClass);
 		HandleGlobalLoyaltyEvent(GLOBAL_LOYALTY_ENEMY_KILLED, arSector);
 		ProcessQueenCmdImplicationsOfDeath(&s);
-		AddDeadSoldierToUnLoadedSector(arSector, &s, RandomGridNo(), ADD_DEAD_SOLDIER_TO_SWEETSPOT);
+		AddDeadSoldierToUnLoadedSector(arSector, &s, RandomGridNo(), enemy_corpse_flags);
 	}
 
 	/* Eliminate all excess soldiers (as more than 32 can exist in the same
