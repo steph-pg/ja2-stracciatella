@@ -193,6 +193,8 @@ bool DefaultGamePolicy::isHotkeyEnabled(UIMode mode, HotkeyModifier modifier, ui
 			switch(key)
 			{
 				case ' ':         return extra_hotkeys; // SDLK_SPACE
+				case HK_LEFT_CLICK:
+				case HK_RIGHT_CLICK: return extra_hotkeys; // assign/unassign all militia of a type
 			}
 		}
 	}

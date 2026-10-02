@@ -6,12 +6,15 @@
 #include "ContentManager.h"
 #include "Debug.h"
 #include "Directories.h"
+#include "English.h"
 #include "Finances.h"
 #include "Font.h"
 #include "Font_Control.h"
 #include "Game_Clock.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "HImage.h"
+#include "Input.h"
 #include "Interface.h"
 #include "Line.h"
 #include "Map_Information.h"
@@ -52,6 +55,7 @@
 #include "VObject.h"
 #include "VObject_Blitters.h"
 #include "VSurface.h"
+#include <algorithm>
 #include <stdexcept>
 #include <string_theory/format>
 #include <string_theory/string>
@@ -2628,7 +2632,7 @@ static INT16& GetPickedUpMilitia(UINT8 const type)
 
 
 // function to manipulate the number of towns people on the cursor
-static void PickUpATownPersonFromSector(UINT8 const type, UINT8 const sector)
+static void PickUpATownPersonFromSector(UINT8 const type, UINT8 const sector, UINT8 const count)
 {
 	// Are they in the same town as they were picked up from?
 	if (GetTownIdForSector(sector) != sSelectedMilitiaTown) return;
@@ -2639,14 +2643,15 @@ static void PickUpATownPersonFromSector(UINT8 const type, UINT8 const sector)
 	// See if there are any militia of this type in this sector
 	if (n_type == 0) return;
 
-	--n_type;                   // Reduce number in this sector
-	++GetPickedUpMilitia(type); // Pick this guy up
+	UINT8 const n = std::min(count, n_type);
+	n_type                   -= n; // Reduce number in this sector
+	GetPickedUpMilitia(type) += n; // Pick these guys up
 	fMapPanelDirty = TRUE;
 	if (sector == GetWorldSector()) gfStrategicMilitiaChangesMade = TRUE;
 }
 
 
-static void DropAPersonInASector(UINT8 const type, UINT8 const sector)
+static void DropAPersonInASector(UINT8 const type, UINT8 const sector, UINT8 const count)
 {
 	// Are they in the same town as they were picked up from?
 	if (GetTownIdForSector(sector) != sSelectedMilitiaTown) return;
@@ -2654,14 +2659,16 @@ static void DropAPersonInASector(UINT8 const type, UINT8 const sector)
 	if (!SectorOursAndPeaceful(SGPSector(sector))) return;
 
 	UINT8 (&n_milita)[MAX_MILITIA_LEVELS] = SectorInfo[sector].ubNumberOfCivsAtLevel;
-	if (n_milita[GREEN_MILITIA] + n_milita[REGULAR_MILITIA] + n_milita[ELITE_MILITIA] >= MAX_ALLOWABLE_MILITIA_PER_SECTOR) return;
+	int const n_free = MAX_ALLOWABLE_MILITIA_PER_SECTOR - (n_milita[GREEN_MILITIA] + n_milita[REGULAR_MILITIA] + n_milita[ELITE_MILITIA]);
+	if (n_free <= 0) return;
 
-	// Drop the guy into this sector
+	// Drop the guys into this sector
 	INT16& n_type = GetPickedUpMilitia(type);
 	if (n_type == 0) return;
 
-	--n_type;
-	++n_milita[type]; // Up the number in this sector of this type of militia
+	UINT8 const n = std::min({ int(count), n_free, int(n_type) });
+	n_type         -= n;
+	n_milita[type] += n; // Up the number in this sector of this type of militia
 	fMapPanelDirty = TRUE;
 	if (sector == GetWorldSector()) gfStrategicMilitiaChangesMade = TRUE;
 }
@@ -3038,6 +3045,13 @@ static void SetMilitiaMapButtonsText()
 }
 
 
+// shift+click moves all militia of the type at once
+static UINT8 MilitiaButtonClickCount(uint32_t const click)
+{
+	return _KeyDown(SHIFT) && gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_SHIFT, click)) ? UINT8_MAX : 1;
+}
+
+
 static void MilitiaButtonCallbackPrimary(GUI_BUTTON *btn, UINT32 reason)
 {
 	INT32 const iValue = btn->GetUserData();
@@ -3046,7 +3060,7 @@ static void MilitiaButtonCallbackPrimary(GUI_BUTTON *btn, UINT32 reason)
 	INT16 sBaseSectorValue = GetBaseSectorForCurrentTown();
 	INT16 sGlobalMapSector = sBaseSectorValue + sSectorMilitiaMapSector % MILITIA_BOX_ROWS + sSectorMilitiaMapSector / MILITIA_BOX_ROWS * 16;
 
-	DropAPersonInASector(iValue, sGlobalMapSector);
+	DropAPersonInASector(iValue, sGlobalMapSector, MilitiaButtonClickCount(HK_LEFT_CLICK));
 }
 
 static void MilitiaButtonCallbackSecondary(GUI_BUTTON *btn, UINT32 reason)
@@ -3057,7 +3071,7 @@ static void MilitiaButtonCallbackSecondary(GUI_BUTTON *btn, UINT32 reason)
 	INT16 sBaseSectorValue = GetBaseSectorForCurrentTown();
 	INT16 sGlobalMapSector = sBaseSectorValue + sSectorMilitiaMapSector % MILITIA_BOX_ROWS + sSectorMilitiaMapSector / MILITIA_BOX_ROWS * 16;
 
-	PickUpATownPersonFromSector(iValue, sGlobalMapSector);
+	PickUpATownPersonFromSector(iValue, sGlobalMapSector, MilitiaButtonClickCount(HK_RIGHT_CLICK));
 }
 
 
