@@ -17,6 +17,10 @@ enum HotkeyModifier
 	HKMOD_CTRL_SHIFT
 };
 
+// not SDL keycodes: mouse buttons, for modifier+click shortcuts
+#define HK_LEFT_CLICK 1
+#define HK_RIGHT_CLICK 3
+
 #define gamepolicy(element) (GCM->getGamePolicy()->element)
 
 class GamePolicy

@@ -159,6 +159,14 @@ bool DefaultGamePolicy::isHotkeyEnabled(UIMode mode, HotkeyModifier modifier, ui
 				case 'i':         return extra_hotkeys;
 			}
 		}
+		else if(modifier == HKMOD_SHIFT)
+		{
+			switch(key)
+			{
+				case HK_LEFT_CLICK:
+				case HK_RIGHT_CLICK: return extra_hotkeys; // assign/unassign all militia of a type
+			}
+		}
 	}
 
 	return false;

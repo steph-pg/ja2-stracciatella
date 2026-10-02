@@ -13,6 +13,8 @@
   //  Press 'alt+r' to reload
   //  Press 'ctrl+q' to swap hand items
   //  Press 'shift+j' to climb through open window
+  //  In the militia assignment box, 'shift+left click' on a militia type assigns all unassigned militia
+  //  of that type to the sector, 'shift+right click' unassigns all of them
   "extra_hotkeys": true,
 
   //  Press d in realtime mode to manually start turn based mode.
