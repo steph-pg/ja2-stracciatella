@@ -862,7 +862,7 @@ void AddDeadSoldierToUnLoadedSector(const SGPSector& sMap, SOLDIERTYPE* const s,
 			{
 				// This percent of the time, they don't drop stuff they would've dropped
 				// in tactical
-				if (Random(100) < 75)
+				if (!(flags & ADD_DEAD_SOLDIER_FULL_DROPS) && Random(100) < 75)
 				{
 					o.fFlags |= OBJECT_UNDROPPABLE;
 					continue;
