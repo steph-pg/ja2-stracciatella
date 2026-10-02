@@ -109,6 +109,7 @@ public:
 	float website_loading_time_scale;     // Scales the loading time of websites on the laptop. Lower value means faster loading. Setting this to 0.0 removes the loading entirely.
 
 	bool diagonally_interactable_doors;   // Open doors without exposing your mercs too much. Also affects switches.
+	bool shot_locks_damage_contents;      // A bullet that hits a container lock may damage an item stored inside, vanilla false
 
 	bool locksmith_kit_wear;              // botched lock picks wear the locksmith kit down until it is used up, and its status no longer affects the picking chance (false = vanilla, kits never wear out)
 
