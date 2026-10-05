@@ -197,9 +197,9 @@ properties:
           Enemy guards on rooftop are disallowed to climb down
           
           Vanilla setting: `false`
-      prioritize_cover:
+      smarter_cover_search:
         type: boolean
-        title: Prioritize cover
+        title: Smarter cover search
         description: |
           Makes the AI treat cover as something worth going out of its way for, in three ways.
 
