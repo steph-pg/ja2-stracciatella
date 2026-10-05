@@ -201,7 +201,7 @@ properties:
         type: boolean
         title: Prioritize cover
         description: |
-          Makes the AI treat cover as something worth going out of its way for, in four ways.
+          Makes the AI treat cover as something worth going out of its way for, in three ways.
 
           When it sizes up a tile it asks how exposed that tile would be to an opponent who stood
           up and fired, rather than to the stance that opponent happens to be in. A merc crouched
@@ -218,10 +218,6 @@ properties:
           Every soldier searches its whole cover radius. The original limit of one tile per 8 points
           of Wisdom left an average soldier looking four or five tiles out and walking straight past
           the wall two steps beyond that, which reads as stupidity rather than as low Wisdom.
-
-          An enemy that is either shaken or more than a dozen tiles from the nearest merc it knows
-          about takes cover before it seeks a fight or settles for turning to face one. Closer in it
-          still prefers to keep its action points for a reaction shot.
 
           Vanilla setting: `false`
     required:
