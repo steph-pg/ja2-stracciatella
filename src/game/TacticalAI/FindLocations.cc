@@ -659,139 +659,17 @@ static UINT32 AddWatchedLocThreats(SOLDIERTYPE* pSoldier, UINT32 uiThreatCnt, IN
 }
 
 
-INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentBetter)
+// Fill Threat[] with the opponents pSoldier knows of that are close enough to
+// matter, and - with the smarter cover search - the tiles it has been shot at from.
+// Returns how many threats there are.
+static UINT32 BuildCoverThreatList(SOLDIERTYPE* pSoldier, INT32 iMaxThreatRange)
 {
-	// all 32-bit integers for max. speed
-	INT32 iCurrentCoverValue, iCoverValue, iBestCoverValue;
-	INT32 iCurrentScale, iCoverScale;
-	INT32 iDistFromOrigin, iDistCoverFromOrigin, iThreatCertainty;
-	INT16 sGridNo, sBestCover = NOWHERE;
-	INT32 iPathCost;
-	INT32 iThreatRange, iClosestThreatRange = 1500;
-//	INT16 sClosestThreatGridno = NOWHERE;
-	INT32 iMyThreatValue;
+	INT32 iThreatRange, iThreatCertainty;
 	INT16 sThreatLoc;
-	INT32 iMaxThreatRange;
-	UINT32 uiThreatCnt = 0;
-	INT32 iMaxMoveTilesLeft, iSearchRange, iRoamRange;
-	INT16 sMaxLeft, sMaxRight, sMaxUp, sMaxDown, sXOffset, sYOffset;
-	INT16 sOrigin;	// has to be a short, need a pointer
 	INT16 *pusLastLoc;
 	INT8 *pbPersOL;
 	INT8 *pbPublOL;
-
-	UINT8 ubBackgroundLightLevel;
-	UINT8 ubBackgroundLightPercent = 0;
-	UINT8 ubLightPercentDifference;
-	BOOLEAN fNight;
-
-	INT32 iBestCoverScale = 0; // XXX HACK000E
-
-	bool const fHasGasMask = IsWearingHeadGear(*pSoldier, GASMASK);
-
-	if (gWorldSector.z > 0)
-	{
-		fNight = FALSE;
-	}
-	else
-	{
-		ubBackgroundLightLevel = GetTimeOfDayAmbientLightLevel();
-
-		if ( ubBackgroundLightLevel < NORMAL_LIGHTLEVEL_DAY + 2 )
-		{
-			fNight = FALSE;
-		}
-		else
-		{
-			fNight = TRUE;
-			ubBackgroundLightPercent = gbLightSighting[ 0 ][ ubBackgroundLightLevel ];
-		}
-	}
-
-
-	iBestCoverValue = -1;
-
-#if defined( _DEBUG ) && !defined( PATHAI_VISIBLE_DEBUG )
-	if (gfDisplayCoverValues)
-	{
-		std::fill_n(gsCoverValue, WORLD_MAX, 0x7F7F);
-	}
-#endif
-
-	// BUILD A LIST OF THREATENING GRID #s FROM PERSONAL & PUBLIC opplists
-
-	pusLastLoc = &(gsLastKnownOppLoc[pSoldier->ubID][0]);
-
-	// hang a pointer into personal opplist
-	pbPersOL = &(pSoldier->bOppList[0]);
-	// hang a pointer into public opplist
-	pbPublOL = &(gbPublicOpplist[pSoldier->bTeam][0]);
-
-	// decide how far we're gonna be looking
-	iSearchRange = gbDiff[DIFF_MAX_COVER_RANGE][ SoldierDifficultyLevel( pSoldier ) ];
-
-	/*
-	switch (pSoldier->bAttitude)
-	{
-		case DEFENSIVE:		iSearchRange += 2; break;
-		case BRAVESOLO:		iSearchRange -= 4; break;
-		case BRAVEAID:		iSearchRange -= 4; break;
-		case CUNNINGSOLO:	iSearchRange += 4; break;
-		case CUNNINGAID:	iSearchRange += 4; break;
-		case AGGRESSIVE:	iSearchRange -= 2; break;
-	}*/
-
-
-	// maximum search range is 1 tile / 8 pts of wisdom - but with the smarter
-	// cover search everyone looks for it as though they had 100 Wisdom. The cap left
-	// the average soldier searching four or five tiles and walking past the wall
-	// two steps beyond that, which reads as stupidity rather than as the low
-	// Wisdom it is meant to model.
-	INT32 const iCoverSearchWisdom = gamepolicy(ai_smarter_cover_search) ? 100 : pSoldier->bWisdom;
-	if (iSearchRange > (iCoverSearchWisdom / 8))
-	{
-		iSearchRange = (iCoverSearchWisdom / 8);
-	}
-
-	if (!gfTurnBasedAI)
-	{
-		// don't search so far in realtime
-		iSearchRange /= 2;
-	}
-
-	if (pSoldier->bAlertStatus >= STATUS_RED)          // if already in battle
-	{
-		UINT16 const usMovementMode = DetermineMovementMode(pSoldier, AI_ACTION_TAKE_COVER);
-
-		// must be able to reach the cover, so it can't possibly be more than
-		// action points left (rounded down) tiles away, since minimum
-		// cost to move per tile is 1 points.
-		iMaxMoveTilesLeft = std::max(0, pSoldier->bActionPoints - MinAPsToStartMovement( pSoldier, usMovementMode ));
-
-		// if we can't go as far as the usual full search range
-		if (iMaxMoveTilesLeft < iSearchRange)
-		{
-			// then limit the search range to only as far as we CAN go
-			iSearchRange = iMaxMoveTilesLeft;
-		}
-	}
-
-	// FindBestPath only fills gubAIPathCosts for a square of AI_PATHCOST_RADIUS
-	// tiles, and clamps gubNPCDistLimit to match, so tiles past that never come
-	// back flagged reachable. Stop here rather than scan a ring we always skip -
-	// and keep the offsets below inside the array they index.
-	iSearchRange = std::min<INT32>(iSearchRange, AI_PATHCOST_RADIUS);
-
-	if (iSearchRange <= 0)
-	{
-		return(NOWHERE);
-	}
-
-	// those within 20 tiles of any tile we'll CONSIDER as cover are important
-	iMaxThreatRange = MAX_THREAT_RANGE + (CELL_X_SIZE * iSearchRange);
-
-	// calculate OUR OWN general threat value (not from any specific location)
-	iMyThreatValue = CalcManThreatValue(pSoldier,NOWHERE,FALSE,pSoldier);
+	UINT32 uiThreatCnt = 0;
 
 	// look through all opponents for those we know of
 	FOR_EACH_MERC(i)
@@ -865,12 +743,6 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 		// calculate how many APs he will have at the start of the next turn
 		Threat[uiThreatCnt].iAPs = CalcActionPoints(pOpponent);
 
-		if (iThreatRange < iClosestThreatRange)
-		{
-			iClosestThreatRange = iThreatRange;
-//			sClosestThreatGridNo = sThreatLoc;
-		}
-
 		uiThreatCnt++;
 	}
 
@@ -879,6 +751,133 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 		// the tiles opponents have been firing at us from threaten us too
 		uiThreatCnt = AddWatchedLocThreats(pSoldier, uiThreatCnt, iMaxThreatRange);
 	}
+
+	return uiThreatCnt;
+}
+
+
+INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentBetter)
+{
+	// all 32-bit integers for max. speed
+	INT32 iCurrentCoverValue, iCoverValue, iBestCoverValue;
+	INT32 iCurrentScale, iCoverScale;
+	INT32 iDistFromOrigin, iDistCoverFromOrigin;
+	INT16 sGridNo, sBestCover = NOWHERE;
+	INT32 iPathCost;
+	INT32 iThreatRange;
+	INT32 iMyThreatValue;
+	INT32 iMaxThreatRange;
+	UINT32 uiThreatCnt = 0;
+	INT32 iMaxMoveTilesLeft, iSearchRange, iRoamRange;
+	INT16 sMaxLeft, sMaxRight, sMaxUp, sMaxDown, sXOffset, sYOffset;
+	INT16 sOrigin;	// has to be a short, need a pointer
+
+	UINT8 ubBackgroundLightLevel;
+	UINT8 ubBackgroundLightPercent = 0;
+	UINT8 ubLightPercentDifference;
+	BOOLEAN fNight;
+
+	INT32 iBestCoverScale = 0; // XXX HACK000E
+
+	bool const fHasGasMask = IsWearingHeadGear(*pSoldier, GASMASK);
+
+	if (gWorldSector.z > 0)
+	{
+		fNight = FALSE;
+	}
+	else
+	{
+		ubBackgroundLightLevel = GetTimeOfDayAmbientLightLevel();
+
+		if ( ubBackgroundLightLevel < NORMAL_LIGHTLEVEL_DAY + 2 )
+		{
+			fNight = FALSE;
+		}
+		else
+		{
+			fNight = TRUE;
+			ubBackgroundLightPercent = gbLightSighting[ 0 ][ ubBackgroundLightLevel ];
+		}
+	}
+
+
+	iBestCoverValue = -1;
+
+#if defined( _DEBUG ) && !defined( PATHAI_VISIBLE_DEBUG )
+	if (gfDisplayCoverValues)
+	{
+		std::fill_n(gsCoverValue, WORLD_MAX, 0x7F7F);
+	}
+#endif
+
+	// decide how far we're gonna be looking
+	iSearchRange = gbDiff[DIFF_MAX_COVER_RANGE][ SoldierDifficultyLevel( pSoldier ) ];
+
+	/*
+	switch (pSoldier->bAttitude)
+	{
+		case DEFENSIVE:		iSearchRange += 2; break;
+		case BRAVESOLO:		iSearchRange -= 4; break;
+		case BRAVEAID:		iSearchRange -= 4; break;
+		case CUNNINGSOLO:	iSearchRange += 4; break;
+		case CUNNINGAID:	iSearchRange += 4; break;
+		case AGGRESSIVE:	iSearchRange -= 2; break;
+	}*/
+
+
+	// maximum search range is 1 tile / 8 pts of wisdom - but with the smarter
+	// cover search everyone looks for it as though they had 100 Wisdom. The cap left
+	// the average soldier searching four or five tiles and walking past the wall
+	// two steps beyond that, which reads as stupidity rather than as the low
+	// Wisdom it is meant to model.
+	INT32 const iCoverSearchWisdom = gamepolicy(ai_smarter_cover_search) ? 100 : pSoldier->bWisdom;
+	if (iSearchRange > (iCoverSearchWisdom / 8))
+	{
+		iSearchRange = (iCoverSearchWisdom / 8);
+	}
+
+	if (!gfTurnBasedAI)
+	{
+		// don't search so far in realtime
+		iSearchRange /= 2;
+	}
+
+	if (pSoldier->bAlertStatus >= STATUS_RED)          // if already in battle
+	{
+		UINT16 const usMovementMode = DetermineMovementMode(pSoldier, AI_ACTION_TAKE_COVER);
+
+		// must be able to reach the cover, so it can't possibly be more than
+		// action points left (rounded down) tiles away, since minimum
+		// cost to move per tile is 1 points.
+		iMaxMoveTilesLeft = std::max(0, pSoldier->bActionPoints - MinAPsToStartMovement( pSoldier, usMovementMode ));
+
+		// if we can't go as far as the usual full search range
+		if (iMaxMoveTilesLeft < iSearchRange)
+		{
+			// then limit the search range to only as far as we CAN go
+			iSearchRange = iMaxMoveTilesLeft;
+		}
+	}
+
+	// FindBestPath only fills gubAIPathCosts for a square of AI_PATHCOST_RADIUS
+	// tiles, and clamps gubNPCDistLimit to match, so tiles past that never come
+	// back flagged reachable. Stop here rather than scan a ring we always skip -
+	// and keep the offsets below inside the array they index.
+	iSearchRange = std::min<INT32>(iSearchRange, AI_PATHCOST_RADIUS);
+
+	if (iSearchRange <= 0)
+	{
+		return(NOWHERE);
+	}
+
+	// those within 20 tiles of any tile we'll CONSIDER as cover are important
+	iMaxThreatRange = MAX_THREAT_RANGE + (CELL_X_SIZE * iSearchRange);
+
+	// calculate OUR OWN general threat value (not from any specific location)
+	iMyThreatValue = CalcManThreatValue(pSoldier,NOWHERE,FALSE,pSoldier);
+
+	// BUILD A LIST OF THREATENING GRID #s FROM PERSONAL & PUBLIC opplists
+	uiThreatCnt = BuildCoverThreatList(pSoldier, iMaxThreatRange);
 
 	// if no known opponents were found to threaten us, can't worry about cover
 	if (!uiThreatCnt)
@@ -1159,6 +1158,173 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 		}
 	}
 	return(NOWHERE);       // return that no suitable cover was found
+}
+
+
+namespace
+{
+// Stands a soldier on another tile, in another stance, for the length of a
+// calculation, and puts them back as they were afterwards.
+struct PretendPosition
+{
+	SOLDIERTYPE& s;
+	INT16  const sRealGridNo;
+	FLOAT  const dRealX, dRealY;
+	UINT16 const usRealAnimState;
+
+	PretendPosition(SOLDIERTYPE& soldier, INT16 const sGridNo, UINT16 const usAnimState) :
+		s(soldier), sRealGridNo(soldier.sGridNo), dRealX(soldier.dXPos), dRealY(soldier.dYPos),
+		usRealAnimState(soldier.usAnimState)
+	{
+		INT16 sX, sY;
+		ConvertGridNoToCenterCellXY(sGridNo, &sX, &sY);
+		s.sGridNo     = sGridNo;
+		s.dXPos       = (FLOAT) sX;
+		s.dYPos       = (FLOAT) sY;
+		s.usAnimState = usAnimState;
+	}
+
+	~PretendPosition()
+	{
+		s.sGridNo     = sRealGridNo;
+		s.dXPos       = dRealX;
+		s.dYPos       = dRealY;
+		s.usAnimState = usRealAnimState;
+	}
+};
+}
+
+
+// How exposed pMe would be on sMyGridNo to the threats in Threat[]: each one's
+// chance to get a bullet through to us there, weighted by how dangerous it is and
+// how sure we are of it. 0 means nobody can touch us there.
+static INT32 CalcExposure(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyAPsLeft, UINT32 uiThreatCnt)
+{
+	PretendPosition const me(*pMe, sMyGridNo, pMe->usAnimState);
+
+	INT32 iExposure = 0;
+	for (UINT32 uiLoop = 0; uiLoop < uiThreatCnt; ++uiLoop)
+	{
+		if (GetRangeInCellCoordsFromGridNoDiff(sMyGridNo, Threat[uiLoop].sGridNo) > MAX_THREAT_RANGE) continue;
+
+		SOLDIERTYPE* const pHim = Threat[uiLoop].pOpponent;
+		if (InWaterOrGas(pHim, Threat[uiLoop].sGridNo)) continue;
+
+		// as in CalcCoverValue, he is judged as if he stood up to shoot
+		PretendPosition const him(*pHim, Threat[uiLoop].sGridNo, STANDING);
+		INT32 const iCTGT = CalcWorstCTGTForPosition(pHim, pMe, sMyGridNo, pMe->bLevel, iMyAPsLeft);
+
+		iExposure += iCTGT * Threat[uiLoop].iCertainty / 100 * Threat[uiLoop].iValue;
+	}
+	return iExposure;
+}
+
+
+// Our chance to get a bullet through to the target from sMyGridNo, standing to fire,
+// averaged over the heights the target may take.
+static INT8 CalcShotFrom(SOLDIERTYPE* pMe, INT16 sMyGridNo, const SOLDIERTYPE* pTarget, INT16 sTargetGridNo, INT8 bTargetLevel)
+{
+	if (InWaterGasOrSmoke(pMe, sMyGridNo)) return 0;
+
+	PretendPosition const me(*pMe, sMyGridNo, STANDING);
+	// pretend to have the APs to count all three heights
+	return CalcAverageCTGTForPosition(pMe, pTarget, sTargetGridNo, bTargetLevel, AP_CROUCH + AP_PRONE);
+}
+
+
+// A tile the soldier can reach this turn that shields it from the threats clearly
+// better than where it stands, while keeping its own line of fire at the target.
+// That is cover like a tree or a low wall right beside it: an obstacle is the more
+// likely to stop a bullet the farther that bullet has flown (see
+// ChanceOfBulletHittingStructure in LOS.cc), so cover next to us stops far more of
+// the shots coming in than of our own going out. A wall that hides us completely
+// blocks our shot too and does not qualify. NOWHERE if there is no such tile.
+INT16 FindCoverToFireFrom(SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT16 sTargetGridNo, INT8 bTargetLevel)
+{
+	UINT16 const usMovementMode = DetermineMovementMode(pSoldier, AI_ACTION_TAKE_COVER);
+
+	INT32 iSearchRange = pSoldier->bActionPoints - MinAPsToStartMovement(pSoldier, usMovementMode);
+	iSearchRange = std::min<INT32>(iSearchRange, AI_PATHCOST_RADIUS);
+	if (iSearchRange <= 0) return NOWHERE;
+
+	UINT32 const uiThreatCnt = BuildCoverThreatList(pSoldier, MAX_THREAT_RANGE + CELL_X_SIZE * iSearchRange);
+	if (uiThreatCnt == 0) return NOWHERE;
+
+	INT32 const iHereExposure = CalcExposure(pSoldier, pSoldier->sGridNo, pSoldier->bActionPoints, uiThreatCnt);
+	if (iHereExposure <= 0) return NOWHERE; // nothing gets through to us here as it is
+
+	// our shot may get a little worse, but it has to stay a real one
+	INT8 const bHereShot = CalcShotFrom(pSoldier, pSoldier->sGridNo, pTarget, sTargetGridNo, bTargetLevel);
+	INT8 const bMinShot  = std::max<INT8>(SEE_THRU_COVER_THRESHOLD, (INT8) (bHereShot * 3 / 4));
+
+	INT16 const sMaxLeft  = (INT16) std::min<INT32>(iSearchRange, pSoldier->sGridNo % MAXCOL);
+	INT16 const sMaxRight = (INT16) std::min<INT32>(iSearchRange, MAXCOL - ((pSoldier->sGridNo % MAXCOL) + 1));
+	INT16 const sMaxUp    = (INT16) std::min<INT32>(iSearchRange, pSoldier->sGridNo / MAXROW);
+	INT16 const sMaxDown  = (INT16) std::min<INT32>(iSearchRange, MAXROW - ((pSoldier->sGridNo / MAXROW) + 1));
+
+	// flag every tile we can walk to with the APs we have, as FindBestNearbyCover does
+	gubNPCAPBudget  = pSoldier->bActionPoints;
+	gubNPCDistLimit = (UINT8) iSearchRange;
+
+	for (INT16 sYOffset = -sMaxUp; sYOffset <= sMaxDown; ++sYOffset)
+	{
+		for (INT16 sXOffset = -sMaxLeft; sXOffset <= sMaxRight; ++sXOffset)
+		{
+			INT16 const sGridNo = pSoldier->sGridNo + sXOffset + (MAXCOL * sYOffset);
+			if (sGridNo < 0 || sGridNo >= WORLD_MAX) continue;
+			gpWorldLevelData[sGridNo].uiFlags &= ~(MAPELEMENT_REACHABLE);
+		}
+	}
+
+	FindBestPath(pSoldier, NOWHERE, pSoldier->bLevel, usMovementMode, COPYREACHABLE_AND_APS, 0);
+	gpWorldLevelData[pSoldier->sGridNo].uiFlags &= ~(MAPELEMENT_REACHABLE);
+
+	bool const fHasGasMask = IsWearingHeadGear(*pSoldier, GASMASK);
+
+	// worth the move only if it takes a third or more off our exposure
+	INT16 sBestSpot      = NOWHERE;
+	INT32 iBestExposure  = iHereExposure * 2 / 3;
+	INT32 iBestPathCost  = 0;
+	INT8  bBestShot      = 0;
+
+	for (INT16 sYOffset = -sMaxUp; sYOffset <= sMaxDown; ++sYOffset)
+	{
+		for (INT16 sXOffset = -sMaxLeft; sXOffset <= sMaxRight; ++sXOffset)
+		{
+			INT16 const sGridNo = pSoldier->sGridNo + sXOffset + (MAXCOL * sYOffset);
+			if (sGridNo < 0 || sGridNo >= WORLD_MAX) continue;
+
+			if (!(gpWorldLevelData[sGridNo].uiFlags & MAPELEMENT_REACHABLE)) continue;
+			if (!fHasGasMask && InGas(pSoldier, sGridNo))                    continue;
+			if (sGridNo == pSoldier->sBlackList)                             continue;
+
+			INT8 const bShot = CalcShotFrom(pSoldier, sGridNo, pTarget, sTargetGridNo, bTargetLevel);
+			if (bShot < bMinShot) continue;
+
+			INT32 const iPathCost = gubAIPathCosts[AI_PATHCOST_RADIUS + sXOffset][AI_PATHCOST_RADIUS + sYOffset];
+			INT32 const iExposure = CalcExposure(pSoldier, sGridNo, pSoldier->bActionPoints - iPathCost, uiThreatCnt);
+
+			// the least exposed spot wins, the nearer one if two are as good
+			if (iExposure < iBestExposure ||
+				(iExposure == iBestExposure && sBestSpot != NOWHERE && iPathCost < iBestPathCost))
+			{
+				sBestSpot     = sGridNo;
+				iBestExposure = iExposure;
+				iBestPathCost = iPathCost;
+				bBestShot     = bShot;
+			}
+		}
+	}
+
+	gubNPCAPBudget  = 0;
+	gubNPCDistLimit = 0;
+
+	if (sBestSpot != NOWHERE)
+	{
+		SLOGD("FindCoverToFireFrom: soldier {} moves from {} to {}, exposure {} -> {}, shot {} -> {}",
+			pSoldier->ubID, pSoldier->sGridNo, sBestSpot, iHereExposure, iBestExposure, bHereShot, bBestShot);
+	}
+	return sBestSpot;
 }
 
 INT16 FindSpotMaxDistFromOpponents(SOLDIERTYPE *pSoldier)
