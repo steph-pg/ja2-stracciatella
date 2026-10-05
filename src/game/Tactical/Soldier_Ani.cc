@@ -160,10 +160,8 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 		// Check for special code
 		if ( sNewAniFrame < 399 )
 		{
-			// Handle muzzel flashes. This counts frames actually drawn, not script codes
-			// processed: a script can hold several codes between the flash code and the
-			// next real frame (the burst script holds one more than the single-shot one),
-			// and counting those expires the flash before it is ever rendered.
+			// Handle muzzel flashes, counting frames actually drawn rather than
+			// script codes processed
 			if ( pSoldier->bMuzFlashCount > 0 )
 			{
 				// FLash for about 3 frames
@@ -468,9 +466,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					// DO ONLY IF WE'RE AT A GOOD LEVEL
 					if (ubAmbientLightLevel < MIN_AMB_LEVEL_FOR_MERC_LIGHTS) break;
 
-					// The previous round's flash may still be alive - a burst runs this
-					// code once per round, as does two-pistol shooting - and only one
-					// sprite is tracked, so let go of the old one instead of leaking it.
+					// Only one sprite is tracked, so let go of the previous round's
 					if (pSoldier->muzzle_flash != NULL)
 					{
 						LightSpriteDestroy(pSoldier->muzzle_flash);
@@ -738,10 +734,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 					if ( fStop )
 					{
-						// The flash for this round was lit one code earlier and no frame has
-						// been drawn since. Whatever stops the burst here - a jam, an empty
-						// magazine, or the last round of the burst already spent - means the
-						// round it was lit for is never fired, so put it out before it shows.
+						// This round is not fired after all, put its flash out before it shows
 						if (pSoldier->muzzle_flash != NULL)
 						{
 							LightSpriteDestroy(pSoldier->muzzle_flash);

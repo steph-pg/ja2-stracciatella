@@ -46,6 +46,12 @@ bool CanDropItemsInSectorInventory(SOLDIERTYPE const& s);
 // put all of o into the sector inventory on display, as dropped there by s
 void PlaceObjectInSectorInventory(OBJECTTYPE& o, SOLDIERTYPE const& s);
 
+// merge all stackable items in the sector inventory into full stacks and re-sort the list
+void StackAndSortMapInventoryPool(void);
+
+// top up every copy the mercs in this sector carry of the highlighted item, using the sector stash as the source
+void RefillMercItemsFromMapInventoryPool(void);
+
 // the current inventory item
 extern INT32 iCurrentlyHighLightedItem;
 extern BOOLEAN fFlashHighLightInventoryItemOnradarMap;

@@ -19,6 +19,8 @@
   //  clicked in the item description box.
   //  In the militia assignment box, 'shift+left click' on a militia type assigns all unassigned militia
   //  of that type to the sector, 'shift+right click' unassigns all of them
+  //  Press 'shift+s' in the sector inventory to stack and sort it.
+  //  Press 'shift+r' in the sector inventory to refill the mercs' copies of the item pointed at.
   "extra_hotkeys": true,
 
   //  Press d in realtime mode to manually start turn based mode.
@@ -155,6 +157,9 @@
     //  vanilla value: false
     "enemy_shoot_unseen": true,
     "prioritize_cover":  true,
+
+    //  At night, AI soldiers path around lit tiles the player can see
+    //  vanilla value: false
     "avoid_light_tiles_at_night": true
   },
 
@@ -289,11 +294,7 @@
     "bonus_attribute_points": 40,
 
     //  Number of I.M.P. characters that can be created over a campaign.
-    //  0 switches the I.M.P. site off entirely.
-    //  A character holds one of the merc profiles that mercs-profile-info.json
-    //  marks as an I.M.P. slot for the rest of the campaign, so that is the upper
-    //  end: eleven as the game ships, more if the data declares more. Voices and
-    //  portraits may be reused freely and do not limit it.
+    //  0 switches the I.M.P. site off entirely, 18 is as many as a team holds.
     //  vanilla setting: 1
     "max_characters": 1,
 

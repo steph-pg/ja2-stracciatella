@@ -5,7 +5,16 @@
 #include <string_theory/string>
 
 
-#define NUM_PROFILES						170
+/* The profiles the original game shipped with. That is all prof.dat holds, and
+ * all that saves written before version 105 carry. */
+#define NUM_VANILLA_PROFILES					170
+
+/* One more than the highest profile ID there can be. NO_PROFILE is 200 and is
+ * stored in the same byte as any other profile ID -- in the maps, in the saves
+ * -- so the profiles have to stay below it. Everything from
+ * NUM_VANILLA_PROFILES up is an empty slot for the data files to fill. */
+#define NUM_PROFILES						200
+
 #define NUM_RECRUITABLE						75
 
 #define NAME_LENGTH						30
@@ -96,23 +105,35 @@ enum Attributes
 
 // Get the value of an attribute from either a MERCPROFILESTRUCT
 // or a SOLDIERTYPE.
+// isForStatsDisplay: attributeIndex is a row of the Personnel stats list,
+// where 0 is bLifeMax and mechanical comes before explosives. Otherwise
+// it is an Attributes value.
 template<typename T>
-INT8 Attribute(T const& who, int attributeIndex)
+INT8 Attribute(T const& who, int attributeIndex, bool isForStatsDisplay = false)
 {
+	if (isForStatsDisplay)
+	{
+		if (attributeIndex == 0) return who.bLifeMax;
+		--attributeIndex;
+	}
+
 	switch (attributeIndex)
 	{
-		case  0: return who.bLifeMax;
-		case  1: return who.bAgility;
-		case  2: return who.bDexterity;
-		case  3: return who.bStrength;
-		case  4: return who.bLeadership;
-		case  5: return who.bWisdom;
-		case  6: return who.bExpLevel;
-		case  7: return who.bMarksmanship;
-		case  8: return who.bMechanical;
-		case  9: return who.bExplosive;
-		case 10: return who.bMedical;
+		case ATTR_AGILITY:      return who.bAgility;
+		case ATTR_DEXTERITY:    return who.bDexterity;
+		case ATTR_STRENGTH:     return who.bStrength;
+		case ATTR_LEADERSHIP:   return who.bLeadership;
+		case ATTR_WISDOM:       return who.bWisdom;
+		case ATTR_EXPLEVEL:     return who.bExpLevel;
+		case ATTR_MARKSMANSHIP: return who.bMarksmanship;
+		case ATTR_MEDICAL:      return who.bMedical;
 		default:
+			// The Personnel stats list shows mechanical before explosives,
+			// the Attributes enum has them the other way round.
+			if (attributeIndex == ATTR_EXPLOSIVES)
+				return isForStatsDisplay ? who.bMechanical : who.bExplosive;
+			if (attributeIndex == ATTR_MECHANICAL)
+				return isForStatsDisplay ? who.bExplosive : who.bMechanical;
 			SLOGE("invalid attribute index");
 			return 0;
 	}
@@ -225,6 +246,7 @@ enum class IMPSlotState : UINT8
 	TAKEN
 };
 
+// A field added here also belongs in the saved I.M.P. file, IMPProfileJson.cc.
 struct MERCPROFILESTRUCT
 {
 	ST::string zName;

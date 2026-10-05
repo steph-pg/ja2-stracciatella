@@ -3029,6 +3029,22 @@ static void HandleModShift(UINT const key)
 			}
 			break;
 		}
+
+		case 'r':
+			// Refill the mercs' copies of the pointed at item from the sector stash
+			if (gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_SHIFT, 'r')) && fShowMapInventoryPool)
+			{
+				RefillMercItemsFromMapInventoryPool();
+			}
+			break;
+
+		case 's':
+			// Combine the sector inventory into full stacks and sort it
+			if (gamepolicy(isHotkeyEnabled(UI_Map, HKMOD_SHIFT, 's')) && fShowMapInventoryPool)
+			{
+				StackAndSortMapInventoryPool();
+			}
+			break;
 	}
 }
 

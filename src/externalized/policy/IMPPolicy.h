@@ -44,6 +44,7 @@ class IMPPolicy
 public:
 	virtual bool isCodeAccepted(const ST::string& code) const = 0;
 	virtual uint8_t getStartingLevel() const = 0;
+	virtual bool sendsProfileResultsEmail() const = 0;
 	virtual const std::vector<IMPStartingItemSet>& getInventory() const = 0;
 	virtual const std::vector<IMPVoice>& getVoices() const = 0;
 	virtual const std::vector<IMPPortrait>& getPortraits() const = 0;
@@ -89,7 +90,7 @@ public:
 		Attributes attrIdx = Internals::getAttributeEnumFromString(check);
 		if (attrIdx == Attributes::NUM_ATTRIBUTES) return false;
 
-		uint8_t checkVal = static_cast<uint8_t>(Attribute(p, attrIdx + 1)); // +1 is to skip the extra LifeMax entry
+		uint8_t checkVal = static_cast<uint8_t>(Attribute(p, attrIdx));
 		return reverse ? (value >= checkVal) : (checkVal >= value);
 	}
 };
