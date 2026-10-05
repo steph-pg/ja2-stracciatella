@@ -3141,6 +3141,25 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 			ubBestAttackAction = AI_ACTION_NONE;
 	}
 
+	// With the smarter cover search, a soldier about to open fire from an exposed
+	// spot first steps behind cover that still lets it shoot - a tree or a low wall
+	// right beside it - and fires from there on the turns to come. Getting there may
+	// take the whole turn, and that is fine: it is only tried with a fresh turn's APs.
+	if (gamepolicy(ai_smarter_cover_search) && ubBestAttackAction == AI_ACTION_FIRE_GUN &&
+		gfTurnBasedAI && ubCanMove && !SkipCoverCheck && !gfHiddenInterrupt &&
+		pSoldier->bActionPoints == pSoldier->bInitialActionPoints &&
+		pSoldier->bOrders != STATIONARY &&
+		(pSoldier->bTeam != OUR_TEAM || pSoldier->fAIFlags & AI_RTP_OPTION_CAN_SEEK_COVER) &&
+		!(pSoldier->uiStatusFlags & SOLDIER_BOXER))
+	{
+		INT16 const sFirePos = FindCoverToFireFrom(pSoldier, BestAttack.opponent, BestAttack.sTarget, BestAttack.bTargetLevel);
+		if (sFirePos != NOWHERE)
+		{
+			pSoldier->usActionData = sFirePos;
+			return AI_ACTION_TAKE_COVER;
+		}
+	}
+
 
 	// if attack is still desirable (meaning it's also preferred to taking cover)
 	if (ubBestAttackAction != AI_ACTION_NONE)
