@@ -2043,6 +2043,29 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 					//sDistVisible =  DistanceVisible( pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, gsWatchedLoc[ pSoldier->ubID ][ bHighestWatchLoc ], gbWatchedLocLevel[ pSoldier->ubID ][ bHighestWatchLoc ] );
 					if ( bHighestWatchLoc != -1 )
 					{
+						// With the smarter cover search, a soldier watching from the open for an
+						// opponent to lean out again - who steps out, fires and ducks back behind
+						// a wall all in one turn - first moves behind cover it can still shoot
+						// past at that spot, and keeps watching from there. Only tried with a
+						// fresh turn's APs; with none of that cover around it watches as before.
+						if (gamepolicy(ai_smarter_cover_search) && gfTurnBasedAI && ubCanMove &&
+							!SkipCoverCheck && pSoldier->bActionPoints == pSoldier->bInitialActionPoints &&
+							pSoldier->bOrders != STATIONARY &&
+							(pSoldier->bTeam != OUR_TEAM || pSoldier->fAIFlags & AI_RTP_OPTION_CAN_SEEK_COVER) &&
+							!(pSoldier->uiStatusFlags & SOLDIER_BOXER))
+						{
+							INT16 const sWatchedLoc = gsWatchedLoc[pSoldier->ubID][bHighestWatchLoc];
+							INT8  const bWatchedLevel = gbWatchedLocLevel[pSoldier->ubID][bHighestWatchLoc];
+							INT16 const sWatchPos = FindCoverToFireFrom(pSoldier, NULL, sWatchedLoc, bWatchedLevel);
+							if (sWatchPos != NOWHERE)
+							{
+								SLOGD("DecideActionRed: soldier {} moves to {} to watch {} from cover",
+									pSoldier->ubID, sWatchPos, sWatchedLoc);
+								pSoldier->usActionData = sWatchPos;
+								return(AI_ACTION_TAKE_COVER);
+							}
+						}
+
 						// see if we need turn to face that location
 						const UINT8 ubOpponentDir = GetDirectionToGridNoFromGridNo(pSoldier->sGridNo, gsWatchedLoc[pSoldier->ubID][bHighestWatchLoc]);
 
@@ -3155,6 +3178,8 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 		INT16 const sFirePos = FindCoverToFireFrom(pSoldier, BestAttack.opponent, BestAttack.sTarget, BestAttack.bTargetLevel);
 		if (sFirePos != NOWHERE)
 		{
+			SLOGD("DecideActionBlack: soldier {} moves to {} to fire at {} from cover",
+				pSoldier->ubID, sFirePos, BestAttack.sTarget);
 			pSoldier->usActionData = sFirePos;
 			return AI_ACTION_TAKE_COVER;
 		}

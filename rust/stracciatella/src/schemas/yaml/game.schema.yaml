@@ -224,7 +224,9 @@ properties:
           more of the bullets flying in than of its own going out, since bullets only start striking
           obstacles a few tiles into their flight. A wall that hides it completely does not count,
           as it would block its own shot too. Getting there may use up the turn; it fires from there
-          on the next ones.
+          on the next ones. The same goes for a soldier watching from the open for a merc who
+          steps out from behind a wall, fires and ducks back: it moves behind such cover first and
+          watches that spot from there.
 
           Vanilla setting: `false`
     required:
