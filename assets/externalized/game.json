@@ -164,8 +164,9 @@
     //  from a corner, firing and stepping back no longer leaves it with
     //  nothing to hide from; every soldier searches its whole cover
     //  radius instead of one tile per 8 points of Wisdom; and a soldier
-    //  about to shoot from the open first steps behind cover it can still
-    //  shoot past, such as a tree or a low wall, and fires from there.
+    //  about to shoot from the open, or watching from the open for a merc
+    //  to lean out again, first steps behind cover it can still shoot past,
+    //  such as a tree or a low wall, and fires or watches from there.
     //  vanilla value: false
     "smarter_cover_search": true,
 

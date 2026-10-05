@@ -1239,6 +1239,7 @@ static INT8 CalcShotFrom(SOLDIERTYPE* pMe, INT16 sMyGridNo, const SOLDIERTYPE* p
 // ChanceOfBulletHittingStructure in LOS.cc), so cover next to us stops far more of
 // the shots coming in than of our own going out. A wall that hides us completely
 // blocks our shot too and does not qualify. NOWHERE if there is no such tile.
+// pTarget may be NULL when the target is only a spot we expect an opponent at.
 INT16 FindCoverToFireFrom(SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT16 sTargetGridNo, INT8 bTargetLevel)
 {
 	UINT16 const usMovementMode = DetermineMovementMode(pSoldier, AI_ACTION_TAKE_COVER);

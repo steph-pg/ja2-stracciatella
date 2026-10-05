@@ -74,7 +74,7 @@ public:
 	uint8_t corpse_warning_distance;      // how far from a corpse, in tiles, the AI still heeds that warning
 	bool stay_on_rooftop;                 // AI on guard on rooftop are disallowed to go down
 	bool enemy_shoot_unseen;              // AI may shoot at an opponent a team-mate has in sight but it cannot see itself, and while only on red alert
-	bool ai_smarter_cover_search;         // AI weighs cover against opponents who could stand up and shoot and against the tiles it has been shot at from, searches its whole radius for it, and steps behind cover it can still shoot past before opening fire (false = vanilla)
+	bool ai_smarter_cover_search;         // AI weighs cover against opponents who could stand up and shoot and against the tiles it has been shot at from, searches its whole radius for it, and steps behind cover it can still shoot past before opening fire or watching for an opponent (false = vanilla)
 	bool avoid_light_tiles_at_night;      // at night, AI soldiers path around lit tiles the player can see
 
 	bool interrupt_after_being_under_fire; // only being shot at during the turn in progress blocks a soldier's interrupts; vanilla keeps them blocked through the next turn too, since the under-fire mark is only cleared once their own turn begins. Applies to mercs and AI alike
