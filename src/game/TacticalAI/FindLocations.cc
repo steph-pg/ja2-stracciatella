@@ -288,7 +288,7 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 	}
 
 
-	const bool fPrioritizeCover = gamepolicy(ai_prioritize_cover);
+	const bool fSmarterCoverSearch = gamepolicy(ai_smarter_cover_search);
 
 	// Judge his ability to hit us as if he were standing, whatever stance he is in
 	// right now. An opponent who is currently crouched or prone behind cover has no
@@ -297,7 +297,7 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 	// our own shot. Meanwhile he stands up next turn, fires, and drops back down.
 	// Assuming his most dangerous stance picks a spot that still protects us then.
 	const UINT16 usHisRealAnimState = pHim->usAnimState;
-	if (fPrioritizeCover)
+	if (fSmarterCoverSearch)
 	{
 		pHim->usAnimState = STANDING;
 	}
@@ -367,7 +367,7 @@ static INT32 CalcCoverValue(SOLDIERTYPE* pMe, INT16 sMyGridNo, INT32 iMyThreat, 
 		// a soldier lying behind an obstacle writes off every spot it could fire from
 		// after simply getting up.
 		const UINT16 usMyRealAnimState = pMe->usAnimState;
-		if (fPrioritizeCover)
+		if (fSmarterCoverSearch)
 		{
 			pMe->usAnimState = STANDING;
 		}
@@ -742,12 +742,12 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 	}*/
 
 
-	// maximum search range is 1 tile / 8 pts of wisdom - but when cover is a
-	// priority everyone looks for it as though they had 100 Wisdom. The cap left
+	// maximum search range is 1 tile / 8 pts of wisdom - but with the smarter
+	// cover search everyone looks for it as though they had 100 Wisdom. The cap left
 	// the average soldier searching four or five tiles and walking past the wall
 	// two steps beyond that, which reads as stupidity rather than as the low
 	// Wisdom it is meant to model.
-	INT32 const iCoverSearchWisdom = gamepolicy(ai_prioritize_cover) ? 100 : pSoldier->bWisdom;
+	INT32 const iCoverSearchWisdom = gamepolicy(ai_smarter_cover_search) ? 100 : pSoldier->bWisdom;
 	if (iSearchRange > (iCoverSearchWisdom / 8))
 	{
 		iSearchRange = (iCoverSearchWisdom / 8);
@@ -874,7 +874,7 @@ INT16 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 		uiThreatCnt++;
 	}
 
-	if (gamepolicy(ai_prioritize_cover))
+	if (gamepolicy(ai_smarter_cover_search))
 	{
 		// the tiles opponents have been firing at us from threaten us too
 		uiThreatCnt = AddWatchedLocThreats(pSoldier, uiThreatCnt, iMaxThreatRange);

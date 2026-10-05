@@ -156,7 +156,16 @@
     //  enough to open fire.
     //  vanilla value: false
     "enemy_shoot_unseen": true,
-    "prioritize_cover":  true,
+
+    //  The AI treats cover as something worth going out of its way for.
+    //  It weighs a tile against opponents who could stand up and shoot from
+    //  where they are, not just against the stance they happen to be in; it
+    //  also weighs the tiles it has been shot at from, so that stepping out
+    //  from a corner, firing and stepping back no longer leaves it with
+    //  nothing to hide from; and every soldier searches its whole cover
+    //  radius instead of one tile per 8 points of Wisdom.
+    //  vanilla value: false
+    "smarter_cover_search": true,
 
     //  At night, AI soldiers path around lit tiles the player can see
     //  vanilla value: false
