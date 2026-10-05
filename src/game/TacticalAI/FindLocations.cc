@@ -1245,17 +1245,35 @@ INT16 FindCoverToFireFrom(SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT
 
 	INT32 iSearchRange = pSoldier->bActionPoints - MinAPsToStartMovement(pSoldier, usMovementMode);
 	iSearchRange = std::min<INT32>(iSearchRange, AI_PATHCOST_RADIUS);
-	if (iSearchRange <= 0) return NOWHERE;
+	if (iSearchRange <= 0)
+	{
+		SLOGD("FindCoverToFireFrom: soldier {} at {} has no APs to move ({} left)",
+			pSoldier->ubID, pSoldier->sGridNo, (int) pSoldier->bActionPoints);
+		return NOWHERE;
+	}
 
 	UINT32 const uiThreatCnt = BuildCoverThreatList(pSoldier, MAX_THREAT_RANGE + CELL_X_SIZE * iSearchRange);
-	if (uiThreatCnt == 0) return NOWHERE;
+	if (uiThreatCnt == 0)
+	{
+		SLOGD("FindCoverToFireFrom: soldier {} at {} knows of no threats", pSoldier->ubID, pSoldier->sGridNo);
+		return NOWHERE;
+	}
 
 	INT32 const iHereExposure = CalcExposure(pSoldier, pSoldier->sGridNo, pSoldier->bActionPoints, uiThreatCnt);
-	if (iHereExposure <= 0) return NOWHERE; // nothing gets through to us here as it is
+	if (iHereExposure <= 0)
+	{
+		// nothing gets through to us here as it is
+		SLOGD("FindCoverToFireFrom: soldier {} at {} is already covered from all {} threats",
+			pSoldier->ubID, pSoldier->sGridNo, uiThreatCnt);
+		return NOWHERE;
+	}
 
 	// our shot may get a little worse, but it has to stay a real one
 	INT8 const bHereShot = CalcShotFrom(pSoldier, pSoldier->sGridNo, pTarget, sTargetGridNo, bTargetLevel);
 	INT8 const bMinShot  = std::max<INT8>(SEE_THRU_COVER_THRESHOLD, (INT8) (bHereShot * 3 / 4));
+
+	SLOGD("FindCoverToFireFrom: soldier {} at {} searching {} tiles out, {} threats, exposure here {}, shot at {} here {} (needs {})",
+		pSoldier->ubID, pSoldier->sGridNo, iSearchRange, uiThreatCnt, iHereExposure, sTargetGridNo, (int) bHereShot, (int) bMinShot);
 
 	INT16 const sMaxLeft  = (INT16) std::min<INT32>(iSearchRange, pSoldier->sGridNo % MAXCOL);
 	INT16 const sMaxRight = (INT16) std::min<INT32>(iSearchRange, MAXCOL - ((pSoldier->sGridNo % MAXCOL) + 1));
@@ -1287,6 +1305,11 @@ INT16 FindCoverToFireFrom(SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT
 	INT32 iBestPathCost  = 0;
 	INT8  bBestShot      = 0;
 
+	// what the search ran into, for the log
+	INT32 iCandidates = 0, iNoShot = 0, iNotSafer = 0;
+	INT32 iLeastExposure = -1; // among the tiles that keep our shot
+	INT16 sLeastExposed  = NOWHERE;
+
 	for (INT16 sYOffset = -sMaxUp; sYOffset <= sMaxDown; ++sYOffset)
 	{
 		for (INT16 sXOffset = -sMaxLeft; sXOffset <= sMaxRight; ++sXOffset)
@@ -1298,11 +1321,23 @@ INT16 FindCoverToFireFrom(SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT
 			if (!fHasGasMask && InGas(pSoldier, sGridNo))                    continue;
 			if (sGridNo == pSoldier->sBlackList)                             continue;
 
+			++iCandidates;
+
 			INT8 const bShot = CalcShotFrom(pSoldier, sGridNo, pTarget, sTargetGridNo, bTargetLevel);
-			if (bShot < bMinShot) continue;
+			if (bShot < bMinShot)
+			{
+				++iNoShot;
+				continue;
+			}
 
 			INT32 const iPathCost = gubAIPathCosts[AI_PATHCOST_RADIUS + sXOffset][AI_PATHCOST_RADIUS + sYOffset];
 			INT32 const iExposure = CalcExposure(pSoldier, sGridNo, pSoldier->bActionPoints - iPathCost, uiThreatCnt);
+
+			if (iLeastExposure < 0 || iExposure < iLeastExposure)
+			{
+				iLeastExposure = iExposure;
+				sLeastExposed  = sGridNo;
+			}
 
 			// the least exposed spot wins, the nearer one if two are as good
 			if (iExposure < iBestExposure ||
@@ -1313,6 +1348,10 @@ INT16 FindCoverToFireFrom(SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT
 				iBestPathCost = iPathCost;
 				bBestShot     = bShot;
 			}
+			else if (iExposure >= iHereExposure * 2 / 3)
+			{
+				++iNotSafer;
+			}
 		}
 	}
 
@@ -1321,8 +1360,13 @@ INT16 FindCoverToFireFrom(SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT
 
 	if (sBestSpot != NOWHERE)
 	{
-		SLOGD("FindCoverToFireFrom: soldier {} moves from {} to {}, exposure {} -> {}, shot {} -> {}",
-			pSoldier->ubID, pSoldier->sGridNo, sBestSpot, iHereExposure, iBestExposure, bHereShot, bBestShot);
+		SLOGD("FindCoverToFireFrom: soldier {} moves from {} to {} ({} APs), exposure {} -> {}, shot {} -> {}",
+			pSoldier->ubID, pSoldier->sGridNo, sBestSpot, iBestPathCost, iHereExposure, iBestExposure, (int) bHereShot, (int) bBestShot);
+	}
+	else
+	{
+		SLOGD("FindCoverToFireFrom: soldier {} at {} found nothing: {} reachable tiles, {} lose the shot, {} not a third safer (least exposed {} at {}, needed below {})",
+			pSoldier->ubID, pSoldier->sGridNo, iCandidates, iNoShot, iNotSafer, iLeastExposure, sLeastExposed, iHereExposure * 2 / 3);
 	}
 	return sBestSpot;
 }
