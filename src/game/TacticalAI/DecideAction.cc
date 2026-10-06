@@ -1854,8 +1854,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 		// On red alert we know roughly where the player is but have no one in sight, so
 		// vanilla only ever manoeuvres here. With enemy_shoot_unseen we let CalcBestShot
 		// look for a shot as well: it will find one when a team-mate has the opponent in
-		// sight. Not every turn, though - an enemy that shoots the moment it has any
-		// target at all never advances or takes cover.
+		// sight, or at the spot we last heard them fire from. Not every turn, though - an
+		// enemy that shoots the moment it has any target at all never advances or takes
+		// cover.
 		if (gamepolicy(enemy_shoot_unseen))
 		{
 			BestShot.ubPossible = FALSE;
