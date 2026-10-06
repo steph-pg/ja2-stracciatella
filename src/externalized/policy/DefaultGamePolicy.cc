@@ -52,6 +52,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	gui_extras = gp.getOptionalBool("gui_extras", true);
 	show_enemy_equipment = gp.getOptionalBool("show_enemy_equipment");
+	show_merc_awareness = gp.getOptionalBool("show_merc_awareness");
 	informative_tooltips = gp.getOptionalBool("informative_tooltips", false);
 	extra_attachments = gp.getOptionalBool("extra_attachments");
 	skip_sleep_explanation = gp.getOptionalBool("skip_sleep_explanation");

@@ -34,6 +34,7 @@
 #include "MercTextBox.h"
 #include "MouseSystem.h"
 #include "NewStrings.h"
+#include "OppList.h"
 #include "Overhead.h"
 #include "PathAI.h"
 #include "Points.h"
@@ -63,6 +64,7 @@
 #include <algorithm>
 #include <initializer_list>
 #include <stdexcept>
+#include <vector>
 
 
 #define ARROWS_X_OFFSET					10
@@ -1181,11 +1183,42 @@ static ST::string GetEquipmentHeadGearString(const SOLDIERTYPE& s)
 }
 
 
-void DrawEnemyEquipmentBox(void)
+namespace {
+struct InfoBoxLine
 {
-	if (!gamepolicy(show_enemy_equipment)) return;
+	ST::string text;
+	UINT8      colour;
+};
+}
 
-	// on demand only - held ALT asks what the enemy carries, so the box stays out of the way
+
+// Camouflage only hides a merc from those who do not know about them yet - anyone who has seen them
+// in the last few turns looks straight through it. Only enemies we see right now are asked, and only
+// about what they saw themselves, so the box never reveals hidden enemies or what they heard.
+static InfoBoxLine GetAwarenessLine(const SOLDIERTYPE& merc)
+{
+	bool fSeen       = false;
+	bool fSeenLately = false;
+	CFOR_EACH_NON_PLAYER_SOLDIER(s)
+	{
+		if (!s->bInSector || s->bLife < OKLIFE) continue;
+		if (s->bSide == merc.bSide || s->bNeutral) continue;
+		if (gbPublicOpplist[OUR_TEAM][s->ubID] != SEEN_CURRENTLY) continue;
+
+		INT8 const bPersonal = s->bOppList[merc.ubID];
+		if (bPersonal == SEEN_CURRENTLY) fSeen       = true;
+		if (bPersonal >  SEEN_CURRENTLY) fSeenLately = true;
+	}
+
+	if (fSeen)       return { *GCM->getNewString(NS_AWARE_SEEN),        FONT_MCOLOR_LTRED   };
+	if (fSeenLately) return { *GCM->getNewString(NS_AWARE_SEEN_LATELY), FONT_ORANGE         };
+	return                  { *GCM->getNewString(NS_AWARE_UNNOTICED),   FONT_MCOLOR_LTGREEN };
+}
+
+
+void DrawHoveredSoldierBox(void)
+{
+	// on demand only - held ALT asks about the soldier, so the box stays out of the way
 	// the rest of the time
 	if (!_KeyDown(ALT)) return;
 
@@ -1195,22 +1228,34 @@ void DrawEnemyEquipmentBox(void)
 	SOLDIERTYPE const* const s = gSelectedGuy;
 	if (!s) return;
 
-	// our own people have an inventory panel, and soldiers we cannot see give nothing away
-	if (s->bTeam == OUR_TEAM || s->bTeam == MILITIA_TEAM) return;
+	// soldiers we cannot see give nothing away
 	if (s->bVisible == -1) return;
 	if (s->uiStatusFlags & SOLDIER_DEAD) return;
-	if (!IS_MERC_BODY_TYPE(s)) return;
 
-	struct
+	std::vector<InfoBoxLine> lines;
+	if (s->bTeam == OUR_TEAM)
 	{
-		ST::string text;
-		UINT8      colour;
-	} const lines[] =
+		// our own people have an inventory panel, so only tell whether the enemies in sight saw them
+		if (!gamepolicy(show_merc_awareness)) return;
+		if (s->uiStatusFlags & SOLDIER_VEHICLE) return;
+
+		lines.push_back(GetAwarenessLine(*s));
+	}
+	else if (s->bTeam != MILITIA_TEAM)
 	{
-		{ GetEquipmentWeaponString(*s),   FONT_ORANGE       },
-		{ GetEquipmentArmourString(*s),   FONT_YELLOW       },
-		{ GetEquipmentHeadGearString(*s), FONT_MCOLOR_WHITE },
-	};
+		if (!gamepolicy(show_enemy_equipment)) return;
+		if (!IS_MERC_BODY_TYPE(s)) return;
+
+		lines = {
+			{ GetEquipmentWeaponString(*s),   FONT_ORANGE       },
+			{ GetEquipmentArmourString(*s),   FONT_YELLOW       },
+			{ GetEquipmentHeadGearString(*s), FONT_MCOLOR_WHITE },
+		};
+	}
+	else
+	{
+		return;
+	}
 
 	INT16 sTextWidth = 0;
 	UINT8 ubNumLines = 0;
@@ -1227,7 +1272,7 @@ void DrawEnemyEquipmentBox(void)
 	INT16 const sWidth      = (INT16)(sTextWidth + 10);
 	INT16 const sHeight     = (INT16)(ubNumLines * sLineHeight + 8);
 
-	// hang the box off the enemy's shoulder, then keep it inside the viewport
+	// hang the box off the soldier's shoulder, then keep it inside the viewport
 	INT16 sAnchorX;
 	INT16 sAnchorY;
 	GetSoldierAboveGuyPositions(s, &sAnchorX, &sAnchorY, FALSE);

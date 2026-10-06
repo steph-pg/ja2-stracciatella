@@ -12,6 +12,9 @@
         "Helmet",
         "Vest",
         "Leggings",
+        "Avvistato",
+        "Visto di recente",
+        "Inosservato",
 
         "__last_one"
 ]
