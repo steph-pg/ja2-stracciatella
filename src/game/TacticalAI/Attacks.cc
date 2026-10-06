@@ -119,9 +119,10 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 	// all the same. We only keep the best such shot in reserve here, and take it when there
 	// is nobody we can really hit. Measuring the way through at that height, instead of
 	// giving up on a chance to get through of 0, keeps us from emptying the gun into walls.
-	bool const fCanSuppress = fShootUnseen && pSoldier->bTeam != OUR_TEAM &&
-		!TANK(pSoldier) && !(pSoldier->uiStatusFlags & SOLDIER_MONSTER) &&
-		IsGunBurstCapable(pSoldier, HANDPOS) && pSoldier->inv[HANDPOS].ubGunShotsLeft > 1;
+	bool const fMaySuppress = fShootUnseen && pSoldier->bTeam != OUR_TEAM &&
+		!TANK(pSoldier) && !(pSoldier->uiStatusFlags & SOLDIER_MONSTER);
+	bool const fGunCanBurst = IsGunBurstCapable(pSoldier, HANDPOS) &&
+		pSoldier->inv[HANDPOS].ubGunShotsLeft > 1;
 	ATTACKTYPE BestSuppression;
 	InitAttackType(&BestSuppression);
 	INT32 iBestSuppressionValue = 0;
@@ -203,28 +204,35 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		// if we can't possibly get through all the cover
 		if (ubChanceToGetThrough == 0)
 		{
-			// Same as the burst check DecideActionBlack makes before it will burst at all.
-			// Without one, a suppression shot is a single bullet wasted.
-			if (fCanSuppress && pOpponent->bLife >= OKLIFE &&
-				pSoldier->bActionPoints - ubMinAPcost >= ubBurstAPs)
+			// Without a burst a suppression shot is a single bullet wasted. The AP check is the
+			// same one DecideActionBlack makes before it will burst at all.
+			if (!fMaySuppress || pOpponent->bLife < OKLIFE)
+			{
+				// not a case for suppression at all
+			}
+			else if (!fGunCanBurst)
+			{
+				SLOGD("CalcBestShot: {} vs {} body CTGT 0, no burst (gun can't, or out of ammo)", pSoldier->ubID, pOpponent->ubID);
+			}
+			else if (pSoldier->bActionPoints - ubMinAPcost < ubBurstAPs)
+			{
+				SLOGD("CalcBestShot: {} vs {} body CTGT 0, no burst (APs {}, need {})", pSoldier->ubID, pOpponent->ubID, pSoldier->bActionPoints, ubMinAPcost + ubBurstAPs);
+			}
+			else
 			{
 				// Try the height of a crouched torso, then that of a standing one; both pass
 				// over a prone body. It is our real stance that has to see past the cover, as
 				// no stance change is made before this shot.
-				UINT8 ubSuppressCTGT = 0;
-				INT8  bSuppressCube  = 0;
-				for (INT8 bCube = 2; bCube <= 3; ++bCube)
-				{
-					UINT8 const ubCTGT = SoldierToTileHeightChanceToGetThrough(pSoldier, pOpponent->sGridNo, pOpponent->bLevel, bCube);
-					if (ubCTGT > ubSuppressCTGT)
-					{
-						ubSuppressCTGT = ubCTGT;
-						bSuppressCube  = bCube;
-					}
-				}
+				UINT8 const ubCTGTCube2 = SoldierToTileHeightChanceToGetThrough(pSoldier, pOpponent->sGridNo, pOpponent->bLevel, 2);
+				UINT8 const ubCTGTCube3 = SoldierToTileHeightChanceToGetThrough(pSoldier, pOpponent->sGridNo, pOpponent->bLevel, 3);
+				UINT8 const ubSuppressCTGT = std::max(ubCTGTCube2, ubCTGTCube3);
+				INT8  const bSuppressCube  = ubCTGTCube3 > ubCTGTCube2 ? 3 : 2;
 
 				// below this most of the burst ends up in the cover rather than over them
-				if (ubSuppressCTGT >= MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH)
+				bool const fCandidate = ubSuppressCTGT >= MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH;
+				SLOGD("CalcBestShot: {} vs {} body CTGT 0, over at cube 2: {}, cube 3: {} -> {}", pSoldier->ubID, pOpponent->ubID, ubCTGTCube2, ubCTGTCube3, fCandidate ? "candidate" : "too low");
+
+				if (fCandidate)
 				{
 					INT32 const iValue = ubSuppressCTGT * CalcManThreatValue(pOpponent, pSoldier->sGridNo, TRUE, pSoldier);
 					if (iValue > iBestSuppressionValue)
