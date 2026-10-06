@@ -138,6 +138,11 @@
   //  vanilla_setting: false
   "show_enemy_equipment": true,
 
+  //  Holding ALT over one of your mercs tells whether the enemies you can see have spotted them:
+  //  seeing them right now, saw them lately (camouflage no longer helps), or not.
+  //  vanilla_setting: false
+  "show_merc_awareness": true,
+
   //  Displays modifiers in hover boxes revealing hidden mechanics.
   //  vanilla_setting: false
   "informative_tooltips": false,

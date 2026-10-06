@@ -249,6 +249,19 @@ properties:
       - the exact name of anything in their head slots, e.g. `Gas Mask, Night Goggles`
 
       Vanilla setting: `false`
+  show_merc_awareness:
+    type: boolean
+    title: Show merc awareness
+    description: |
+      Holding ALT while the cursor is over one of your mercs tells whether the enemies you can see have spotted them:
+
+      - `Spotted` - one of them sees the merc right now
+      - `Seen lately` - one of them saw the merc in the last few turns, so camouflage no longer hides them
+      - `Unnoticed` - none of them has seen the merc
+
+      Enemies out of your sight are never counted, and neither is what an enemy only heard or was told by a teammate.
+
+      Vanilla setting: `false`
   skip_sleep_explanation:
     type: boolean
     title: Skip sleep explanation

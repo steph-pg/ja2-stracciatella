@@ -50,6 +50,7 @@ public:
 
 	bool gui_extras;                      /* graphical user interface cosmetic mod */
 	bool show_enemy_equipment;            // hovering a visible enemy shows a box listing their weapon type, armour pieces and head gear
+	bool show_merc_awareness;             // holding ALT over a merc tells whether the enemies in sight saw them
 	bool informative_tooltips;            /* Reveal modifiers in hover boxes */
 	bool extra_attachments;               // allow more item attachments options
 	bool skip_sleep_explanation;          // skip annoying popups

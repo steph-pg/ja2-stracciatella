@@ -119,8 +119,9 @@ void HandleInterfaceBackgrounds(void);
 
 void DrawSelectedUIAboveGuy(SOLDIERTYPE&);
 
-// show what the enemy under the cursor carries while ALT is held, if show_enemy_equipment is on
-void DrawEnemyEquipmentBox(void);
+// while ALT is held, show what the enemy under the cursor carries if show_enemy_equipment is on,
+// or whether the enemies in sight saw the merc under the cursor if show_merc_awareness is on
+void DrawHoveredSoldierBox(void);
 
 void CreateCurrentTacticalPanelButtons(void);
 void RemoveCurrentTacticalPanelButtons(void);

@@ -432,7 +432,7 @@ void RenderTopmostTacticalInterface()
 	}
 
 	// after the above-guy text, so the box is not printed over
-	DrawEnemyEquipmentBox();
+	DrawHoveredSoldierBox();
 
 	// FOR THE MOST PART, DISABLE INTERFACE STUFF WHEN IT'S ENEMY'S TURN
 	if (gTacticalStatus.ubCurrentTeam == OUR_TEAM)

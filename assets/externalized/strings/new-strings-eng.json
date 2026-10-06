@@ -11,6 +11,9 @@
         "Helmet",
         "Vest",
         "Leggings",
+        "Spotted",
+        "Seen lately",
+        "Unnoticed",
 
         "__last_one"
 ]

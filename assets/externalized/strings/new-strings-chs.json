@@ -11,6 +11,9 @@
         "Helmet",
         "Vest",
         "Leggings",
+        "已暴露",
+        "刚被看到",
+        "未被发现",
 
         "__last_one"
 ]
