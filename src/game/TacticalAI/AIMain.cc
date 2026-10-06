@@ -1900,6 +1900,7 @@ void InitAttackType(ATTACKTYPE *pAttack)
 	pAttack->ubChanceToReallyHit = 0;
 	pAttack->ubChanceToReallyHitUnaimed = 0;
 	pAttack->sTarget             = NOWHERE;
+	pAttack->bTargetCubeLevel    = 0;
 	pAttack->iAttackValue        = 0;
 	pAttack->ubAPCost            = 0;
 }

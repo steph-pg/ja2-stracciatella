@@ -3073,6 +3073,21 @@ UINT8 AISoldierToLocationChanceToGetThrough( SOLDIERTYPE * pStartSoldier, INT16 
 	}
 }
 
+// Chance to get through to a set height on a tile, from the start soldier's real stance,
+// passing over or past whoever stands there instead of aiming at them
+UINT8 SoldierToTileHeightChanceToGetThrough(SOLDIERTYPE* const pStartSoldier, const INT16 sGridNo, const INT8 bLevel, const INT8 bCubeLevel)
+{
+	if (pStartSoldier->sGridNo == sGridNo)
+	{
+		return( 0 );
+	}
+
+	pStartSoldier->CTGTTarget = NULL;
+
+	FLOAT const dEndZPos = GetTargetZPosFromStructureHeight(sGridNo, bLevel, bCubeLevel);
+	return ChanceToGetThrough(pStartSoldier, sGridNo, dEndZPos);
+}
+
 
 static void CalculateFiringIncrements(DOUBLE ddHorizAngle, DOUBLE ddVerticAngle, DOUBLE dd2DDistance, BULLET* pBullet, DOUBLE* pddNewHorizAngle, DOUBLE* pddNewVerticAngle)
 {

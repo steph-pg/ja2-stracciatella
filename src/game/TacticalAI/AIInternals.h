@@ -102,6 +102,7 @@ struct ATTACKTYPE
 	INT32 iAttackValue;        // relative worthiness of this type of attack
 	INT16 sTarget;             // target gridno of this attack
 	INT8  bTargetLevel;        // target level of this attack
+	INT8  bTargetCubeLevel;    // 0 aims at the opponent; otherwise a suppression burst fired over them at this height cube of their tile
 	UINT8 ubAPCost;            // how many APs the attack will use up
 	INT8  bWeaponIn;           // the inv slot of the weapon in question
 };
