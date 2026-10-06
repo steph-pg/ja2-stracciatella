@@ -139,13 +139,12 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		// can hold a sighting at SEEN_CURRENTLY for as long as they lie there, well after everyone
 		// upright has lost sight. So we ask for a spotter who is in a state to call the target out.
 		//
-		// Failing that, we may still fire back at a gunshot we heard this turn or last. Not at the
-		// opponent, though: all we know is where the shot came from, so that is where we aim, and
-		// whoever has fired and slipped away since is not there to be hit. Any other noise only
-		// places them roughly and overwrites the shot's position, so it does not count.
-		INT16 sTargetGridNo = pOpponent->sGridNo;
-		INT8  bTargetLevel  = pOpponent->bLevel;
-		bool  fHeardShotOnly = false;
+		// Failing that, we may still fire back at a gunshot we heard this turn or last, but only
+		// while the shooter is still standing where the shot came from. Shooting at an empty tile
+		// someone has fired and slipped away from rarely lands close enough to them to be worth
+		// it. Any other noise only places them roughly and overwrites the shot's position, so it
+		// does not count.
+		bool fHeardShotOnly = false;
 
 		if (pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY &&
 			!(fShootUnseen && gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == SEEN_CURRENTLY &&
@@ -159,20 +158,13 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 				continue;  // next opponent
 			}
 
-			sTargetGridNo  = gsLastKnownOppLoc[pSoldier->ubID][pOpponent->ubID];
-			bTargetLevel   = gbLastKnownOppLevel[pSoldier->ubID][pOpponent->ubID];
-			fHeardShotOnly = true;
-
-			if (sTargetGridNo == NOWHERE)
-				continue;  // next opponent
-
-			// whoever stands there now catches the bullet, so don't fire on a friend
-			const SOLDIERTYPE* const pOccupant = WhoIsThere2(sTargetGridNo, bTargetLevel);
-			if (pOccupant && pOccupant != pOpponent &&
-				(pOccupant->bSide == pSoldier->bSide || CONSIDERED_NEUTRAL(pSoldier, pOccupant)))
+			if (gsLastKnownOppLoc[pSoldier->ubID][pOpponent->ubID] != pOpponent->sGridNo ||
+				gbLastKnownOppLevel[pSoldier->ubID][pOpponent->ubID] != pOpponent->bLevel)
 			{
 				continue;  // next opponent
 			}
+
+			fHeardShotOnly = true;
 		}
 
 		// Special stuff for Carmen the bounty hunter
@@ -180,7 +172,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			continue;  // next opponent
 
 		// calculate minimum action points required to shoot at this opponent
-		UINT8 const ubMinAPcost = MinAPsToAttack(pSoldier, sTargetGridNo, ADDTURNCOST);
+		UINT8 const ubMinAPcost = MinAPsToAttack(pSoldier, pOpponent->sGridNo, ADDTURNCOST);
 
 		// if we don't have enough APs left to shoot even a snap-shot at this guy
 		if (ubMinAPcost > pSoldier->bActionPoints)
@@ -189,7 +181,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		// calculate chance to get through the opponent's cover (if any)
 
 		ubChanceToGetThrough = fHeardShotOnly ?
-			AISoldierToLocationChanceToGetThrough(pSoldier, sTargetGridNo, bTargetLevel, 0) :
+			AISoldierToLocationChanceToGetThrough(pSoldier, pOpponent->sGridNo, pOpponent->bLevel, 0) :
 			AISoldierToSoldierChanceToGetThrough(pSoldier, pOpponent);
 
 		// if we can't possibly get through all the cover
@@ -207,7 +199,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 				INT8   bDir;
 
 				// must make sure that structure data can be added in the direction of the target
-				bDir = (INT8) GetDirectionToGridNoFromGridNo( pSoldier->sGridNo, sTargetGridNo );
+				bDir = (INT8) GetDirectionToGridNoFromGridNo( pSoldier->sGridNo, pOpponent->sGridNo );
 
 				// ATE: Only if we have a levelnode...
 				UINT16 const usStructureID = GetStructureID(pSoldier);
@@ -221,9 +213,9 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		}
 
 		// calc next attack's minimum shooting cost (excludes readying & turning)
-		UINT8 ubRawAPCost = MinAPsToShootOrStab(*pSoldier, sTargetGridNo, DONTADDTURNCOST);
+		UINT8 ubRawAPCost = MinAPsToShootOrStab(*pSoldier, pOpponent->sGridNo, DONTADDTURNCOST);
 
-		if (sTargetGridNo != pSoldier->sLastTarget)
+		if (pOpponent->sGridNo != pSoldier->sLastTarget)
 		{
 			// raw AP cost calculation included cost of changing target!
 			ubRawAPCost -= AP_CHANGE_TARGET;
@@ -259,7 +251,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			if (gamepolicy(ai_better_aiming_choice)) {
 				target = pSoldier->bAimShotLocation;
 			}
-			ubChanceToHit = (UINT8) AICalcChanceToHitGun(pSoldier, sTargetGridNo, ubAimTime, target);
+			ubChanceToHit = (UINT8) AICalcChanceToHitGun(pSoldier, pOpponent->sGridNo, ubAimTime, target);
 
 			iHitRate = (pSoldier->bActionPoints * ubChanceToHit) / (ubRawAPCost + ubAimTime);
 
@@ -285,7 +277,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			continue;          // next opponent
 
 		// really limit knife throwing so it doesn't look wrong
-		if ( GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_THROWING_KNIFE && (ubChanceToReallyHit < 30 || ( PythSpacesAway( pSoldier->sGridNo, sTargetGridNo ) > CalcMaxTossRange( pSoldier, THROWING_KNIFE, FALSE ) / 2 ) ) )
+		if ( GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_THROWING_KNIFE && (ubChanceToReallyHit < 30 || ( PythSpacesAway( pSoldier->sGridNo, pOpponent->sGridNo ) > CalcMaxTossRange( pSoldier, THROWING_KNIFE, FALSE ) / 2 ) ) )
 			continue; // don't bother... next opponent
 
 		// calculate this opponent's threat value (factor in my cover from him)
@@ -336,8 +328,8 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			pBestShot->opponent            = pOpponent;
 			pBestShot->ubAimTime           = ubBestAimTime;
 			pBestShot->ubChanceToReallyHit = ubChanceToReallyHit;
-			pBestShot->sTarget             = sTargetGridNo;
-			pBestShot->bTargetLevel        = bTargetLevel;
+			pBestShot->sTarget             = pOpponent->sGridNo;
+			pBestShot->bTargetLevel        = pOpponent->bLevel;
 			pBestShot->iAttackValue        = iAttackValue;
 			pBestShot->ubAPCost            = ubMinAPcost + ubBestAimTime;
 		}

@@ -203,9 +203,9 @@ properties:
         description: |
           AI may fire a gun at an opponent it cannot see itself, as long as a team-mate has it
           in sight. It also lets an enemy that only knows where the player is shoot instead of
-          merely manoeuvring. A gunshot heard this turn or last is fired back at too, aimed at
-          where the shot came from rather than at where the shooter is now. Any other remembered
-          or heard position is never enough to open fire.
+          merely manoeuvring. A gunshot heard this turn or last is fired back at too, as long as
+          the shooter is still where the shot came from. Any other remembered or heard position
+          is never enough to open fire.
 
           Vanilla setting: `false`
     required:
