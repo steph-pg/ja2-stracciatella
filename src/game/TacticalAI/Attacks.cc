@@ -87,6 +87,9 @@ void LoadWeaponIfNeeded(SOLDIERTYPE *pSoldier)
 
 static INT32 EstimateShotDamage(SOLDIERTYPE* pSoldier, SOLDIERTYPE* pOpponent, UINT8 ubChanceToHit);
 
+// least chance to get through cover, at the height it is fired, for a suppression burst
+#define MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH 25
+
 
 void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 {
@@ -109,6 +112,19 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 	// knives still want the opponent in plain sight.
 	BOOLEAN const fShootUnseen = gamepolicy(enemy_shoot_unseen) &&
 		GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_GUN;
+
+	// Someone whose cover stops anything aimed at them - a merc gone prone under a window,
+	// say - may still have a height left open over them. A burst fired at that height cannot
+	// hit a body that is not there, but bullets whizzing over or past a merc suppress them
+	// all the same. We only keep the best such shot in reserve here, and take it when there
+	// is nobody we can really hit. Measuring the way through at that height, instead of
+	// giving up on a chance to get through of 0, keeps us from emptying the gun into walls.
+	bool const fCanSuppress = fShootUnseen && pSoldier->bTeam != OUR_TEAM &&
+		!TANK(pSoldier) && !(pSoldier->uiStatusFlags & SOLDIER_MONSTER) &&
+		IsGunBurstCapable(pSoldier, HANDPOS) && pSoldier->inv[HANDPOS].ubGunShotsLeft > 1;
+	ATTACKTYPE BestSuppression;
+	InitAttackType(&BestSuppression);
+	INT32 iBestSuppressionValue = 0;
 
 	// hang a pointer into active soldier's personal opponent list
 	//pbPersOL = &(pSoldier->bOppList[0]);
@@ -186,7 +202,50 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 		// if we can't possibly get through all the cover
 		if (ubChanceToGetThrough == 0)
+		{
+			// Same as the burst check DecideActionBlack makes before it will burst at all.
+			// Without one, a suppression shot is a single bullet wasted.
+			if (fCanSuppress && pOpponent->bLife >= OKLIFE &&
+				pSoldier->bActionPoints - ubMinAPcost >= ubBurstAPs)
+			{
+				// Try the height of a crouched torso, then that of a standing one; both pass
+				// over a prone body. It is our real stance that has to see past the cover, as
+				// no stance change is made before this shot.
+				UINT8 ubSuppressCTGT = 0;
+				INT8  bSuppressCube  = 0;
+				for (INT8 bCube = 2; bCube <= 3; ++bCube)
+				{
+					UINT8 const ubCTGT = SoldierToTileHeightChanceToGetThrough(pSoldier, pOpponent->sGridNo, pOpponent->bLevel, bCube);
+					if (ubCTGT > ubSuppressCTGT)
+					{
+						ubSuppressCTGT = ubCTGT;
+						bSuppressCube  = bCube;
+					}
+				}
+
+				// below this most of the burst ends up in the cover rather than over them
+				if (ubSuppressCTGT >= MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH)
+				{
+					INT32 const iValue = ubSuppressCTGT * CalcManThreatValue(pOpponent, pSoldier->sGridNo, TRUE, pSoldier);
+					if (iValue > iBestSuppressionValue)
+					{
+						iBestSuppressionValue = iValue;
+
+						// it hits nothing, so it has no attack value: any real attack beats it
+						BestSuppression.ubPossible          = TRUE;
+						BestSuppression.opponent            = pOpponent;
+						BestSuppression.ubAimTime           = 0;
+						BestSuppression.ubChanceToReallyHit = 0;
+						BestSuppression.sTarget             = pOpponent->sGridNo;
+						BestSuppression.bTargetLevel        = pOpponent->bLevel;
+						BestSuppression.bTargetCubeLevel    = bSuppressCube;
+						BestSuppression.iAttackValue        = 0;
+						BestSuppression.ubAPCost            = ubMinAPcost;
+					}
+				}
+			}
 			continue;          // next opponent
+		}
 
 		if ( (pSoldier->uiStatusFlags & SOLDIER_MONSTER) && (pSoldier->ubBodyType != QUEENMONSTER ) )
 		{
@@ -333,6 +392,14 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			pBestShot->iAttackValue        = iAttackValue;
 			pBestShot->ubAPCost            = ubMinAPcost + ubBestAimTime;
 		}
+	}
+
+	if (!pBestShot->ubPossible && BestSuppression.ubPossible)
+	{
+		// the caller fills in which pocket the gun came from
+		BestSuppression.bWeaponIn = pBestShot->bWeaponIn;
+		*pBestShot = BestSuppression;
+		SLOGD("CalcBestShot: {} can only suppress {}, at height cube {}", pSoldier->ubID, BestSuppression.opponent->ubID, BestSuppression.bTargetCubeLevel);
 	}
 }
 

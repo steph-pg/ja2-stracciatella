@@ -422,7 +422,12 @@ void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT 
 	INT16  sXMapPos, sYMapPos;
 	UINT32 uiRoll;
 
-	SOLDIERTYPE* const pTargetSoldier = WhoIsThere2(sTargetGridNo, pSoldier->bTargetLevel);
+	// The AI may fire over whoever is on the tile at a set height, to suppress someone it
+	// cannot hit (see CalcBestShot). Outside the player's team nothing else sets
+	// bTargetCubeLevel; a merc keeps whatever the wall-targeting UI last left there, which
+	// must not lift their aim off a soldier.
+	bool const fOverTarget = pSoldier->bTeam != OUR_TEAM && pSoldier->bTargetCubeLevel != 0;
+	SOLDIERTYPE* const pTargetSoldier = fOverTarget ? NULL : WhoIsThere2(sTargetGridNo, pSoldier->bTargetLevel);
 	if ( pTargetSoldier )
 	{
 		pSoldier->opponent = pTargetSoldier;

@@ -205,7 +205,9 @@ properties:
           in sight. It also lets an enemy that only knows where the player is shoot instead of
           merely manoeuvring. A gunshot heard this turn or last is fired back at too, as long as
           the shooter is still where the shot came from. Any other remembered or heard position
-          is never enough to open fire.
+          is never enough to open fire. An opponent whose cover stops every shot, such as a merc
+          gone prone under a window, may still get a burst fired over them to suppress them, if
+          no one else can be hit.
 
           Vanilla setting: `false`
     required:
