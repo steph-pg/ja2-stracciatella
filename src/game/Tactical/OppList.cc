@@ -96,6 +96,7 @@ INT8 gbPublicOpplist[MAXTEAMS][TOTAL_SOLDIERS];
 INT8 gbSeenOpponents[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 INT16 gsLastKnownOppLoc[TOTAL_SOLDIERS][TOTAL_SOLDIERS]; // merc vs. merc
 INT8 gbLastKnownOppLevel[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
+bool gfLastKnownOppLocIsShot[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 INT16 gsPublicLastKnownOppLoc[MAXTEAMS][TOTAL_SOLDIERS]; // team vs. merc
 INT8 gbPublicLastKnownOppLevel[MAXTEAMS][TOTAL_SOLDIERS];
 UINT8 gubPublicNoiseVolume[MAXTEAMS];
@@ -2183,6 +2184,9 @@ static void UpdatePersonal(SOLDIERTYPE* pSoldier, UINT8 ubID, INT8 bNewOpplist, 
 	// always update the gridno, no matter what
 	gsLastKnownOppLoc[pSoldier->ubID][ubID] = sGridno;
 	gbLastKnownOppLevel[pSoldier->ubID][ubID] = bLevel;
+
+	// a caller that heard a gunshot marks the location as the shot's right after this
+	gfLastKnownOppLocIsShot[pSoldier->ubID][ubID] = false;
 }
 
 
@@ -2192,6 +2196,7 @@ static void ResetLastKnownLocs(SOLDIERTYPE const& s)
 	{
 		const SoldierID tgt_id = (*i)->ubID;
 		gsLastKnownOppLoc[s.ubID][tgt_id] = NOWHERE;
+		gfLastKnownOppLocIsShot[s.ubID][tgt_id] = false;
 		// IAN added this June 14/97
 		gsPublicLastKnownOppLoc[s.bTeam][tgt_id] = NOWHERE;
 	}
@@ -4056,6 +4061,7 @@ static void HearNoise(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const noise_make
 
 			// remember that the soldier has been heard and his new location
 			UpdatePersonal(pSoldier, noise_maker->ubID ,HEARD_THIS_TURN, sGridNo, bLevel);
+			gfLastKnownOppLocIsShot[pSoldier->ubID][noise_maker->ubID] = (ubNoiseType == NOISE_GUNFIRE);
 
 			// Public info is not set unless EVERYONE on the team fails to see the
 			// ubnoisemaker, leaving the 'seen' flag FALSE.  See ProcessNoise().
@@ -4717,6 +4723,8 @@ void NoticeUnseenAttacker( SOLDIERTYPE * pAttacker, SOLDIERTYPE * pDefender, INT
 		}
 
 		UpdatePersonal( pDefender, pAttacker->ubID, HEARD_THIS_TURN, pAttacker->sGridNo, pAttacker->bLevel );
+		gfLastKnownOppLocIsShot[pDefender->ubID][pAttacker->ubID] =
+			GCM->getItem(pAttacker->usAttackingWeapon)->getItemClass() == IC_GUN;
 
 		// if the victim is a human-controlled soldier, instantly report publicly
 		if (pDefender->uiStatusFlags & SOLDIER_PC)
