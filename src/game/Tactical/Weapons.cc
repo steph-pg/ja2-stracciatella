@@ -422,7 +422,9 @@ void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT 
 	INT16  sXMapPos, sYMapPos;
 	UINT32 uiRoll;
 
-	SOLDIERTYPE* const pTargetSoldier = WhoIsThere2(sTargetGridNo, pSoldier->bTargetLevel);
+	// AI suppression fires over the tile instead of at whoever is there
+	bool const fOverTarget = pSoldier->bTeam != OUR_TEAM && pSoldier->bTargetCubeLevel != 0;
+	SOLDIERTYPE* const pTargetSoldier = fOverTarget ? NULL : WhoIsThere2(sTargetGridNo, pSoldier->bTargetLevel);
 	if ( pTargetSoldier )
 	{
 		pSoldier->opponent = pTargetSoldier;
