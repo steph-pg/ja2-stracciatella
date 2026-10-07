@@ -231,8 +231,8 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 					continue;  // next opponent
 				}
 
-				// nothing to tell us they're near enough to reach
-				if (PythSpacesAway(pSoldier->sGridNo, sTargetGridNo) * CELL_X_SIZE > GunRange(pSoldier->inv[HANDPOS]))
+				// a bullet still carries well past the gun's range, but not without limit
+				if (PythSpacesAway(pSoldier->sGridNo, sTargetGridNo) * CELL_X_SIZE * 2 > GunRange(pSoldier->inv[HANDPOS]) * 3)
 				{
 					SLOGD("CalcBestShot: {} vs {} (heard shot) grid {} out of range", pSoldier->ubID, pOpponent->ubID, sTargetGridNo);
 					continue;  // next opponent
