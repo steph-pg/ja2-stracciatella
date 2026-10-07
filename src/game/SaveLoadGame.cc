@@ -1678,6 +1678,12 @@ static void LoadOppListInfoFromSavedGame(HWFILE const hFile)
 	uiLoadSize = TOTAL_SOLDIERS * TOTAL_SOLDIERS;
 	hFile->read(gbLastKnownOppLevel, uiLoadSize);
 
+	// heard gunshot flags are not saved
+	for (auto& i : gfLastKnownOppLocIsShot)
+	{
+		std::fill(std::begin(i), std::end(i), false);
+	}
+
 	// Load the Public Last Known Opp Locations
 	uiLoadSize = MAXTEAMS * TOTAL_SOLDIERS; // XXX TODO000F
 	hFile->read(gsPublicLastKnownOppLoc, uiLoadSize);
