@@ -431,7 +431,7 @@ BOOLEAN AttemptToPickLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 
 		// a botched attempt bends the picks, so wear the kit down - tougher locks
 		// chew through it faster. The kit picks just as well worn as new, it simply
-		// gets used up, so a failed attempt always costs at least a point.
+		// gets used up, so a failed attempt always costs at least two points.
 		if ( gamepolicy( locksmith_kit_wear ) )
 		{
 			INT8 const bSlot = FindObj( pSoldier, LOCKSMITHKIT );
@@ -439,7 +439,7 @@ BOOLEAN AttemptToPickLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 			{
 				OBJECTTYPE & kit = pSoldier->inv[ bSlot ];
 				int const bStress = std::min( 100, pLock->ubPickDifficulty + 30 );
-				INT8 const bWear = (INT8) ( 1 + PreRandom( bStress / 10 ) );
+				INT8 const bWear = (INT8) ( 2 + PreRandom( bStress / 5 - 1 ) );
 				if ( bWear >= kit.bStatus[0] )
 				{
 					// nothing left of the kit but bent picks
