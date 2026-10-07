@@ -1903,7 +1903,7 @@ void InitAttackType(ATTACKTYPE *pAttack)
 	pAttack->bTargetCubeLevel    = 0;
 	pAttack->iAttackValue        = 0;
 	pAttack->ubAPCost            = 0;
-	pAttack->fOutOfSight         = false;
+	pAttack->fSpotted            = false;
 }
 
 void HandleInitialRedAlert(INT8 bTeam)

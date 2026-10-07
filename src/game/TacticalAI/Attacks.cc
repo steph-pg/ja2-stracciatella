@@ -225,6 +225,9 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			fNotInSight = true;
 		}
 
+		// in sight of a team-mate but not our own: a spotter calls the shot for us
+		bool const fSpotted = !fNotInSight && pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY;
+
 		// Special stuff for Carmen the bounty hunter
 		if (pSoldier->bAttitude == ATTACKSLAYONLY && pOpponent->ubProfile != SLAY)
 			continue;  // next opponent
@@ -384,10 +387,10 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 			iHitRate = (pSoldier->bActionPoints * ubChanceToHit) / (ubRawAPCost + ubAimTime);
 
-			// if aiming for this amount of time produces a better hit rate - or, at someone out
-			// of sight, a better chance to hit: all we get at them is the one careful shot
-			// before they move, so that is not the time to trade accuracy for APs
-			if (fNotInSight ? ubChanceToHit > ubBestChanceToHit : iHitRate > iBestHitRate)
+			// if aiming for this amount of time produces a better hit rate - or, at someone a
+			// spotter calls out for us, a better chance to hit: we only fire on their word for a
+			// careful sniper shot, so that is not the time to trade accuracy for APs
+			if (fSpotted ? ubChanceToHit > ubBestChanceToHit : iHitRate > iBestHitRate)
 			{
 				iBestHitRate = iHitRate;
 				ubBestAimTime = ubAimTime;
@@ -472,7 +475,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			pBestShot->sTarget             = pOpponent->sGridNo;
 			pBestShot->bTargetLevel        = pOpponent->bLevel;
 			pBestShot->iAttackValue        = iAttackValue;
-			pBestShot->fOutOfSight         = fNotInSight;
+			pBestShot->fSpotted            = fSpotted;
 			pBestShot->ubAPCost            = ubMinAPcost + ubBestAimTime;
 		}
 	}
