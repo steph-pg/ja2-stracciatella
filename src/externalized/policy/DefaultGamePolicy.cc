@@ -37,6 +37,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	corpse_warning_distance = ai.getOptionalUInt("corpse_warning_distance", 5);
 	stay_on_rooftop = ai.getOptionalBool("stay_on_rooftop");
 	avoid_light_tiles_at_night = ai.getOptionalBool("avoid_light_tiles_at_night");
+	enemy_shoot_unseen = ai.getOptionalBool("enemy_shoot_unseen");
 
 	interrupt_after_being_under_fire = gp.getOptionalBool("interrupt_after_being_under_fire", true);
 

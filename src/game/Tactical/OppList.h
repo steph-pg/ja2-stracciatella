@@ -60,6 +60,7 @@ extern INT8  gbPublicOpplist[MAXTEAMS][ TOTAL_SOLDIERS ];
 extern INT8  gbSeenOpponents[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 extern INT16 gsLastKnownOppLoc[TOTAL_SOLDIERS][TOTAL_SOLDIERS]; // merc vs. merc
 extern INT8  gbLastKnownOppLevel[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
+extern bool  gfLastKnownOppLocIsShot[TOTAL_SOLDIERS][TOTAL_SOLDIERS]; // last known location is where they were heard firing from
 extern INT16 gsPublicLastKnownOppLoc[MAXTEAMS][TOTAL_SOLDIERS]; // team vs. merc
 extern INT8  gbPublicLastKnownOppLevel[MAXTEAMS][TOTAL_SOLDIERS];
 extern UINT8 gubPublicNoiseVolume[MAXTEAMS];
@@ -116,6 +117,8 @@ void VerifyPublicOpplistDueToDeath( SOLDIERTYPE * pSoldier );
 void NoticeUnseenAttacker( SOLDIERTYPE * pAttacker, SOLDIERTYPE * pDefender, INT8 bReason );
 
 bool MercSeesCreature(SOLDIERTYPE const&);
+
+bool TeamHasSpotterFor(UINT8 ubTeam, SOLDIERTYPE* pOpponent);
 
 INT8 GetWatchedLocPoints( UINT8 ubID, INT16 sGridNo, INT8 bLevel );
 INT8 GetHighestVisibleWatchedLoc(const SOLDIERTYPE* s);

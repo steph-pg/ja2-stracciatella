@@ -27,11 +27,13 @@
 #include "StrategicMap.h"
 #include "Structure.h"
 #include "Structure_Wrap.h"
+#include "TeamTurns.h"
 #include "Timer_Control.h"
 #include "WeaponModels.h"
 #include "Weapons.h"
 #include "WorldMan.h"
 #include <string_theory/format>
+#include <algorithm>
 
 extern BOOLEAN gfUseAlternateQueenPosition;
 
@@ -45,6 +47,9 @@ static UINT32 guiRedSeekCounter = 0, guiRedHelpCounter = 0; guiRedHideCounter = 
 #endif
 
 #define CENTER_OF_RING 11237
+
+// least chance to really hit for a single sniper shot at someone only a team-mate sees
+#define MIN_CHANCE_FOR_SPOTTED_SINGLE_SHOT 20
 static const SGPSector meduna(3, MAP_ROW_P);
 
 static void DoneScheduleAction(SOLDIERTYPE* pSoldier)
@@ -1445,6 +1450,77 @@ static INT8 DecideActionYellow(SOLDIERTYPE* pSoldier)
 }
 
 
+// Sets up the shot the AI has settled on and returns the action to take: either fire right
+// away, or get into the stance the shot needs and fire immediately afterwards (the queued
+// action is picked up in AIMain, together with bNextTargetLevel).
+static INT8 FireGunOrChangeStanceFirst(SOLDIERTYPE *pSoldier, const ATTACKTYPE &attack, UINT8 ubStance)
+{
+	pSoldier->bTargetCubeLevel = attack.bTargetCubeLevel;
+
+	if (ubStance != 0)
+	{
+		pSoldier->bNextAction      = AI_ACTION_FIRE_GUN;
+		pSoldier->usNextActionData = attack.sTarget;
+		pSoldier->bNextTargetLevel = attack.bTargetLevel;
+		pSoldier->usActionData     = ubStance;
+		return(AI_ACTION_CHANGE_STANCE);
+	}
+
+	pSoldier->usActionData = attack.sTarget;
+	pSoldier->bTargetLevel = attack.bTargetLevel;
+	return(AI_ACTION_FIRE_GUN);
+}
+
+
+// The best chance this soldier has of winning an interrupt on the coming enemy turn against
+// any opponent it knows of, were it to keep its APs for that rather than spend them now.
+// The duel itself is a plain comparison of points, but a turn ahead those move with things we
+// cannot foresee (shock, how many enemies they will see), so the margin becomes a chance.
+static UINT8 EstimateInterruptChance(const SOLDIERTYPE* const pSoldier)
+{
+	if (pSoldier->bActionPoints < MIN_APS_TO_INTERRUPT || pSoldier->bBreath < OKBREATH ||
+		pSoldier->bCollapsed || (pSoldier->uiStatusFlags & SOLDIER_GASSED))
+	{
+		return 0;
+	}
+
+	INT32 iBestChance = 0;
+	FOR_EACH_MERC(i)
+	{
+		const SOLDIERTYPE* const pOpponent = *i;
+		if (pOpponent->bLife < OKLIFE || pOpponent->bSide == pSoldier->bSide ||
+			CONSIDERED_NEUTRAL(pSoldier, pOpponent))
+		{
+			continue;
+		}
+
+		if (pSoldier->bOppList[pOpponent->ubID] == NOT_HEARD_OR_SEEN &&
+			gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == NOT_HEARD_OR_SEEN)
+		{
+			continue;  // nobody on our team knows of them
+		}
+
+		INT8 const bOurPts   = CalcInterruptDuelPts(pSoldier, pOpponent, TRUE);
+		INT8 const bTheirPts = CalcInterruptDuelPts(pOpponent, pSoldier, FALSE);
+		if (bOurPts == NO_INTERRUPT || bTheirPts == NO_INTERRUPT)
+			continue;
+
+		// The points take who is active from whose turn it is now, which on their turn will be
+		// the other way round. Only the waiting side pays for range, so move that penalty over.
+		INT32 const iRangePenalty = PythSpacesAway(pSoldier->sGridNo, pOpponent->sGridNo) / 10;
+		INT32 const iMargin = (bOurPts - iRangePenalty) - (bTheirPts + iRangePenalty);
+		INT32 const iChance = std::clamp(50 + 20 * iMargin, 0, 100);
+
+		SLOGD("EstimateInterruptChance: {} vs {} points {} vs {} after range {} -> {}",
+			pSoldier->ubID, pOpponent->ubID, bOurPts, bTheirPts, iRangePenalty, iChance);
+
+		iBestChance = std::max(iBestChance, iChance);
+	}
+
+	return (UINT8) iBestChance;
+}
+
+
 INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 {
 	INT8 bActionReturned;
@@ -1454,7 +1530,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 	INT8 bInWater, bInDeepWater, bInGas;
 	INT8 bSeekPts = 0, bHelpPts = 0, bHidePts = 0, bWatchPts = 0;
 	INT8	bHighestWatchLoc;
-	ATTACKTYPE BestThrow;
+	ATTACKTYPE BestThrow, BestShot;
 #ifdef AI_TIMING_TEST
 	UINT32	uiStartTime, uiEndTime;
 #endif
@@ -1784,6 +1860,146 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 				pSoldier->bActionPoints = 0;
 				pSoldier->usActionData = NOWHERE;
 				return(AI_ACTION_NONE);
+			}
+		}
+
+		////////////////////////////////////////////////////////////////////////
+		// IF POSSIBLE, SHOOT AT AN OPPONENT WE KNOW ABOUT BUT CANNOT SEE
+		////////////////////////////////////////////////////////////////////////
+
+		// On red alert we know roughly where the player is but have no one in sight, so
+		// vanilla only ever manoeuvres here. With enemy_shoot_unseen we let CalcBestShot
+		// look for a shot as well: it will find one when a team-mate has the opponent in
+		// sight, or seen lately and still where they were. If they are out of reach behind
+		// cover, it may offer a suppression burst over them, as it does over the tile a
+		// shot we heard came from.
+		if (gamepolicy(enemy_shoot_unseen))
+		{
+			BestShot.ubPossible = FALSE;
+
+			// find a usable gun and ready it before evaluating the shot;
+			// CalcBestShot does not set bWeaponIn, so it must be set here (see DecideActionBlack)
+			INT8 const bGunIn = FindAIUsableObjClass(pSoldier, IC_GUN);
+			if (bGunIn != NO_SLOT)
+			{
+				BestShot.bWeaponIn = bGunIn;
+				pSoldier->bDoBurst = 0;
+
+				// Pick the body part afresh, as DecideActionBlack does before it weighs any
+				// attack. Nothing else clears this for the AI, and firing overwrites it with the
+				// part that shot resolved to, so leaving it be would rate this shot against a
+				// part chosen for some earlier target in different cover - and, since the aiming
+				// choice in GetTargetWorldPositions only runs on a location still RANDOM going in,
+				// would skip that choice for the shot itself too.
+				pSoldier->bAimShotLocation = AIM_SHOT_RANDOM;
+
+				// if it's in another pocket, swap it into the hand temporarily
+				if (bGunIn != HANDPOS)
+					RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
+
+				// now it better be a usable gun, or this guy can't shoot
+				if (GCM->getItem(pSoldier->inv[HANDPOS].usItem)->getItemClass() == IC_GUN && pSoldier->inv[HANDPOS].bGunStatus >= USABLE)
+				{
+					CalcBestShot(pSoldier, &BestShot);
+
+					bool const fSuppress = BestShot.bTargetCubeLevel != 0;
+
+					// One likely to win an interrupt when the merc shows themselves again does
+					// better to keep its APs for that than to spend them on bullets that cannot
+					// hit. The red alert decisions below are left to make of the turn what they
+					// will - watching for them, or anything else.
+					if (fSuppress && BestShot.ubPossible)
+					{
+						UINT8 const ubInterruptChance = EstimateInterruptChance(pSoldier);
+						if (PreRandom(100) < ubInterruptChance)
+						{
+							SLOGD("DecideActionRed: {} won't suppress {}, keeping its APs for an interrupt (chance {})", pSoldier->ubID, BestShot.opponent->ubID, ubInterruptChance);
+							BestShot.ubPossible = FALSE;
+						}
+						else
+						{
+							SLOGD("DecideActionRed: {} suppresses {} despite an interrupt chance of {}", pSoldier->ubID, BestShot.opponent->ubID, ubInterruptChance);
+						}
+					}
+					if (BestShot.ubPossible && (BestShot.ubChanceToReallyHit > 0 || fSuppress) && BestShot.opponent->bLife >= OKLIFE)
+					{
+						// CalcBestShot rates every shot as if we were standing (both
+						// AICalcChanceToHitGun and the cover calc fake it), so a crouched or
+						// prone shooter can settle on a target its real stance has no line to
+						// at all and then fire into its own cover. DecideActionBlack asks
+						// ShootingStanceChange about this before every shot; this one has to do
+						// the same. Only when we are not standing: standing is what the shot was
+						// rated from, so there is nothing to correct then. A suppression burst
+						// was rated from the stance we are in already.
+						UINT8 ubBestStance = 0;
+						UINT8 ubStanceCost = 0;
+
+						if (!fSuppress && !TANK(pSoldier) && gAnimControl[pSoldier->usAnimState].ubEndHeight != ANIM_STAND)
+						{
+							INT8 const bDirection = (INT8) GetDirectionToGridNoFromGridNo(pSoldier->sGridNo, BestShot.sTarget);
+
+							ubBestStance = ShootingStanceChange(pSoldier, &BestShot, bDirection);
+							if (ubBestStance != 0)
+							{
+								// it judged the stances for the direction of the target, so we
+								// have to be facing that way for its answer to hold
+								if (pSoldier->bDirection != bDirection &&
+									InternalIsValidStance(pSoldier, bDirection, gAnimControl[pSoldier->usAnimState].ubEndHeight))
+								{
+									// turn this action, shoot the next one - put the gun back
+									// where it was, as the decision gets made again from scratch
+									if (bGunIn != HANDPOS)
+										RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
+
+									pSoldier->usActionData = bDirection;
+									return(AI_ACTION_CHANGE_FACING);
+								}
+
+								// ShootingStanceChange only offers a stance we can still afford to
+								// shoot from - it reserves the attack's AP cost before rating any
+								// of them - so the shot below stays payable, it just has this much
+								// less to spend
+								ubStanceCost = (UINT8) GetAPsToChangeStance(pSoldier, ubBestStance);
+							}
+						}
+
+						// the gun sits in HANDPOS after the swap, not in its original pocket
+						UINT8 const ubBurstAPs = CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[HANDPOS]);
+						// a burst still pays for readying and turning on top of the bullets, as
+						// the check DecideActionBlack makes before bursting has it
+						INT8  const bAPsForAttack = pSoldier->bActionPoints - ubStanceCost - (BestShot.ubAPCost - BestShot.ubAimTime);
+
+						// a shot this unlikely is only worth taking as a burst - one round at
+						// those odds just throws the turn away. At someone a spotter calls out for
+						// us we take only a good, carefully aimed sniper shot.
+						bool const fTooUnlikelyForSingle = fSuppress || (BestShot.ubChanceToReallyHit <= 5) ||
+							(BestShot.fSpotted && BestShot.ubChanceToReallyHit < MIN_CHANCE_FOR_SPOTTED_SINGLE_SHOT);
+						bool const fCanBurst = IsGunBurstCapable(pSoldier, HANDPOS) &&
+							pSoldier->inv[HANDPOS].ubGunShotsLeft > 1 && bAPsForAttack >= ubBurstAPs;
+
+						if (fTooUnlikelyForSingle && fCanBurst)
+						{
+							if (fSuppress)
+								SLOGD("DecideActionRed: {} fires a suppression burst over {} at height cube {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.bTargetCubeLevel, ubBestStance);
+							else
+								SLOGD("DecideActionRed: {} fires a burst at {}, chance to really hit {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubChanceToReallyHit, ubBestStance);
+							pSoldier->bDoBurst = 1;
+							pSoldier->bAimTime = 0;
+							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
+						}
+						else if (!fTooUnlikelyForSingle)
+						{
+							SLOGD("DecideActionRed: {} fires at {}, aim {}, chance to really hit {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubAimTime, BestShot.ubChanceToReallyHit, ubBestStance);
+							pSoldier->bAimTime = BestShot.ubAimTime;
+							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
+						}
+						SLOGD("DecideActionRed: {} holds fire at {}: chance to really hit {} too low for a single shot{}, and can't burst", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubChanceToReallyHit, BestShot.fSpotted ? " at a spotted target" : "");
+					}
+				}
+
+				// not firing after all - swap the gun back into its original pocket
+				if (bGunIn != HANDPOS)
+					RearrangePocket(pSoldier, HANDPOS, bGunIn, TEMPORARILY);
 			}
 		}
 	}
@@ -3179,7 +3395,9 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 		if (ubBestAttackAction == AI_ACTION_FIRE_GUN)
 		{
 			// Do we need to change stance?  NB We'll have to ready our gun again
-			if ( !TANK( pSoldier ) && ( pSoldier->bActionPoints - (BestAttack.ubAPCost - BestAttack.ubAimTime) ) >= (AP_CROUCH + GetAPsToReadyWeapon( pSoldier, pSoldier->usAnimState ) ) )
+			// (not for a suppression burst: CalcBestShot found its way over the cover from
+			// the stance we are in, and only made sure we can afford the burst from it)
+			if ( BestAttack.bTargetCubeLevel == 0 && !TANK( pSoldier ) && ( pSoldier->bActionPoints - (BestAttack.ubAPCost - BestAttack.ubAimTime) ) >= (AP_CROUCH + GetAPsToReadyWeapon( pSoldier, pSoldier->usAnimState ) ) )
 			{
 				// since the AI considers shooting chance from standing primarily, if we are not
 				// standing we should always consider a stance change
@@ -3254,7 +3472,8 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 				if (pSoldier->bActionPoints - (BestAttack.ubAPCost - BestAttack.ubAimTime) >= ubBurstAPs )
 				{
 					// Base chance of bursting is 25% if best shot was +0 aim, down to 8% at +4
-					if ( TANK( pSoldier ) )
+					// (a suppression shot is only worth firing as a burst)
+					if ( TANK( pSoldier ) || BestAttack.bTargetCubeLevel != 0 )
 					{
 						iChance = 100;
 					}
@@ -3287,8 +3506,9 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 					{
 						BestAttack.ubAimTime = BURSTING;
 						BestAttack.ubAPCost = BestAttack.ubAPCost - BestAttack.ubAimTime + CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[HANDPOS]);
-						// check for spread burst possibilities
-						if (pSoldier->bAttitude != ATTACKSLAYONLY)
+						// check for spread burst possibilities (but a suppression burst stays
+						// over its tile rather than spreading onto the bodies around it)
+						if (pSoldier->bAttitude != ATTACKSLAYONLY && BestAttack.bTargetCubeLevel == 0)
 						{
 							CalcSpreadBurst( pSoldier, BestAttack.sTarget, BestAttack.bTargetLevel );
 						}
@@ -3342,6 +3562,8 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 		{
 			RearrangePocket(pSoldier,HANDPOS,BestAttack.bWeaponIn,FOREVER);
 		}
+
+		pSoldier->bTargetCubeLevel = BestAttack.bTargetCubeLevel;
 
 		if (fChangeStanceFirst)
 		{ // currently only for guns...
