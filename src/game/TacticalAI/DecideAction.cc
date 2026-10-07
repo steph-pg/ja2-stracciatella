@@ -27,11 +27,13 @@
 #include "StrategicMap.h"
 #include "Structure.h"
 #include "Structure_Wrap.h"
+#include "TeamTurns.h"
 #include "Timer_Control.h"
 #include "WeaponModels.h"
 #include "Weapons.h"
 #include "WorldMan.h"
 #include <string_theory/format>
+#include <algorithm>
 
 extern BOOLEAN gfUseAlternateQueenPosition;
 
@@ -1474,6 +1476,55 @@ static INT8 FireGunOrChangeStanceFirst(SOLDIERTYPE *pSoldier, const ATTACKTYPE &
 }
 
 
+// The best chance this soldier has of winning an interrupt on the coming enemy turn against
+// any opponent it knows of, were it to keep its APs for that rather than spend them now.
+// The duel itself is a plain comparison of points, but a turn ahead those move with things we
+// cannot foresee (shock, how many enemies they will see), so the margin becomes a chance.
+static UINT8 EstimateInterruptChance(const SOLDIERTYPE* const pSoldier)
+{
+	if (pSoldier->bActionPoints < MIN_APS_TO_INTERRUPT || pSoldier->bBreath < OKBREATH ||
+		pSoldier->bCollapsed || (pSoldier->uiStatusFlags & SOLDIER_GASSED))
+	{
+		return 0;
+	}
+
+	INT32 iBestChance = 0;
+	FOR_EACH_MERC(i)
+	{
+		const SOLDIERTYPE* const pOpponent = *i;
+		if (pOpponent->bLife < OKLIFE || pOpponent->bSide == pSoldier->bSide ||
+			CONSIDERED_NEUTRAL(pSoldier, pOpponent))
+		{
+			continue;
+		}
+
+		if (pSoldier->bOppList[pOpponent->ubID] == NOT_HEARD_OR_SEEN &&
+			gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == NOT_HEARD_OR_SEEN)
+		{
+			continue;  // nobody on our team knows of them
+		}
+
+		INT8 const bOurPts   = CalcInterruptDuelPts(pSoldier, pOpponent, TRUE);
+		INT8 const bTheirPts = CalcInterruptDuelPts(pOpponent, pSoldier, FALSE);
+		if (bOurPts == NO_INTERRUPT || bTheirPts == NO_INTERRUPT)
+			continue;
+
+		// The points take who is active from whose turn it is now, which on their turn will be
+		// the other way round. Only the waiting side pays for range, so move that penalty over.
+		INT32 const iRangePenalty = PythSpacesAway(pSoldier->sGridNo, pOpponent->sGridNo) / 10;
+		INT32 const iMargin = (bOurPts - iRangePenalty) - (bTheirPts + iRangePenalty);
+		INT32 const iChance = std::clamp(50 + 20 * iMargin, 0, 100);
+
+		SLOGD("EstimateInterruptChance: {} vs {} points {} vs {} after range {} -> {}",
+			pSoldier->ubID, pOpponent->ubID, bOurPts, bTheirPts, iRangePenalty, iChance);
+
+		iBestChance = std::max(iBestChance, iChance);
+	}
+
+	return (UINT8) iBestChance;
+}
+
+
 INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 {
 	INT8 bActionReturned;
@@ -1888,6 +1939,24 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 					CalcBestShot(pSoldier, &BestShot);
 
 					bool const fSuppress = BestShot.bTargetCubeLevel != 0;
+
+					// One likely to win an interrupt when the merc shows themselves again does
+					// better to keep its APs for that than to spend them on bullets that cannot
+					// hit. The red alert decisions below are left to make of the turn what they
+					// will - watching for them, or anything else.
+					if (fSuppress && BestShot.ubPossible)
+					{
+						UINT8 const ubInterruptChance = EstimateInterruptChance(pSoldier);
+						if (PreRandom(100) < ubInterruptChance)
+						{
+							SLOGD("DecideActionRed: {} won't suppress {}, keeping its APs for an interrupt (chance {})", pSoldier->ubID, BestShot.opponent->ubID, ubInterruptChance);
+							BestShot.ubPossible = FALSE;
+						}
+						else
+						{
+							SLOGD("DecideActionRed: {} suppresses {} despite an interrupt chance of {}", pSoldier->ubID, BestShot.opponent->ubID, ubInterruptChance);
+						}
+					}
 					if (BestShot.ubPossible && (BestShot.ubChanceToReallyHit > 0 || fSuppress) && BestShot.opponent->bLife >= OKLIFE)
 					{
 						// CalcBestShot rates every shot as if we were standing (both

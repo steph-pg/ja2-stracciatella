@@ -70,8 +70,6 @@ static SOLDIERTYPE* gLastInterruptedGuy = NULL;
 extern SightFlags gubSightFlags;
 
 
-#define MIN_APS_TO_INTERRUPT		4
-
 void ClearIntList( void )
 {
 	std::fill(std::begin(gOutOfTurnOrder), std::end(gOutOfTurnOrder), nullptr);
