@@ -1880,15 +1880,21 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 						if (fTooUnlikelyForSingle && fCanBurst)
 						{
+							if (fSuppress)
+								SLOGD("DecideActionRed: {} fires a suppression burst over {} at height cube {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.bTargetCubeLevel, ubBestStance);
+							else
+								SLOGD("DecideActionRed: {} fires a burst at {}, chance to really hit {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubChanceToReallyHit, ubBestStance);
 							pSoldier->bDoBurst = 1;
 							pSoldier->bAimTime = 0;
 							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 						}
 						else if (!fTooUnlikelyForSingle)
 						{
+							SLOGD("DecideActionRed: {} fires at {}, aim {}, chance to really hit {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubAimTime, BestShot.ubChanceToReallyHit, ubBestStance);
 							pSoldier->bAimTime = BestShot.ubAimTime;
 							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 						}
+						SLOGD("DecideActionRed: {} holds fire at {}: only worth a burst, and can't burst", pSoldier->ubID, BestShot.opponent->ubID);
 					}
 				}
 
