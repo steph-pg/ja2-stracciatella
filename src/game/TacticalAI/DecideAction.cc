@@ -2016,7 +2016,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 						bool const fCanBurst = IsGunBurstCapable(pSoldier, HANDPOS) &&
 							pSoldier->inv[HANDPOS].ubGunShotsLeft > 1 && bAPsForAttack >= ubBurstAPs;
 
-						if (fTooUnlikelyForSingle && fCanBurst && Chance(60))
+						if (fTooUnlikelyForSingle && fCanBurst)
 						{
 							if (fSuppress)
 								SLOGD("DecideActionRed: {} fires a suppression burst over {} at height cube {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.bTargetCubeLevel, ubBestStance);
