@@ -1942,7 +1942,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 						// the gun sits in HANDPOS after the swap, not in its original pocket
 						UINT8 const ubBurstAPs = CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[HANDPOS]);
-						INT8  const bAPsForAttack = pSoldier->bActionPoints - ubStanceCost;
+						// a burst still pays for readying and turning on top of the bullets, as
+						// the check DecideActionBlack makes before bursting has it
+						INT8  const bAPsForAttack = pSoldier->bActionPoints - ubStanceCost - (BestShot.ubAPCost - BestShot.ubAimTime);
 
 						// a shot this unlikely is only worth taking as a burst - one round at
 						// those odds just throws the turn away. At someone a spotter calls out for
