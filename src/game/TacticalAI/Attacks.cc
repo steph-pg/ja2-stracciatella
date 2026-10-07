@@ -91,6 +91,25 @@ static INT32 EstimateShotDamage(SOLDIERTYPE* pSoldier, SOLDIERTYPE* pOpponent, U
 #define MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH 25
 
 
+static char const* OppKnowledgeName(INT8 const bKnowledge)
+{
+	switch (bKnowledge)
+	{
+		case HEARD_3_TURNS_AGO: return "heard 3 turns ago";
+		case HEARD_2_TURNS_AGO: return "heard 2 turns ago";
+		case HEARD_LAST_TURN:   return "heard last turn";
+		case HEARD_THIS_TURN:   return "heard this turn";
+		case NOT_HEARD_OR_SEEN: return "nothing";
+		case SEEN_CURRENTLY:    return "seen now";
+		case SEEN_THIS_TURN:    return "seen this turn";
+		case SEEN_LAST_TURN:    return "seen last turn";
+		case SEEN_2_TURNS_AGO:  return "seen 2 turns ago";
+		case SEEN_3_TURNS_AGO:  return "seen 3 turns ago";
+		default:                return "?";
+	}
+}
+
+
 void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 {
 	INT32 iAttackValue;
@@ -156,38 +175,55 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		// can hold a sighting at SEEN_CURRENTLY for as long as they lie there, well after everyone
 		// upright has lost sight. So we ask for a spotter who is in a state to call the target out.
 		//
-		// Failing that, we may still fire back at a gunshot we heard this turn or last, but only
-		// while the shooter is still standing where the shot came from. Shooting at an empty tile
-		// someone has fired and slipped away from rarely lands close enough to them to be worth
-		// it. Any other noise only places them roughly and overwrites the shot's position, so it
-		// does not count.
-		bool fHeardShotOnly = false;
+		// Failing that, we may still fire at someone out of sight whom we know to be exactly where
+		// they were, though only while that knowledge is fresh and they have not left the tile:
+		// a gunshot we heard this turn or last, or a sighting - ours or the team's - from this
+		// turn or last. A merc who fires from a window and ducks below it is still there; one who
+		// has slipped away is not, and shooting at the tile they left rarely lands close enough
+		// to them to be worth it. Any other noise only places them roughly and overwrites the
+		// shot's position, so it does not count.
+		bool fNotInSight = false;
+		char const* szKnownBy = pSoldier->bOppList[pOpponent->ubID] == SEEN_CURRENTLY ? "seen" : "spotted";
 
 		if (pSoldier->bOppList[pOpponent->ubID] != SEEN_CURRENTLY &&
 			!(fShootUnseen && gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == SEEN_CURRENTLY &&
 				TeamHasSpotterFor(pSoldier->bTeam, pOpponent)))
 		{
+			if (!fShootUnseen)
+				continue;  // next opponent
+
 			INT8 const bKnowledge = pSoldier->bOppList[pOpponent->ubID];
-			if (!fShootUnseen ||
-				(bKnowledge != HEARD_THIS_TURN && bKnowledge != HEARD_LAST_TURN) ||
-				!gfLastKnownOppLocIsShot[pSoldier->ubID][pOpponent->ubID])
+			INT8 const bPublic    = gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID];
+			bool const fStayedSinceOurs =
+				gsLastKnownOppLoc[pSoldier->ubID][pOpponent->ubID] == pOpponent->sGridNo &&
+				gbLastKnownOppLevel[pSoldier->ubID][pOpponent->ubID] == pOpponent->bLevel;
+			bool const fStayedSincePublic =
+				gsPublicLastKnownOppLoc[pSoldier->bTeam][pOpponent->ubID] == pOpponent->sGridNo &&
+				gbPublicLastKnownOppLevel[pSoldier->bTeam][pOpponent->ubID] == pOpponent->bLevel;
+
+			if ((bKnowledge == HEARD_THIS_TURN || bKnowledge == HEARD_LAST_TURN) &&
+				gfLastKnownOppLocIsShot[pSoldier->ubID][pOpponent->ubID] && fStayedSinceOurs)
 			{
+				szKnownBy = "heard shot";
+			}
+			else if (((bKnowledge == SEEN_THIS_TURN || bKnowledge == SEEN_LAST_TURN) && fStayedSinceOurs) ||
+				((bPublic == SEEN_THIS_TURN || bPublic == SEEN_LAST_TURN) && fStayedSincePublic))
+			{
+				szKnownBy = "last seen";
+			}
+			else
+			{
+				if (bKnowledge != NOT_HEARD_OR_SEEN || bPublic != NOT_HEARD_OR_SEEN)
+				{
+					SLOGD("CalcBestShot: {} vs {} not a target: knows {}, public {}, shot heard {}, stayed since ours {}, since public {}",
+						pSoldier->ubID, pOpponent->ubID, OppKnowledgeName(bKnowledge), OppKnowledgeName(bPublic),
+						gfLastKnownOppLocIsShot[pSoldier->ubID][pOpponent->ubID], fStayedSinceOurs, fStayedSincePublic);
+				}
 				continue;  // next opponent
 			}
 
-			if (gsLastKnownOppLoc[pSoldier->ubID][pOpponent->ubID] != pOpponent->sGridNo ||
-				gbLastKnownOppLevel[pSoldier->ubID][pOpponent->ubID] != pOpponent->bLevel)
-			{
-				continue;  // next opponent
-			}
-
-			fHeardShotOnly = true;
+			fNotInSight = true;
 		}
-
-		// how we know where they are, for the log
-		char const* const szKnownBy =
-			pSoldier->bOppList[pOpponent->ubID] == SEEN_CURRENTLY ? "seen" :
-			fHeardShotOnly ? "heard shot" : "spotted";
 
 		// Special stuff for Carmen the bounty hunter
 		if (pSoldier->bAttitude == ATTACKSLAYONLY && pOpponent->ubProfile != SLAY)
@@ -205,7 +241,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 		// calculate chance to get through the opponent's cover (if any)
 
-		ubChanceToGetThrough = fHeardShotOnly ?
+		ubChanceToGetThrough = fNotInSight ?
 			AISoldierToLocationChanceToGetThrough(pSoldier, pOpponent->sGridNo, pOpponent->bLevel, 0) :
 			AISoldierToSoldierChanceToGetThrough(pSoldier, pOpponent);
 

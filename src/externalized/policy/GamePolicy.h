@@ -74,7 +74,7 @@ public:
 	uint8_t corpse_warning_duration;      // how long a fresh corpse keeps warning the AI of a possible ambush; 0 disables ambush avoidance entirely
 	uint8_t corpse_warning_distance;      // how far from a corpse, in tiles, the AI still heeds that warning
 	bool stay_on_rooftop;                 // AI on guard on rooftop are disallowed to go down
-	bool enemy_shoot_unseen;              // AI may shoot at an opponent a team-mate has in sight but it cannot see itself, or back at a heard shooter who has not moved, and while only on red alert; and may fire a suppression burst over one out of reach behind cover
+	bool enemy_shoot_unseen;              // AI may shoot at an opponent a team-mate has in sight but it cannot see itself, or at one heard firing or seen this turn or last who has not moved since, and while only on red alert; and may fire a suppression burst over one out of reach behind cover
 	bool ai_smarter_cover_search;         // AI weighs cover against opponents who could stand up and shoot and against the tiles it has been shot at from, searches its whole radius for it, and steps behind cover it can still shoot past before opening fire or watching for an opponent (false = vanilla)
 	bool avoid_light_tiles_at_night;      // at night, AI soldiers path around lit tiles the player can see
 
