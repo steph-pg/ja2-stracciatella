@@ -688,6 +688,13 @@ static void ChooseWeaponForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 bW
 }
 
 
+//Underground it is always dark, above ground only at night.
+static BOOLEAN IsDarkInSector()
+{
+	return NightTime() || gWorldSector.z > 0;
+}
+
+
 static void ChooseGrenadesForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 bGrenades, INT8 bGrenadeClass, BOOLEAN fGrenadeLauncher)
 {
 	OBJECTTYPE Object;
@@ -703,6 +710,8 @@ static void ChooseGrenadesForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 
 	UINT8 ubNumReg = 0;
 	UINT8 ubNumSmoke = 0;
 	UINT8 ubNumFlare = 0;
+	//break lights are of no use in daylight, nor in a grenade launcher
+	const BOOLEAN fFlares = !fGrenadeLauncher && IsDarkInSector();
 
 	//determine how many *points* the enemy will get to spend on grenades...
 	sNumPoints = bGrenades * bGrenadeClass;
@@ -778,7 +787,7 @@ static void ChooseGrenadesForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 
 					sNumPoints -= 4;
 					break;
 				case 6:
-					if (!fGrenadeLauncher )
+					if ( fFlares )
 					{
 						ubNumFlare++;
 						sNumPoints -= 3;
@@ -805,7 +814,7 @@ static void ChooseGrenadesForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 
 					break;
 				case 5:
 				case 6:
-					if (!fGrenadeLauncher)
+					if (fFlares)
 					{
 						ubNumFlare++;
 						sNumPoints -= 3;
@@ -1194,7 +1203,7 @@ static void ChooseSpecialWeaponsForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp,
 //glare.  UV goggles are top of the line, so only elites are handed them.
 static UINT16 ChooseVisionGearForTimeOfDay( BOOLEAN fAllowUVGoggles )
 {
-	if( !NightTime() && gWorldSector.z == 0 )
+	if( !IsDarkInSector() )
 	{
 		return SUNGOGGLES;
 	}
