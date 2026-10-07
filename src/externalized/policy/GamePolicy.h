@@ -70,6 +70,7 @@ public:
 	bool ai_go_prone_more_often;          // especially when already facing the right direction
 	int8_t threshold_cth_head;            // threshold AI always take head shots, increase game difficulty
 	int8_t threshold_cth_legs;            // threshold AI switch to leg shots from torso
+	bool ai_better_grenade_use;           // AI throws the grenade best suited to the job, and throws them regardless of its own health
 
 	uint8_t corpse_warning_duration;      // how long a fresh corpse keeps warning the AI of a possible ambush; 0 disables ambush avoidance entirely
 	uint8_t corpse_warning_distance;      // how far from a corpse, in tiles, the AI still heeds that warning

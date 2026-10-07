@@ -134,6 +134,15 @@
     // vanilla setting: false
     "go_prone_more_often": true,
 
+    //  The AI weighs every kind of grenade it carries and throws the one best suited to the job:
+    //  explosive and stun grenades first, then gas, with smoke only to cover a thrower below 2/3
+    //  of their health. A night flare still comes first for a healthy soldier, and tear gas is
+    //  not thrown at a target wearing a gas mask. Grenades are also thrown at a lone opponent
+    //  without waiting until the thrower is hurt. In vanilla only the first grenade in the
+    //  pockets is considered.
+    //  vanilla value: false
+    "better_grenade_use": true,
+
     //  Avoid ambushes
     //  On seeing a corpse, the AI suspects an ambush and refuses to walk into the tiles around it.
     //  This was never enabled in the original game due to a bug.

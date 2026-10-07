@@ -769,7 +769,7 @@ static void CalcBestThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
 	}
 
 	// this is try to minimize enemies wasting their (limited) toss attacks, with the exception of break lights
-	if (usGrenade != BREAK_LIGHT)
+	if (usGrenade != BREAK_LIGHT && !gamepolicy(ai_better_grenade_use))
 	{
 		switch( ubDiff )
 		{
@@ -1649,6 +1649,12 @@ static INT32 EstimateThrowDamage(SOLDIERTYPE* pSoldier, UINT8 ubItemPos, SOLDIER
 		bSlot = FindObj( pOpponent, GASMASK );
 		if (bSlot == HEAD1POS || bSlot == HEAD2POS)
 		{
+			// tear gas is wasted on a masked target; mustard gas eats through the mask
+			if (gamepolicy(ai_better_grenade_use) && !smokeEffect->smokeEffect->getDamage())
+			{
+				return 0;
+			}
+
 			// take condition of the gas mask into account - it could be leaking
 			iBreathDamage = (iBreathDamage * (100 - pOpponent->inv[bSlot].bStatus[0])) / 100;
 		}
@@ -1794,6 +1800,130 @@ INT8 CanNPCAttack(SOLDIERTYPE *pSoldier)
 	return( bCanAttack );
 }
 
+// Weighs a throw with the tossable item in pThrow->bWeaponIn (sets pThrow->ubPossible)
+static void CalcThrowFromSlot(SOLDIERTYPE* pSoldier, ATTACKTYPE* pThrow)
+{
+	// if it's in a pocket, swap it into the hand temporarily
+	if (pThrow->bWeaponIn != HANDPOS)
+	{
+		RearrangePocket(pSoldier, HANDPOS, pThrow->bWeaponIn, TEMPORARILY);
+	}
+
+	// get the minimum cost to attack with this tossable item
+	UINT8 const ubMinAPcost = MinAPsToAttack(pSoldier, pSoldier->sLastTarget, DONTADDTURNCOST);
+
+	// if we can afford the minimum AP cost to throw this tossable item
+	if (pSoldier->bActionPoints >= ubMinAPcost)
+	{
+		// then look around for a worthy target (which sets bestThrow.ubPossible)
+		CalcBestThrow( pSoldier, pThrow );
+	}
+
+	// if it was in a pocket, swap it back for now
+	if (pThrow->bWeaponIn != HANDPOS)
+	{
+		RearrangePocket( pSoldier, HANDPOS, pThrow->bWeaponIn, TEMPORARILY );
+	}
+}
+
+
+// Ranks a hand grenade by the job it does: the lowest rank is thrown first.
+// Returns -1 for one that is not worth throwing at all right now.
+static INT8 GrenadeThrowRank(const SOLDIERTYPE* pSoldier, UINT16 usGrenade)
+{
+	if (usGrenade == BREAK_LIGHT)
+	{
+		// at night a healthy soldier lights the opponents up before anything else
+		bool const fHealthy = pSoldier->bLife > pSoldier->bLifeMax / 2;
+		return (GetTimeOfDayAmbientLightLevel() == NORMAL_LIGHTLEVEL_NIGHT && fHealthy) ? 0 : 2;
+	}
+
+	const ExplosiveModel* const explosive = GCM->getExplosive(usGrenade);
+	if (explosive->getBlastEffect() || explosive->getStunEffect())
+	{
+		// explosive and stun grenades put opponents down
+		return 1;
+	}
+
+	const ExplosiveSmokeEffect* const smoke = explosive->getSmokeEffect();
+	if (smoke && (smoke->smokeEffect->getDamage() || smoke->smokeEffect->getBreathDamage()))
+	{
+		// tear and mustard gas
+		return 2;
+	}
+
+	// plain smoke is only worth it to cover a wounded soldier
+	bool const fWounded = pSoldier->bLife < pSoldier->bLifeMax * 2 / 3;
+	return fWounded ? 3 : -1;
+}
+
+
+// Weighs every kind of hand grenade the soldier carries and keeps the throw
+// with the lowest rank, the highest attack value among those of the same rank.
+static void CalcBestGrenadeThrow(SOLDIERTYPE* pSoldier, ATTACKTYPE* pBestThrow)
+{
+	InitAttackType(pBestThrow);
+	pBestThrow->bWeaponIn = NO_SLOT;
+	INT8 bBestRank = -1;
+
+	for (INT8 bSlot = 0; bSlot < NUM_INV_SLOTS; ++bSlot)
+	{
+		UINT16 const usItem = pSoldier->inv[bSlot].usItem;
+		if (!GCM->getItem(usItem)->isGrenade() || GCM->getExplosive(usItem)->isLaunchable())
+		{
+			continue;
+		}
+
+		// grenades of one kind all throw alike, so weigh only the first stack
+		bool fWeighed = false;
+		for (INT8 bEarlier = 0; bEarlier < bSlot; ++bEarlier)
+		{
+			if (pSoldier->inv[bEarlier].usItem == usItem)
+			{
+				fWeighed = true;
+				break;
+			}
+		}
+		if (fWeighed)
+		{
+			continue;
+		}
+
+		// even if nothing can be thrown, the caller expects to hear of a grenade
+		if (pBestThrow->bWeaponIn == NO_SLOT)
+		{
+			pBestThrow->bWeaponIn = bSlot;
+		}
+
+		INT8 const bRank = GrenadeThrowRank(pSoldier, usItem);
+		if (bRank < 0 || (pBestThrow->ubPossible && bRank > bBestRank))
+		{
+			continue;
+		}
+
+		ATTACKTYPE Throw;
+		InitAttackType(&Throw);
+		Throw.bWeaponIn = bSlot;
+		CalcThrowFromSlot(pSoldier, &Throw);
+
+		SLOGD("CalcBestGrenadeThrow: {} weighs {} (rank {}): possible {}, attack value {}",
+			pSoldier->ubID, GCM->getItem(usItem)->getInternalName(), bRank, Throw.ubPossible, Throw.iAttackValue);
+
+		if (!Throw.ubPossible)
+		{
+			continue;
+		}
+		if (pBestThrow->ubPossible && bRank == bBestRank && Throw.iAttackValue <= pBestThrow->iAttackValue)
+		{
+			continue;
+		}
+
+		*pBestThrow = Throw;
+		bBestRank = bRank;
+	}
+}
+
+
 void CheckIfTossPossible(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 {
 	if ( TANK( pSoldier ) )
@@ -1808,18 +1938,16 @@ void CheckIfTossPossible(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 		{
 			// Consider rocket launcher/cannon
 			pBestThrow->bWeaponIn = FindObj( pSoldier, ROCKET_LAUNCHER );
-			if ( pBestThrow->bWeaponIn == NO_SLOT )
+
+			// no rocket launcher, or maybe grenades as well - which one to use?
+			if ( pBestThrow->bWeaponIn == NO_SLOT || ( pSoldier->bAIMorale > MORALE_WORRIED && PreRandom( 2 ) ) )
 			{
-				// no rocket launcher, consider grenades
-				pBestThrow->bWeaponIn = FindThrowableGrenade( pSoldier );
-			}
-			else
-			{
-				// Have rocket launcher... maybe have grenades as well.  which one to use?
-				if ( pSoldier->bAIMorale > MORALE_WORRIED && PreRandom( 2 ) )
+				if ( gamepolicy(ai_better_grenade_use) )
 				{
-					pBestThrow->bWeaponIn = FindThrowableGrenade( pSoldier );
+					CalcBestGrenadeThrow( pSoldier, pBestThrow );
+					return;
 				}
+				pBestThrow->bWeaponIn = FindThrowableGrenade( pSoldier );
 			}
 		}
 	}
@@ -1827,27 +1955,7 @@ void CheckIfTossPossible(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 	// if the soldier does have a tossable item somewhere
 	if (pBestThrow->bWeaponIn != NO_SLOT)
 	{
-		// if it's in his holster, swap it into his hand temporarily
-		if (pBestThrow->bWeaponIn != HANDPOS)
-		{
-			RearrangePocket(pSoldier, HANDPOS, pBestThrow->bWeaponIn, TEMPORARILY);
-		}
-
-		// get the minimum cost to attack with this tossable item
-		UINT8 const ubMinAPcost = MinAPsToAttack(pSoldier, pSoldier->sLastTarget, DONTADDTURNCOST);
-
-		// if we can afford the minimum AP cost to throw this tossable item
-		if (pSoldier->bActionPoints >= ubMinAPcost)
-		{
-			// then look around for a worthy target (which sets bestThrow.ubPossible)
-			CalcBestThrow( pSoldier, pBestThrow );
-		}
-
-		// if it was in his holster, swap it back into his holster for now
-		if (pBestThrow->bWeaponIn != HANDPOS)
-		{
-			RearrangePocket( pSoldier, HANDPOS, pBestThrow->bWeaponIn, TEMPORARILY );
-		}
+		CalcThrowFromSlot( pSoldier, pBestThrow );
 	}
 }
 
