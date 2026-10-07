@@ -184,6 +184,11 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			fHeardShotOnly = true;
 		}
 
+		// how we know where they are, for the log
+		char const* const szKnownBy =
+			pSoldier->bOppList[pOpponent->ubID] == SEEN_CURRENTLY ? "seen" :
+			fHeardShotOnly ? "heard shot" : "spotted";
+
 		// Special stuff for Carmen the bounty hunter
 		if (pSoldier->bAttitude == ATTACKSLAYONLY && pOpponent->ubProfile != SLAY)
 			continue;  // next opponent
@@ -193,7 +198,10 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 		// if we don't have enough APs left to shoot even a snap-shot at this guy
 		if (ubMinAPcost > pSoldier->bActionPoints)
+		{
+			SLOGD("CalcBestShot: {} vs {} ({}) not enough APs (have {}, need {})", pSoldier->ubID, pOpponent->ubID, szKnownBy, pSoldier->bActionPoints, ubMinAPcost);
 			continue;          // next opponent
+		}
 
 		// calculate chance to get through the opponent's cover (if any)
 
@@ -208,15 +216,15 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			// same one DecideActionBlack makes before it will burst at all.
 			if (!fMaySuppress || pOpponent->bLife < OKLIFE)
 			{
-				// not a case for suppression at all
+				SLOGD("CalcBestShot: {} vs {} ({}) body CTGT 0", pSoldier->ubID, pOpponent->ubID, szKnownBy);
 			}
 			else if (!fGunCanBurst)
 			{
-				SLOGD("CalcBestShot: {} vs {} body CTGT 0, no burst (gun can't, or out of ammo)", pSoldier->ubID, pOpponent->ubID);
+				SLOGD("CalcBestShot: {} vs {} ({}) body CTGT 0, no burst (gun can't, or out of ammo)", pSoldier->ubID, pOpponent->ubID, szKnownBy);
 			}
 			else if (pSoldier->bActionPoints - ubMinAPcost < ubBurstAPs)
 			{
-				SLOGD("CalcBestShot: {} vs {} body CTGT 0, no burst (APs {}, need {})", pSoldier->ubID, pOpponent->ubID, pSoldier->bActionPoints, ubMinAPcost + ubBurstAPs);
+				SLOGD("CalcBestShot: {} vs {} ({}) body CTGT 0, no burst (APs {}, need {})", pSoldier->ubID, pOpponent->ubID, szKnownBy, pSoldier->bActionPoints, ubMinAPcost + ubBurstAPs);
 			}
 			else
 			{
@@ -230,7 +238,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 				// below this most of the burst ends up in the cover rather than over them
 				bool const fCandidate = ubSuppressCTGT >= MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH;
-				SLOGD("CalcBestShot: {} vs {} body CTGT 0, over at cube 2: {}, cube 3: {} -> {}", pSoldier->ubID, pOpponent->ubID, ubCTGTCube2, ubCTGTCube3, fCandidate ? "candidate" : "too low");
+				SLOGD("CalcBestShot: {} vs {} ({}) body CTGT 0, over at cube 2: {}, cube 3: {} -> {}", pSoldier->ubID, pOpponent->ubID, szKnownBy, ubCTGTCube2, ubCTGTCube3, fCandidate ? "candidate" : "too low");
 
 				if (fCandidate)
 				{
@@ -341,14 +349,20 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 		// if we can't get any kind of hit rate at all
 		if (iBestHitRate == 0)
+		{
+			SLOGD("CalcBestShot: {} vs {} ({}) CTGT {}, no chance to hit", pSoldier->ubID, pOpponent->ubID, szKnownBy, ubChanceToGetThrough);
 			continue;          // next opponent
+		}
 
 		// calculate chance to REALLY hit: shoot accurately AND get past cover
 		ubChanceToReallyHit = (ubBestChanceToHit * ubChanceToGetThrough) / 100;
 
 		// if we can't REALLY hit at all
 		if (ubChanceToReallyHit == 0)
+		{
+			SLOGD("CalcBestShot: {} vs {} ({}) CTGT {}, CTH {}, chance to really hit 0", pSoldier->ubID, pOpponent->ubID, szKnownBy, ubChanceToGetThrough, ubBestChanceToHit);
 			continue;          // next opponent
+		}
 
 		// really limit knife throwing so it doesn't look wrong
 		if ( GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_THROWING_KNIFE && (ubChanceToReallyHit < 30 || ( PythSpacesAway( pSoldier->sGridNo, pOpponent->sGridNo ) > CalcMaxTossRange( pSoldier, THROWING_KNIFE, FALSE ) / 2 ) ) )
@@ -370,6 +384,8 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		{
 			iAttackValue /= 2;
 		}
+
+		SLOGD("CalcBestShot: {} vs {} ({}) CTGT {}, CTH {}, really {}, aim {}, value {}", pSoldier->ubID, pOpponent->ubID, szKnownBy, ubChanceToGetThrough, ubBestChanceToHit, ubChanceToReallyHit, ubBestAimTime, iAttackValue);
 
 		// if we can hurt the guy, OR probably not, but at least it's our best
 		// chance to actually hit him and maybe scare him, knock him down, etc.
@@ -398,6 +414,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			}
 
 			// OOOF!  That was a lot of work!  But we've got a new best target!
+			SLOGD("CalcBestShot: {} -> {} is the best target so far", pSoldier->ubID, pOpponent->ubID);
 			pBestShot->ubPossible          = TRUE;
 			pBestShot->opponent            = pOpponent;
 			pBestShot->ubAimTime           = ubBestAimTime;
