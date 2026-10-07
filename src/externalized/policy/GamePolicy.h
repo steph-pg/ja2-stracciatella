@@ -64,7 +64,7 @@ public:
 	uint8_t corpse_warning_duration;      // how long a fresh corpse keeps warning the AI of a possible ambush; 0 disables ambush avoidance entirely
 	uint8_t corpse_warning_distance;      // how far from a corpse, in tiles, the AI still heeds that warning
 	bool stay_on_rooftop;                 // AI on guard on rooftop are disallowed to go down
-	bool enemy_shoot_unseen;              // AI may shoot at an opponent a team-mate has in sight but it cannot see itself, or at one heard firing or seen this turn or last who has not moved since, and while only on red alert; and may fire a suppression burst over one out of reach behind cover
+	bool enemy_shoot_unseen;              // AI may shoot at opponents it cannot see itself (spotted by team-mates, just lost from sight, or heard shooting), also on red alert, and may suppress ones out of reach behind cover
 
 	bool interrupt_after_being_under_fire; // only being shot at during the turn in progress blocks a soldier's interrupts; vanilla keeps them blocked through the next turn too, since the under-fire mark is only cleared once their own turn begins. Applies to mercs and AI alike
 

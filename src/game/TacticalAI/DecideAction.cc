@@ -1848,8 +1848,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 		// On red alert we know roughly where the player is but have no one in sight, so
 		// vanilla only ever manoeuvres here. With enemy_shoot_unseen we let CalcBestShot
 		// look for a shot as well: it will find one when a team-mate has the opponent in
-		// sight, or at a shooter we heard fire who is still where the shot came from. If
-		// they are out of reach behind cover, it may offer a suppression burst over them.
+		// sight, or seen lately and still where they were. If they are out of reach behind
+		// cover, it may offer a suppression burst over them, as it does over the tile a
+		// shot we heard came from.
 		if (gamepolicy(enemy_shoot_unseen))
 		{
 			BestShot.ubPossible = FALSE;
