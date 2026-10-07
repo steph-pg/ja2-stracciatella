@@ -6,6 +6,7 @@
 #include "Weapons.h"
 #include "Strategic_Status.h"
 #include "Campaign.h"
+#include "Game_Clock.h"
 #include "GameSettings.h"
 #include "StrategicMap.h"
 #include "Auto_Resolve.h"
@@ -687,6 +688,13 @@ static void ChooseWeaponForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 bW
 }
 
 
+//Underground it is always dark, above ground only at night.
+static BOOLEAN IsDarkInSector()
+{
+	return NightTime() || gWorldSector.z > 0;
+}
+
+
 static void ChooseGrenadesForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 bGrenades, INT8 bGrenadeClass, BOOLEAN fGrenadeLauncher)
 {
 	OBJECTTYPE Object;
@@ -702,6 +710,8 @@ static void ChooseGrenadesForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 
 	UINT8 ubNumReg = 0;
 	UINT8 ubNumSmoke = 0;
 	UINT8 ubNumFlare = 0;
+	//break lights are of no use in daylight, nor in a grenade launcher
+	const BOOLEAN fFlares = !fGrenadeLauncher && IsDarkInSector();
 
 	//determine how many *points* the enemy will get to spend on grenades...
 	sNumPoints = bGrenades * bGrenadeClass;
@@ -777,7 +787,7 @@ static void ChooseGrenadesForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 
 					sNumPoints -= 4;
 					break;
 				case 6:
-					if (!fGrenadeLauncher )
+					if ( fFlares )
 					{
 						ubNumFlare++;
 						sNumPoints -= 3;
@@ -804,7 +814,7 @@ static void ChooseGrenadesForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 
 					break;
 				case 5:
 				case 6:
-					if (!fGrenadeLauncher)
+					if (fFlares)
 					{
 						ubNumFlare++;
 						sNumPoints -= 3;
@@ -1188,6 +1198,19 @@ static void ChooseSpecialWeaponsForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp,
 }
 
 
+//Picks the goggles that are actually worth wearing right now: night vision in
+//the dark - underground it is always dark - and sun goggles against daylight
+//glare.  UV goggles are top of the line, so only elites are handed them.
+static UINT16 ChooseVisionGearForTimeOfDay( BOOLEAN fAllowUVGoggles )
+{
+	if( !IsDarkInSector() )
+	{
+		return SUNGOGGLES;
+	}
+	return ( fAllowUVGoggles && Chance( 25 ) ) ? UVGOGGLES : NIGHTGOGGLES;
+}
+
+
 static void ChooseFaceGearForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp)
 {
 	INT32 i;
@@ -1216,25 +1239,21 @@ static void ChooseFaceGearForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp)
 	{
 		case SOLDIER_CLASS_ELITE:
 		case SOLDIER_CLASS_ELITE_MILITIA:
-			//All elites get a gasmask and either night goggles or uv goggles.
-			if( Chance( 75 ) )
+			//Elites get either a gasmask or a pair of goggles, never both - the two
+			//can't be worn at the same time.
+			if( Chance( 50 ) )
 			{
 				CreateItem( GASMASK, (INT8)(70+Random(31)), &(pp->Inv[ HEAD1POS ]) );
-				pp->Inv[ HEAD1POS ].fFlags |= OBJECT_UNDROPPABLE;
 			}
 			else
 			{
-				CreateItem( EXTENDEDEAR, (INT8)(70+Random(31)), &(pp->Inv[ HEAD1POS ]) );
-				pp->Inv[ HEAD1POS ].fFlags |= OBJECT_UNDROPPABLE;
+				CreateItem( ChooseVisionGearForTimeOfDay( TRUE ), (INT8)(70+Random(31)), &(pp->Inv[ HEAD1POS ]) );
 			}
-			if( Chance( 75 ) )
+			pp->Inv[ HEAD1POS ].fFlags |= OBJECT_UNDROPPABLE;
+			//an extended ear fits on top of any of them
+			if( Chance( 25 ) )
 			{
-				CreateItem( NIGHTGOGGLES, (INT8)(70+Random(31)), &(pp->Inv[ HEAD2POS ]) );
-				pp->Inv[ HEAD2POS ].fFlags |= OBJECT_UNDROPPABLE;
-			}
-			else
-			{
-				CreateItem( UVGOGGLES, (INT8)(70+Random(31)), &(pp->Inv[ HEAD2POS ]) );
+				CreateItem( EXTENDEDEAR, (INT8)(70+Random(31)), &(pp->Inv[ HEAD2POS ]) );
 				pp->Inv[ HEAD2POS ].fFlags |= OBJECT_UNDROPPABLE;
 			}
 			break;
@@ -1246,13 +1265,12 @@ static void ChooseFaceGearForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp)
 				if( Chance( 50 ) )
 				{
 					CreateItem( GASMASK, (INT8)(70+Random(31)), &(pp->Inv[ HEAD1POS ]) );
-					pp->Inv[ HEAD1POS ].fFlags |= OBJECT_UNDROPPABLE;
 				}
 				else
 				{
-					CreateItem( NIGHTGOGGLES, (INT8)(70+Random(31)), &(pp->Inv[ HEAD1POS ]) );
-					pp->Inv[ HEAD1POS ].fFlags |= OBJECT_UNDROPPABLE;
+					CreateItem( ChooseVisionGearForTimeOfDay( FALSE ), (INT8)(70+Random(31)), &(pp->Inv[ HEAD1POS ]) );
 				}
+				pp->Inv[ HEAD1POS ].fFlags |= OBJECT_UNDROPPABLE;
 			}
 			if( Chance( bDifficultyRating / 3 ) )
 			{
