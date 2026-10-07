@@ -124,9 +124,10 @@
 
     //  AI may fire a gun at an opponent it cannot see itself, as long as a team-mate
     //  has it in sight. It also lets an enemy that only knows where the player is
-    //  shoot instead of merely manoeuvring. A gunshot heard this turn or last is
-    //  fired back at too, as long as the shooter is still where the shot came from.
-    //  Any other remembered or heard position is never enough. An opponent whose cover
+    //  shoot instead of merely manoeuvring. A gunshot heard this turn or last, or a
+    //  sighting by anyone on the team this turn or last, is fired at too, as long as
+    //  the opponent has not left that tile. Any other remembered or heard position
+    //  is never enough. An opponent whose cover
     //  stops every shot, such as a merc gone prone under a window, may still get a
     //  burst fired over them to suppress them, if no one else can be hit.
     //  vanilla value: false
