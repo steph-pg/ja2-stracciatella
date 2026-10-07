@@ -240,6 +240,16 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 				bool const fCandidate = ubSuppressCTGT >= MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH;
 				SLOGD("CalcBestShot: {} vs {} ({}) body CTGT 0, over at cube 2: {}, cube 3: {} -> {}", pSoldier->ubID, pOpponent->ubID, szKnownBy, ubCTGTCube2, ubCTGTCube3, fCandidate ? "candidate" : "too low");
 
+				// diagnostics: the way through at every height of the tile, and where both stand
+				SLOGD("CalcBestShot: {} vs {} tile CTGT by cube 1-4: {} {} {} {}, shooter grid {} stance {} level {}, target grid {} stance {} level {}, dist {}",
+					pSoldier->ubID, pOpponent->ubID,
+					SoldierToTileHeightChanceToGetThrough(pSoldier, pOpponent->sGridNo, pOpponent->bLevel, 1),
+					ubCTGTCube2, ubCTGTCube3,
+					SoldierToTileHeightChanceToGetThrough(pSoldier, pOpponent->sGridNo, pOpponent->bLevel, 4),
+					pSoldier->sGridNo, gAnimControl[pSoldier->usAnimState].ubEndHeight, pSoldier->bLevel,
+					pOpponent->sGridNo, gAnimControl[pOpponent->usAnimState].ubEndHeight, pOpponent->bLevel,
+					PythSpacesAway(pSoldier->sGridNo, pOpponent->sGridNo));
+
 				if (fCandidate)
 				{
 					INT32 const iValue = ubSuppressCTGT * CalcManThreatValue(pOpponent, pSoldier->sGridNo, TRUE, pSoldier);
