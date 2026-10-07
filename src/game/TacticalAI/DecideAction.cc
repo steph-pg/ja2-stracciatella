@@ -47,6 +47,9 @@ static UINT32 guiRedSeekCounter = 0, guiRedHelpCounter = 0; guiRedHideCounter = 
 #endif
 
 #define CENTER_OF_RING 11237
+
+// least chance to really hit for a single shot at someone nobody on the team sees right now
+#define MIN_CHANCE_FOR_SINGLE_SHOT_UNSEEN 20
 static const SGPSector meduna(3, MAP_ROW_P);
 
 // Chance to really hit at which the AI stops weighing a burst against an aimed shot and
@@ -2004,8 +2007,10 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 						INT8  const bAPsForAttack = pSoldier->bActionPoints - ubStanceCost;
 
 						// a shot this unlikely is only worth taking as a burst - one round at
-						// those odds just throws the turn away
-						bool const fTooUnlikelyForSingle = fSuppress || (BestShot.ubChanceToReallyHit <= 5);
+						// those odds just throws the turn away. At someone out of sight we take
+						// only a good, carefully aimed shot: they will have moved by next turn.
+						bool const fTooUnlikelyForSingle = fSuppress || (BestShot.ubChanceToReallyHit <= 5) ||
+							(BestShot.fOutOfSight && BestShot.ubChanceToReallyHit < MIN_CHANCE_FOR_SINGLE_SHOT_UNSEEN);
 						bool const fCanBurst = IsGunBurstCapable(pSoldier, HANDPOS) &&
 							pSoldier->inv[HANDPOS].ubGunShotsLeft > 1 && bAPsForAttack >= ubBurstAPs;
 
@@ -2025,7 +2030,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 							pSoldier->bAimTime = BestShot.ubAimTime;
 							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 						}
-						SLOGD("DecideActionRed: {} holds fire at {}: only worth a burst, and can't burst", pSoldier->ubID, BestShot.opponent->ubID);
+						SLOGD("DecideActionRed: {} holds fire at {}: chance to really hit {} too low for a single shot{}, and can't burst", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubChanceToReallyHit, BestShot.fOutOfSight ? " out of sight" : "");
 					}
 				}
 
