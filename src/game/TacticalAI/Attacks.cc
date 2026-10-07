@@ -343,6 +343,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		}
 
 		iBestHitRate = 0;                     // reset best hit rate to minimum
+		ubBestChanceToHit = 0;
 
 		// calculate the maximum possible aiming time
 
@@ -376,8 +377,10 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 			iHitRate = (pSoldier->bActionPoints * ubChanceToHit) / (ubRawAPCost + ubAimTime);
 
-			// if aiming for this amount of time produces a better hit rate
-			if (iHitRate > iBestHitRate)
+			// if aiming for this amount of time produces a better hit rate - or, at someone out
+			// of sight, a better chance to hit: all we get at them is the one careful shot
+			// before they move, so that is not the time to trade accuracy for APs
+			if (fNotInSight ? ubChanceToHit > ubBestChanceToHit : iHitRate > iBestHitRate)
 			{
 				iBestHitRate = iHitRate;
 				ubBestAimTime = ubAimTime;
@@ -461,6 +464,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			pBestShot->sTarget             = pOpponent->sGridNo;
 			pBestShot->bTargetLevel        = pOpponent->bLevel;
 			pBestShot->iAttackValue        = iAttackValue;
+			pBestShot->fOutOfSight         = fNotInSight;
 			pBestShot->ubAPCost            = ubMinAPcost + ubBestAimTime;
 		}
 	}
