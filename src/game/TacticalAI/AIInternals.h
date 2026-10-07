@@ -98,8 +98,10 @@ struct ATTACKTYPE
 	INT32 iAttackValue;        // relative worthiness of this type of attack
 	INT16 sTarget;             // target gridno of this attack
 	INT8  bTargetLevel;        // target level of this attack
+	INT8  bTargetCubeLevel;    // nonzero: suppression burst over the target at this height cube
 	UINT8 ubAPCost;            // how many APs the attack will use up
 	INT8  bWeaponIn;           // the inv slot of the weapon in question
+	bool  fSpotted;            // target seen by a team-mate only
 };
 
 extern THREATTYPE Threat[MAXMERCS];
