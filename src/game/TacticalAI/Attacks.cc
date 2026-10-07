@@ -1769,6 +1769,13 @@ void CheckIfTossPossible(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 	{
 		pBestThrow->bWeaponIn = FindAIUsableObjClass( pSoldier, IC_LAUNCHER );
 
+		// a launcher with nothing left to fire from it must not keep the hand grenades in the pocket
+		if ( pBestThrow->bWeaponIn != NO_SLOT && gamepolicy(ai_better_grenade_use) &&
+			FindLaunchable( pSoldier, pSoldier->inv[pBestThrow->bWeaponIn].usItem ) == NO_SLOT )
+		{
+			pBestThrow->bWeaponIn = NO_SLOT;
+		}
+
 		if ( pBestThrow->bWeaponIn == NO_SLOT )
 		{
 			// Consider rocket launcher/cannon

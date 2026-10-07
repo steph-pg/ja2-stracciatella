@@ -134,8 +134,9 @@
     //  explosive and stun grenades first, then gas, with smoke only to cover a thrower below 2/3
     //  of their health. A night flare still comes first for a healthy soldier, and tear gas is
     //  not thrown at a target wearing a gas mask. Grenades are also thrown at a lone opponent
-    //  without waiting until the thrower is hurt. In vanilla only the first grenade in the
-    //  pockets is considered.
+    //  without waiting until the thrower is hurt, and a grenade launcher that is out of rounds no
+    //  longer keeps them from being thrown. In vanilla only the first grenade in the pockets is
+    //  considered.
     //  vanilla value: false
     "better_grenade_use": true,
 
