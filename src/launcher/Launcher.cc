@@ -133,12 +133,10 @@ void Launcher::show() {
 	RustPointer<char> game_json_path(findPathFromAssetsDir("externalized/game.json", true, true));
 	if (game_json_path) {
 		this->gameJsonPath = game_json_path.get();
-		gameSettingsOutput->value(game_json_path.get());
-	} else {
-		gameSettingsOutput->value("failed to find path to game.json");
-		editSettingsButton->deactivate();
 	}
+	updateGameSettingsPath();
 	editSettingsButton->callback( (Fl_Callback*)openGameSettings, (void*)(this) );
+	resetSettingsButton->callback( (Fl_Callback*)resetGameSettings, (void*)(this) );
 	fullscreenCheckbox->callback( (Fl_Callback*)widgetChanged, (void*)(this) );
 	playSoundsCheckbox->callback( (Fl_Callback*)widgetChanged, (void*)(this) );
 	RustPointer<char> ja2_json_path(findPathFromStracciatellaHome(this->engineOptions.get(), "ja2.json", false, true));
@@ -376,10 +374,59 @@ void Launcher::openSaveGameDirectorySelector(Fl_Widget *btn, void *userdata) {
 	}
 }
 
+// The copy in the home data dir overrides the shipped game.json and survives
+// reinstalling the game, so that is the one the user edits.
+ST::string Launcher::userGameJsonPath() {
+	RustPointer<char> path(findPathFromStracciatellaHome(this->engineOptions.get(), "data/game.json", false, true));
+	return path ? ST::string(path.get()) : ST::string();
+}
+
+void Launcher::updateGameSettingsPath() {
+	ST::string userPath = userGameJsonPath();
+	bool hasUserCopy = !userPath.empty() && FileMan::isFile(userPath);
+	if (hasUserCopy) {
+		gameSettingsOutput->value(userPath.c_str());
+	} else if (!this->gameJsonPath.empty()) {
+		gameSettingsOutput->value(this->gameJsonPath.c_str());
+	} else {
+		gameSettingsOutput->value("failed to find path to game.json");
+	}
+	if (hasUserCopy || !this->gameJsonPath.empty()) {
+		editSettingsButton->activate();
+	} else {
+		editSettingsButton->deactivate();
+	}
+	if (hasUserCopy) {
+		resetSettingsButton->activate();
+	} else {
+		resetSettingsButton->deactivate();
+	}
+}
+
 void Launcher::openGameSettings(Fl_Widget* btn, void* userdata) {
 	Launcher* window = static_cast< Launcher* >( userdata );
-	if (window->gameJsonPath.empty()) {
+	ST::string userPath = window->userGameJsonPath();
+	if (userPath.empty()) {
+		showError("Failed to find the stracciatella home directory");
 		return;
+	}
+
+	if (!FileMan::isFile(userPath)) {
+		if (window->gameJsonPath.empty()) {
+			return;
+		}
+		try {
+			FileMan::createDir(FileMan::getParentPath(userPath, false));
+			AutoSGPFile src(FileMan::openForReading(window->gameJsonPath));
+			ST::string contents = src->readStringToEnd();
+			AutoSGPFile dst(FileMan::openForWriting(userPath));
+			dst->write(contents.c_str(), contents.size());
+		} catch (const std::runtime_error& ex) {
+			SLOGE("Failed to copy game.json to {}: {}", userPath, ex.what());
+			showError(ST::format("Failed to copy game.json to {}:\n{}", userPath, ex.what()));
+			return;
+		}
+		window->updateGameSettingsPath();
 	}
 
 	// The handler registered for .json is rarely a text editor, so ask for one
@@ -387,12 +434,12 @@ void Launcher::openGameSettings(Fl_Widget* btn, void* userdata) {
 	RustPointer<VecCString> args(VecCString_create());
 #ifdef _WIN32
 	const char* editor = "notepad.exe";
-	VecCString_push(args.get(), window->gameJsonPath.c_str());
+	VecCString_push(args.get(), userPath.c_str());
 #elif defined(__APPLE__)
 	// -t picks the editor registered for plain text instead of the one for .json
 	const char* editor = "/usr/bin/open";
 	VecCString_push(args.get(), "-t");
-	VecCString_push(args.get(), window->gameJsonPath.c_str());
+	VecCString_push(args.get(), userPath.c_str());
 #else
 	// There is no system text editor here, and xdg-open dispatches on
 	// application/json, which browsers commonly claim. Launch the handler
@@ -407,7 +454,7 @@ void Launcher::openGameSettings(Fl_Widget* btn, void* userdata) {
 		"fi; "
 		"exec xdg-open \"$1\"");
 	VecCString_push(args.get(), "sh");
-	VecCString_push(args.get(), window->gameJsonPath.c_str());
+	VecCString_push(args.get(), userPath.c_str());
 #endif
 
 	// Fire and forget. The editor outlives this handle, and keeping it in
@@ -416,6 +463,29 @@ void Launcher::openGameSettings(Fl_Widget* btn, void* userdata) {
 	if (!editorProcess) {
 		showRustError();
 	}
+}
+
+void Launcher::resetGameSettings(Fl_Widget* btn, void* userdata) {
+	Launcher* window = static_cast< Launcher* >( userdata );
+	ST::string userPath = window->userGameJsonPath();
+	if (userPath.empty() || !FileMan::isFile(userPath)) {
+		window->updateGameSettingsPath();
+		return;
+	}
+
+	ST::string question = ST::format("This deletes your customized game settings in\n{}\nand restores the defaults shipped with the game.\nAre you sure you want to continue?", userPath);
+	int choice = fl_choice("%s", "Cancel", "Reset", 0, question.c_str());
+	if (choice != 1) {
+		return;
+	}
+
+	try {
+		FileMan::deleteFile(userPath);
+	} catch (const std::runtime_error& ex) {
+		SLOGE("Failed to delete {}: {}", userPath, ex.what());
+		showError(ex.what());
+	}
+	window->updateGameSettingsPath();
 }
 
 void Launcher::startExecutable(bool asEditor) {

@@ -120,11 +120,15 @@ class StracciatellaLauncher {open
           } {
             Fl_Output gameSettingsOutput {
               label {Game Settings:}
-              xywh {20 75 385 30} align 5 resizable
+              xywh {20 75 290 30} align 5 resizable
             }
             Fl_Button editSettingsButton {
               label {Edit Settings}
-              tooltip {Open game.json in the system text editor} xywh {410 75 90 30}
+              tooltip {Copy game.json to the data folder in the stracciatella home if needed and open it in the system text editor} xywh {315 75 90 30}
+            }
+            Fl_Button resetSettingsButton {
+              label Reset
+              tooltip {Delete the customized game.json and use the one shipped with the game} xywh {410 75 90 30}
             }
           }
           Fl_Group {} {open
