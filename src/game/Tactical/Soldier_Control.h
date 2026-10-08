@@ -925,6 +925,8 @@ void BeginSoldierClimbUpRoof( SOLDIERTYPE *pSoldier );
 void BeginSoldierClimbDownRoof(SOLDIERTYPE*);
 void BeginSoldierClimbFence(SOLDIERTYPE*);
 void BeginSoldierClimbWindow(SOLDIERTYPE*);
+void BeginSoldierClimbWindowOnPath(SOLDIERTYPE*, UINT8 direction);
+void ShatterClimbedWindow(SOLDIERTYPE*);
 
 BOOLEAN CheckSoldierHitRoof( SOLDIERTYPE *pSoldier );
 void BeginSoldierGetup( SOLDIERTYPE *pSoldier );
