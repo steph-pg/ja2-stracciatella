@@ -103,15 +103,17 @@ on their features.");
         o->labelcolor((Fl_Color)24);
         o->hide();
         { Fl_Group* o = new Fl_Group(10, 60, 500, 45);
-          { gameSettingsOutput = new Fl_Output(20, 75, 290, 30, "Game Settings:");
+          { gameSettingsOutput = new Fl_Output(20, 75, 350, 30, "Game Settings:");
             gameSettingsOutput->align(Fl_Align(FL_ALIGN_TOP_LEFT));
             Fl_Group::current()->resizable(gameSettingsOutput);
           } // Fl_Output* gameSettingsOutput
-          { editSettingsButton = new Fl_Button(315, 75, 90, 30, "Edit Settings");
+          { editSettingsButton = new Fl_Button(375, 75, 90, 30, "Edit Settings");
             editSettingsButton->tooltip("Copy game.json to the data folder in the stracciatella home if needed and open it in the system text editor");
           } // Fl_Button* editSettingsButton
-          { resetSettingsButton = new Fl_Button(410, 75, 90, 30, "Reset");
+          { resetSettingsButton = new Fl_Button(470, 75, 30, 30, "@reload");
             resetSettingsButton->tooltip("Delete the customized game.json and use the one shipped with the game");
+            resetSettingsButton->box(FL_THIN_UP_BOX);
+            resetSettingsButton->labelcolor(FL_INACTIVE_COLOR);
           } // Fl_Button* resetSettingsButton
           o->end();
         } // Fl_Group* o
