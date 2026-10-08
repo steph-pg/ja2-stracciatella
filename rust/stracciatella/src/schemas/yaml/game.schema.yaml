@@ -14,7 +14,7 @@ properties:
       - `ctrl+n` to swap the squads head gear from night mode (NV or UV Goggles) to day mode (sun goggles) and back.
       - `alt+r` to reload
       - `ctrl+q` to swap hand items
-      - `shift+j` to climb through open window
+      - `shift+j` to climb through a window, smashing the glass if it is intact
 
       Vanilla setting: `false`
   can_enter_turnbased:
