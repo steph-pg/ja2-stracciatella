@@ -184,6 +184,12 @@
   //  vanilla setting: false
   "diagonally_interactable_doors": false,
 
+  //  Mercs, militia and enemy soldiers plot their paths through windows too, hopping through them
+  //  like over a fence. An intact window gets smashed, cutting the jumper a little.
+  //  Civilians and creatures never do.
+  //  vanilla setting: false
+  "path_through_windows": false,
+
   //  IMP creation tweaks
   "imp": {
     //  IMP attribute point defaults:

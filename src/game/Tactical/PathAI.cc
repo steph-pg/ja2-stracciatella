@@ -26,6 +26,7 @@
 #include "Random.h"
 #include "Soldier_Control.h"
 #include "Structure.h"
+#include "Structure_Wrap.h"
 #include "TileDef.h"
 #include "WorldDef.h"
 #include "WorldMan.h"
@@ -497,6 +498,7 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 	StructureFlags  doorState{};
 	StructureFlags  door2State{};
 	BOOLEAN fNonFenceJumper;
+	bool    fWindowJumper;
 	BOOLEAN fNonSwimmer;
 	BOOLEAN fPathAroundPeople;
 	BOOLEAN fGoingThroughDoor = FALSE; // for one tile
@@ -539,6 +541,7 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 
 	fPathingForPlayer = ( (s->bTeam == OUR_TEAM) && (!gTacticalStatus.fAutoBandageMode) && !(s->uiStatusFlags & SOLDIER_PCUNDERAICONTROL) );
 	fNonFenceJumper = !( IS_MERC_BODY_TYPE( s ) );
+	fWindowJumper = CanPathThroughWindows( s );
 	fNonSwimmer = !( IS_MERC_BODY_TYPE( s ) );
 	if ( fNonSwimmer )
 	{
@@ -966,7 +969,14 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 				nextCost = gubWorldMovementCosts[ newLoc ][ ubCnt ][ ubLevel ];
 
 				//ATE:	Check for differences from reality
-				if (nextCost == TRAVELCOST_NOT_STANDING)
+				if (nextCost == TRAVELCOST_WALL)
+				{
+					if (fWindowJumper && IsJumpableWindowStep(s, newLoc, ubCnt, ubLevel))
+					{
+						nextCost = TRAVELCOST_WINDOW;
+					}
+				}
+				else if (nextCost == TRAVELCOST_NOT_STANDING)
 				{
 					// for path plotting purposes, use the terrain value
 					nextCost = gTileTypeMovementCost[ gpWorldLevelData[ newLoc ].ubTerrainID ];
@@ -1166,6 +1176,7 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 					//	break;
 
 					case TRAVELCOST_FENCE:
+					case TRAVELCOST_WINDOW:
 						ubAPCost = AP_JUMPFENCE;
 
 						/*
@@ -1247,7 +1258,7 @@ INT32 FindBestPath(SOLDIERTYPE* s, INT16 sDestination, INT8 ubLevel, INT16 usMov
 						break;
 				}
 
-				if (nextCost == TRAVELCOST_FENCE)
+				if (nextCost == TRAVELCOST_FENCE || nextCost == TRAVELCOST_WINDOW)
 				{
 					switch( usMovementModeToUseForAPs )
 					{
@@ -1926,7 +1937,8 @@ INT16 PlotPath(SOLDIERTYPE* const pSold, const INT16 sDestGridno, const INT8 bCo
 
 		// We should reduce points for starting to run if first tile is a fence...
 		sTestGridno  = NewGridNo(pSold->sGridNo, DirectionInc( guiPathingData[0]));
-		if ( gubWorldMovementCosts[ sTestGridno ][ guiPathingData[0] ][ pSold->bLevel] == TRAVELCOST_FENCE )
+		sSwitchValue = WindowAwareMovementCost( pSold, sTestGridno, guiPathingData[0], pSold->bLevel );
+		if ( sSwitchValue == TRAVELCOST_FENCE || sSwitchValue == TRAVELCOST_WINDOW )
 		{
 			if ( usMovementMode == RUNNING && pSold->usAnimState != RUNNING )
 			{
@@ -1969,7 +1981,7 @@ INT16 PlotPath(SOLDIERTYPE* const pSold, const INT16 sDestGridno, const INT8 bCo
 			sTempGrid  = NewGridNo(sTempGrid, DirectionInc( guiPathingData[iCnt]));
 
 			// Get switch value...
-			sSwitchValue = gubWorldMovementCosts[ sTempGrid ][ guiPathingData[iCnt] ][ pSold->bLevel];
+			sSwitchValue = WindowAwareMovementCost( pSold, sTempGrid, guiPathingData[iCnt], pSold->bLevel );
 
 			// get the tile cost for that tile based on WALKING
 			sTileCost = TerrainActionPoints( pSold, sTempGrid, guiPathingData[iCnt], pSold->bLevel );
@@ -1989,11 +2001,13 @@ INT16 PlotPath(SOLDIERTYPE* const pSold, const INT16 sDestGridno, const INT8 bCo
 			else
 			{
 				// ATE: If we have a 'special cost, like jump fence...
-				if ( sSwitchValue == TRAVELCOST_FENCE )
+				if ( sSwitchValue == TRAVELCOST_FENCE || sSwitchValue == TRAVELCOST_WINDOW )
 				{
 					sPoints += sTileCost;
 
-					bIgnoreNextCost = TRUE;
+					// A fence takes two steps - in and out of its tile, a window just one
+					bIgnoreNextCost = ( sSwitchValue == TRAVELCOST_FENCE );
+					const INT32 iStepsOver = ( sSwitchValue == TRAVELCOST_FENCE ? 2 : 1 );
 
 					// If we are changeing stance ( either before or after getting there....
 					// We need to reflect that...
@@ -2003,7 +2017,7 @@ INT16 PlotPath(SOLDIERTYPE* const pSold, const INT16 sDestGridno, const INT8 bCo
 						case WALKING:
 							// Add here cost to go from crouch to stand AFTER fence hop....
 							// Since it's AFTER.. make sure we will be moving after jump...
-							if ( ( iCnt + 2 ) < iLastGrid )
+							if ( ( iCnt + iStepsOver ) < iLastGrid )
 							{
 								sExtraCostStand += AP_CROUCH;
 
@@ -2428,6 +2442,51 @@ UINT8 InternalDoorTravelCost(const SOLDIERTYPE* pSoldier, INT32 iGridNo, UINT8 u
 
 	}
 	return( ubMovementCost );
+}
+
+
+// Can this soldier plot a path through windows, hopping them like fences?
+bool CanPathThroughWindows(const SOLDIERTYPE* const s)
+{
+	if (!gamepolicy(path_through_windows)) return false;
+
+	// Dummy soldiers used to flood fill reachable spots for items, corpses and
+	// placement are not active - windows must not leak those to the other side
+	if (!s->bActive) return false;
+
+	// Only those who have the hop animation, and no civilians
+	return IS_MERC_BODY_TYPE(s) && s->bTeam != CIV_TEAM;
+}
+
+
+// Is stepping into sGridNo in direction ubDir a hop through a jumpable window?
+// Jumpable windows stay walls in gubWorldMovementCosts, as lots of code (light,
+// explosions, field of view, ...) relies on that, so only those who move ask this.
+bool IsJumpableWindowStep(const SOLDIERTYPE* const s, INT16 const sGridNo, UINT8 const ubDir, INT8 const bLevel)
+{
+	if (bLevel != 0) return false;
+
+	// The hop animation only exists for the four cardinal directions
+	if (ubDir != NORTH && ubDir != EAST && ubDir != SOUTH && ubDir != WEST) return false;
+
+	if (gubWorldMovementCosts[sGridNo][ubDir][bLevel] != TRAVELCOST_WALL) return false;
+
+	if (!CanPathThroughWindows(s)) return false;
+
+	// The window structure lives on the south / east tile of the edge it sits on
+	INT16 const sWindowGridNo = (ubDir == NORTH || ubDir == WEST) ?
+		sGridNo : NewGridNo(sGridNo, DirectionInc(OppositeDirection(ubDir)));
+	if (!IsJumpableWindowPresentAtGridNo(sWindowGridNo, ubDir)) return false;
+
+	// The wall cost hides anything else blocking the tile we would land on
+	return NewOKDestination(s, sGridNo, FALSE, bLevel);
+}
+
+
+UINT8 WindowAwareMovementCost(const SOLDIERTYPE* const s, INT16 const sGridNo, UINT8 const ubDir, INT8 const bLevel)
+{
+	if (IsJumpableWindowStep(s, sGridNo, ubDir, bLevel)) return TRAVELCOST_WINDOW;
+	return gubWorldMovementCosts[sGridNo][ubDir][bLevel];
 }
 
 

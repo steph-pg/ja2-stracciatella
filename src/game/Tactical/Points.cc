@@ -42,7 +42,7 @@ INT16 TerrainActionPoints(const SOLDIERTYPE* const pSoldier, const INT16 sGridno
 	if ( pSoldier->bReverse || gUIUseReverse )
 		sAPCost += AP_REVERSE_MODIFIER;
 
-	sSwitchValue = gubWorldMovementCosts[sGridno][bDir][ bLevel ];
+	sSwitchValue = WindowAwareMovementCost(pSoldier, sGridno, bDir, bLevel);
 
 	// Check reality vs what the player knows....
 	if ( sSwitchValue == TRAVELCOST_NOT_STANDING )
@@ -92,6 +92,7 @@ INT16 TerrainActionPoints(const SOLDIERTYPE* const pSoldier, const INT16 sGridno
 
 		// cost for jumping a fence REPLACES all other AP costs!
 		case TRAVELCOST_FENCE:
+		case TRAVELCOST_WINDOW:
 			return( AP_JUMPFENCE );
 
 		case TRAVELCOST_NONE:
@@ -251,10 +252,10 @@ INT16 ActionPointCost(const SOLDIERTYPE* const pSoldier, const INT16 sGridNo, co
 	sTileCost = TerrainActionPoints( pSoldier, sGridNo, bDir, pSoldier->bLevel );
 
 	// Get switch value...
-	sSwitchValue = gubWorldMovementCosts[ sGridNo ][ bDir ][ pSoldier->bLevel ];
+	sSwitchValue = WindowAwareMovementCost( pSoldier, sGridNo, bDir, pSoldier->bLevel );
 
 	// Tile cost should not be reduced based on movement mode...
-	if ( sSwitchValue == TRAVELCOST_FENCE )
+	if ( sSwitchValue == TRAVELCOST_FENCE || sSwitchValue == TRAVELCOST_WINDOW )
 	{
 		return( sTileCost );
 	}
@@ -379,11 +380,14 @@ INT16 EstimateActionPointCost( SOLDIERTYPE *pSoldier, INT16 sGridNo, INT8 bDir, 
 	}
 
 	// Get switch value...
-	sSwitchValue = gubWorldMovementCosts[ sGridNo ][ bDir ][ pSoldier->bLevel ];
+	sSwitchValue = WindowAwareMovementCost( pSoldier, sGridNo, bDir, pSoldier->bLevel );
 
 	// ATE: If we have a 'special cost, like jump fence...
-	if ( sSwitchValue == TRAVELCOST_FENCE )
+	if ( sSwitchValue == TRAVELCOST_FENCE || sSwitchValue == TRAVELCOST_WINDOW )
 	{
+		// A fence takes two steps - in and out of its tile, a window just one
+		const INT8 bStepsOver = ( sSwitchValue == TRAVELCOST_FENCE ? 2 : 1 );
+
 		// If we are changeing stance ( either before or after getting there....
 		// We need to reflect that...
 		switch(usMovementMode)
@@ -395,7 +399,7 @@ INT16 EstimateActionPointCost( SOLDIERTYPE *pSoldier, INT16 sGridNo, INT8 bDir, 
 
 				// Add here cost to go from crouch to stand AFTER fence hop....
 				// Since it's AFTER.. make sure we will be moving after jump...
-				if ( ( bPathIndex + 2 ) < bPathLength )
+				if ( ( bPathIndex + bStepsOver ) < bPathLength )
 				{
 					sPoints += AP_CROUCH;
 				}
@@ -1260,7 +1264,8 @@ INT8 PtsToMoveDirection(const SOLDIERTYPE* const pSoldier, const UINT8 bDirectio
 
 	sCost = ActionPointCost( pSoldier, sGridno, bDirection , usMoveModeToUse );
 
-	if ( gubWorldMovementCosts[ sGridno ][ bDirection ][ pSoldier->bLevel ] != TRAVELCOST_FENCE )
+	const UINT8 ubMovementCost = WindowAwareMovementCost( pSoldier, sGridno, bDirection, pSoldier->bLevel );
+	if ( ubMovementCost != TRAVELCOST_FENCE && ubMovementCost != TRAVELCOST_WINDOW )
 	{
 		if ( usMoveModeToUse == RUNNING && pSoldier->usAnimState != RUNNING )
 		{

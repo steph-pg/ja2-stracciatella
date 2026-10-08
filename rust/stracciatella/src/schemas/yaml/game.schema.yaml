@@ -346,6 +346,15 @@ properties:
       Scales the loading time of websites on the laptop. Lower value means faster loading. Setting this to 0.0 removes the loading entirely.
 
       Vanilla setting: `1.0`
+  path_through_windows:
+    type: boolean
+    title: Path through windows
+    description: |
+      Mercs, militia and enemy soldiers plot their paths through windows too, hopping through them
+      like over a fence. An intact window gets smashed, cutting the jumper a little.
+      Civilians and creatures never do.
+
+      Vanilla setting: `false`
   imp:
     type: object
     title: IMP specific settings

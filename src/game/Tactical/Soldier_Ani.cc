@@ -522,10 +522,10 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					// MOVE TO FORCASTED GRIDNO
 					EVENT_SetSoldierPosition(pSoldier, pSoldier->sForcastGridno, SSP_NO_DEST | SSP_NO_FINAL_DEST);
 
-					if ( pSoldier->fClimbingWindow )
+					if ( pSoldier->fClimbingWindow && !pSoldier->fContinueMoveAfterStanceChange )
 					{
-						// We are through the window - stay put, keep facing the way we jumped
-						// and settle into the crouch this animation ends in
+						// We climbed through the window on our own rather than along a path - stay put,
+						// keep facing the way we jumped and settle into the crouch this animation ends in
 						pSoldier->fClimbingWindow = FALSE;
 						pSoldier->sZLevelOverride = -1;
 						EVENT_SetSoldierDesiredDirection( pSoldier, pSoldier->bDirection );
@@ -552,7 +552,15 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						return( TRUE );
 					}
 
-					EVENT_SetSoldierDirection(pSoldier, TwoCDirection(pSoldier->bDirection));
+					if ( pSoldier->fClimbingWindow )
+					{
+						// Through a window along a path - keep facing the way we jumped and carry on like after a fence
+						pSoldier->fClimbingWindow = FALSE;
+					}
+					else
+					{
+						EVENT_SetSoldierDirection(pSoldier, TwoCDirection(pSoldier->bDirection));
+					}
 					pSoldier->sZLevelOverride = -1;
 					EVENT_SetSoldierDesiredDirection( pSoldier, pSoldier->bDirection );
 
@@ -583,6 +591,11 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						}
 						else
 						{
+							// No stance change follows to finish the path for us, as it does above -
+							// do it here, or an AI soldier that moves crouched waits on it forever
+							pSoldier->ubPathIndex = pSoldier->ubPathDataSize;
+							pSoldier->fContinueMoveAfterStanceChange = FALSE;
+
 							SoldierGotoStationaryStance( pSoldier );
 
 							// Set UI Busy
@@ -785,6 +798,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					{
 						// The window is on the tile edge, so we land on the very next tile
 						pSoldier->sForcastGridno = pSoldier->sTempNewGridNo;
+						ShatterClimbedWindow( pSoldier );
 					}
 					else
 					{

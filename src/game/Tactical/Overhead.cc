@@ -1326,6 +1326,35 @@ BOOLEAN HandleGotoNewGridNo(SOLDIERTYPE* pSoldier, BOOLEAN* pfKeepMoving, BOOLEA
 
 		return FALSE;
 	}
+	else if (IsJumpableWindowStep(pSoldier, usNewGridNo, pSoldier->ubPathingData[pSoldier->ubPathIndex], pSoldier->bLevel))
+	{
+		// We have been told to climb through a window - like a fence, but it is
+		// only one step, as the window sits on the edge between two tiles
+		if (EnoughPoints(pSoldier, AP_JUMPFENCE, BP_JUMPFENCE, FALSE))
+		{
+			// ATE: Check for tile being clear....
+			if (HandleNextTile(pSoldier, (INT8)pSoldier->ubPathingData[pSoldier->ubPathIndex], usNewGridNo, pSoldier->sFinalDestination))
+			{
+				// LOCK PENDING ACTION COUNTER
+				pSoldier->uiStatusFlags |= SOLDIER_LOCKPENDINGACTIONCOUNTER;
+
+				SoldierGotoStationaryStance(pSoldier);
+
+				// OK, jump!
+				BeginSoldierClimbWindowOnPath(pSoldier, pSoldier->ubPathingData[pSoldier->ubPathIndex]);
+
+				// The hop end code moves us on along the path
+				pSoldier->fContinueMoveAfterStanceChange = 2;
+			}
+		}
+		else
+		{
+			HaltGuyFromNewGridNoBecauseOfNoAPs(*pSoldier);
+			*pfKeepMoving = FALSE;
+		}
+
+		return FALSE;
+	}
 	else if (InternalDoorTravelCost(pSoldier, usNewGridNo, gubWorldMovementCosts[usNewGridNo][pSoldier->ubPathingData[pSoldier->ubPathIndex]][pSoldier->bLevel], pSoldier->bTeam == OUR_TEAM, NULL, TRUE) == TRAVELCOST_DOOR)
 	{
 		// OK, if we are here, we have been told to get a pth through a door.

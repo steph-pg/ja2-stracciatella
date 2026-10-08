@@ -31,6 +31,10 @@ UINT8 InternalDoorTravelCost(const SOLDIERTYPE* pSoldier, INT32 iGridNo, UINT8 u
 BOOLEAN IsDoorObstacleIfClosed(UINT8 ubMovementCost, INT32 iGridNo, INT32* iDoorGridNo, INT32* iDoorGridNo2);
 StructureFlags GetDoorState(int32_t iDoorGridNo, bool returnPerceivedValue);
 
+bool CanPathThroughWindows(const SOLDIERTYPE* s);
+bool IsJumpableWindowStep(const SOLDIERTYPE* s, INT16 sGridNo, UINT8 ubDir, INT8 bLevel);
+UINT8 WindowAwareMovementCost(const SOLDIERTYPE* s, INT16 sGridNo, UINT8 ubDir, INT8 bLevel);
+
 INT16 RecalculatePathCost( SOLDIERTYPE *pSoldier, UINT16 usMovementMode );
 
 // Exporting these global variables
@@ -77,6 +81,8 @@ public:
 #define TRAVELCOST_KNEEDEEP			36
 #define TRAVELCOST_DEEPWATER			50
 #define TRAVELCOST_FENCE			40
+// Never stored in gubWorldMovementCosts - windows stay walls there, see WindowAwareMovementCost()
+#define TRAVELCOST_WINDOW			41
 
 // these values are used to indicate "this is an obstacle
 // if there is a door (perceived) open/closed in this tile
