@@ -285,6 +285,10 @@ void HandleDialogue()
 	{
 		// OK, we have just entered...
 		fOldEngagedInConvFlagOn = TRUE;
+		if (gTacticalStatus.bBoxingState != NOT_BOXING)
+		{
+			SLOGD("Conversation started in boxing state {}", gTacticalStatus.bBoxingState);
+		}
 
 		PauseGame();
 		LockPauseState(LOCK_PAUSE_ENGAGED_IN_CONV);
@@ -293,6 +297,10 @@ void HandleDialogue()
 	{
 		// OK, we left...
 		fOldEngagedInConvFlagOn = FALSE;
+		if (gTacticalStatus.bBoxingState != NOT_BOXING)
+		{
+			SLOGD("Conversation ended in boxing state {}", gTacticalStatus.bBoxingState);
+		}
 
 		UnLockPauseState();
 		UnPauseGame();
