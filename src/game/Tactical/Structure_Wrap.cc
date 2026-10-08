@@ -18,7 +18,6 @@ BOOLEAN	IsRoofPresentAtGridno( INT16 sGridNo )
 BOOLEAN	IsJumpableWindowPresentAtGridNo( INT32 sGridNo, INT8 bStartingDir)
 {
 	STRUCTURE const* pStructure = FindStructure( sGridNo, STRUCTURE_WALLNWINDOW );
-	const BOOLEAN fIntactWindowsAlso = false; // TODO
 
 	if ( pStructure )
 	{
@@ -46,8 +45,9 @@ BOOLEAN	IsJumpableWindowPresentAtGridNo( INT32 sGridNo, INT8 bStartingDir)
 				return false;
 		}
 
-		// XXX left out 1.13 prison window check, hope STRUCTURE_OPEN is enough
-		if ( fIntactWindowsAlso || ( pStructure->fFlags & STRUCTURE_OPEN ) ) return true;
+		// XXX left out 1.13 prison window check
+		// Intact windows count too - the glass is smashed on the way through
+		return true;
 	}
 
 	return( FALSE );

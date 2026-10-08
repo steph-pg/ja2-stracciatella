@@ -5204,6 +5204,22 @@ void BeginSoldierClimbUpRoof(SOLDIERTYPE* const s)
 }
 
 
+// Smash the glass of the intact window we are jumping through and get a bit cut by it
+static void ShatterClimbedWindow(SOLDIERTYPE* const s)
+{
+	// The window structure lives on the south / east tile of the edge it sits on
+	GridNo const sWindowGridNo = (s->bDirection == NORTH || s->bDirection == WEST) ?
+		NewGridNo(s->sGridNo, DirectionInc(s->bDirection)) : s->sGridNo;
+
+	STRUCTURE const* const pStructure = FindStructure(sWindowGridNo, STRUCTURE_WALLNWINDOW);
+	if (!pStructure || (pStructure->fFlags & STRUCTURE_OPEN)) return;
+
+	// Large force takes a window through all its stages, intact -> cracked -> shattered
+	WindowHit(sWindowGridNo, pStructure->usStructureID, s->bDirection == SOUTH || s->bDirection == EAST, TRUE);
+	SoldierTakeDamage(s, 2 + Random(4), 0, TAKE_DAMAGE_ELECTRICITY, NULL);
+}
+
+
 void BeginSoldierClimbWindow(SOLDIERTYPE* const s)
 {
 	if(!IsFacingClimableWindow(s)) return;
@@ -5219,6 +5235,7 @@ void BeginSoldierClimbWindow(SOLDIERTYPE* const s)
 	if (!IsAnimationValidForBodyType(*s, HOPFENCE))
 	{
 		DeductPoints(s, AP_JUMPFENCE, BP_JUMPFENCE);
+		ShatterClimbedWindow(s);
 		TeleportSoldier(*s, s->sTempNewGridNo, TRUE);
 		return;
 	}
@@ -5235,6 +5252,11 @@ void BeginSoldierClimbWindow(SOLDIERTYPE* const s)
 		s->fClimbingWindow = FALSE;
 		return;
 	}
+
+	ShatterClimbedWindow(s);
+
+	// The cuts may have knocked us out, which replaces the hop with a collapse
+	if (s->usAnimState != HOPFENCE && s->usPendingAnimation != HOPFENCE) return;
 
 	if (s->bTeam == OUR_TEAM) SetUIBusy(s);
 }
