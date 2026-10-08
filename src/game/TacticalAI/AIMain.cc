@@ -85,6 +85,23 @@ static void TurnBasedHandleNPCAI(SOLDIERTYPE* pSoldier);
 
 void HandleSoldierAI( SOLDIERTYPE *pSoldier )
 {
+	if (pSoldier->uiStatusFlags & SOLDIER_PC && pSoldier->uiStatusFlags & SOLDIER_BOXER)
+	{
+		static ST::string sLastBoxerState;
+		ST::string const state = ST::format(
+			"PC boxer {}: engaged {} sighting {} explosions {}/{} aicontrol {} quote {} gettinghit {} collapsed {} life {} insector {} everyframe {} boxing state {}",
+			pSoldier->ubID, (pSoldier->uiStatusFlags & SOLDIER_ENGAGEDINACTION) != 0,
+			gTacticalStatus.fEnemySightingOnTheirTurn, gubElementsOnExplosionQueue, gfExplosionQueueActive,
+			(pSoldier->uiStatusFlags & SOLDIER_PCUNDERAICONTROL) != 0, pSoldier->ubQuoteRecord,
+			pSoldier->fGettingHit, pSoldier->bCollapsed, pSoldier->bLife, pSoldier->bInSector,
+			(pSoldier->fAIFlags & AI_HANDLE_EVERY_FRAME) != 0, gTacticalStatus.bBoxingState);
+		if (state != sLastBoxerState)
+		{
+			SLOGD("{}", state);
+			sLastBoxerState = state;
+		}
+	}
+
 	// ATE
 	// Bail if we are engaged in a NPC conversation/ and/or sequence ... or we have a pause because
 	// we just saw someone... or if there are bombs on the bomb queue
