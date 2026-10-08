@@ -1673,14 +1673,6 @@ void EVENT_InitNewSoldierAnim(SOLDIERTYPE* const pSoldier, UINT16 usNewState, UI
 		//ATE Cancel ANY pending action...
 		if ( pSoldier->ubPendingActionAnimCount > 0 && ( gAnimControl[ pSoldier->usOldAniState ].uiFlags & ANIM_MOVING ) )
 		{
-			// Do some special things for some actions
-			switch( pSoldier->ubPendingAction )
-			{
-				case MERC_GIVEITEM:
-					// Unset target as enaged
-					GetMan(pSoldier->uiPendingActionData4).uiStatusFlags &= ~SOLDIER_ENGAGEDINACTION;
-					break;
-			}
 			Soldier{pSoldier}.removePendingAction();
 		}
 		else

@@ -28,6 +28,21 @@
 /** Remove pending action. */
 void Soldier::removePendingAction()
 {
+	cancelGiveItem();
+	dropPendingAction();
+}
+
+/** A give that never got under way must not leave anyone engaged. */
+void Soldier::cancelGiveItem()
+{
+	if (mSoldier->ubPendingAction != MERC_GIVEITEM) return;
+
+	mSoldier->uiStatusFlags &= ~SOLDIER_ENGAGEDINACTION;
+	GetMan(mSoldier->uiPendingActionData4).uiStatusFlags &= ~SOLDIER_ENGAGEDINACTION;
+}
+
+void Soldier::dropPendingAction()
+{
 	if(mSoldier->ubPendingAction != NO_PENDING_ACTION)
 	{
 		SLOGD("{}: remove pending action {}",
@@ -78,6 +93,7 @@ void Soldier::setPendingAction(UINT8 action)
 		Internals::getActionName(action),
 		Internals::getActionName(mSoldier->ubPendingAction));
 
+	cancelGiveItem();
 	mSoldier->ubPendingAction          = action;
 	mSoldier->ubPendingActionAnimCount = 0;
 }
@@ -209,7 +225,8 @@ bool Soldier::handlePendingAction(bool inCombat)
 	else if (mSoldier->ubPendingAction == MERC_GIVEITEM)
 	{
 		EVENT_SoldierBeginGiveItem(mSoldier);
-		removePendingAction();
+		// both stay engaged until the give animation hands the item over
+		dropPendingAction();
 	}
 	return false;
 }
