@@ -12,7 +12,7 @@
   //  Press 'ctrl+n' to swap the squad's head gear from night mode (NV or UV Goggles) to day mode (sun goggles) and back.
   //  Press 'alt+r' to reload
   //  Press 'ctrl+q' to swap hand items
-  //  Press 'shift+j' to climb through open window
+  //  Press 'shift+j' to climb through a window, smashing the glass if it is intact
   //  Press 'shift+space' in strategic view to run the clock until the next hour, then stop.
   //  With the sector inventory open in strategic view, 'ctrl+left click' moves an item between the merc
   //  and the sector inventory ('ctrl+shift+left click' moves the whole stack), including an attachment
@@ -305,6 +305,12 @@
   //  also hits one random item in the container, at half the damage dealt to the lock.
   //  vanilla setting: false
   "shot_locks_damage_contents": true,
+
+  //  Mercs, militia and enemy soldiers plot their paths through windows too, hopping through them
+  //  like over a fence. An intact window gets smashed, cutting the jumper a little.
+  //  Civilians and creatures never do.
+  //  vanilla setting: false
+  "path_through_windows": false,
 
   //  IMP creation tweaks
   "imp": {

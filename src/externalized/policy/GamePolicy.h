@@ -115,6 +115,7 @@ public:
 	bool shot_locks_damage_contents;      // A bullet that hits a container lock may damage an item stored inside, vanilla false
 
 	bool locksmith_kit_wear;              // botched lock picks wear the locksmith kit down until it is used up, and its status no longer affects the picking chance (false = vanilla, kits never wear out)
+	bool path_through_windows;            // Soldiers can plot their path through windows, hopping them like fences
 
 	/* IMP */
 	int8_t imp_attribute_max;             // IMP character attribute maximum 0 to 100, vanilla 85

@@ -83,6 +83,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	diagonally_interactable_doors = gp.getOptionalBool("diagonally_interactable_doors", false);
 	locksmith_kit_wear = gp.getOptionalBool("locksmith_kit_wear", false);
 	shot_locks_damage_contents = gp.getOptionalBool("shot_locks_damage_contents", false);
+	path_through_windows = gp.getOptionalBool("path_through_windows", false);
 
 	auto imp = gp["imp"].toObject();
 	imp_load_saved_merc_by_nickname = imp.getOptionalBool("load_saved_merc_by_nickname");
