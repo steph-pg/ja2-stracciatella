@@ -270,12 +270,6 @@ void HandleSoldierAI( SOLDIERTYPE *pSoldier )
 			SLOGD("Ending turn for {} because unconscious", pSoldier->ubID);
 		}
 
-		if (pSoldier->uiStatusFlags & SOLDIER_BOXER)
-		{
-			SLOGD("Boxer {} collapsed, AI does nothing (breath {}, boxing state {})",
-				pSoldier->ubID, pSoldier->bBreath, gTacticalStatus.bBoxingState);
-		}
-
 		// stunned/collapsed!
 		CancelAIAction(pSoldier);
 		EndAIGuysTurn(*pSoldier);
@@ -1517,11 +1511,6 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 					}
 					else
 					{
-						if (pSoldier->uiStatusFlags & SOLDIER_BOXER)
-						{
-							SLOGD("Boxer {} has no path from {} to {}",
-								pSoldier->ubID, pSoldier->sGridNo, pSoldier->usActionData);
-						}
 						CancelAIAction(pSoldier);
 						return(FALSE);         // nothing is in progress
 					}

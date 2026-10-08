@@ -21,7 +21,6 @@
 #include "StrategicMap.h"
 #include "Animation_Data.h"
 #include "Items.h"
-#include "Logger.h"
 
 INT16   gsBoxerGridNo[ NUM_BOXERS ] = { 11393, 11233, 11073 };
 SOLDIERTYPE* gBoxer[NUM_BOXERS];
@@ -44,11 +43,6 @@ void ExitBoxing(void)
 		FOR_EACH_SOLDIER(s)
 		{
 			if (!(s->uiStatusFlags & SOLDIER_BOXER)) continue;
-			if (ubPass == 0)
-			{
-				SLOGD("ExitBoxing: boxer {} team {} at {} room {} life {} breath {} collapsed {}",
-					s->ubID, s->bTeam, s->sGridNo, GetRoom(s->sGridNo), s->bLife, s->bBreath, s->bCollapsed);
-			}
 			if (GetRoom(s->sGridNo) != BOXING_RING)  continue;
 
 			if (s->uiStatusFlags & SOLDIER_PC)
@@ -89,7 +83,6 @@ void ExitBoxing(void)
 
 	if (CheckForEndOfCombatMode(FALSE))
 	{
-		SLOGD("ExitBoxing: combat over, locking UI until the boxers leave the ring");
 		EndTopMessage();
 		SetMusicMode(MUSIC_TACTICAL_NOTHING);
 		// Lock UI until we get out of the ring
@@ -128,9 +121,6 @@ void BoxingPlayerDisqualified( SOLDIERTYPE * pOffender, INT8 bReason )
 
 void TriggerEndOfBoxingRecord( SOLDIERTYPE * pSoldier )
 {
-	SLOGD("TriggerEndOfBoxingRecord: boxer {}, boxing state {}",
-		pSoldier ? pSoldier->ubID : -1, gTacticalStatus.bBoxingState);
-
 	// unlock UI
 	guiPendingOverrideEvent = LU_ENDUILOCK;
 
@@ -406,7 +396,6 @@ void BoxingMovementCheck( SOLDIERTYPE * pSoldier )
 
 void SetBoxingState( INT8 bNewState )
 {
-	SLOGD("Boxing state {} -> {}", gTacticalStatus.bBoxingState, bNewState);
 	if ( gTacticalStatus.bBoxingState == NOT_BOXING )
 	{
 		if ( bNewState != NOT_BOXING )

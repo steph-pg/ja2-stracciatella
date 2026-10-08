@@ -688,20 +688,14 @@ static INT8 DecideActionGreen(SOLDIERTYPE* pSoldier)
 						{
 							// we should go back where we started
 							pSoldier->usActionData = gsBoxerGridNo[ ubLoop ];
-							SLOGD("Boxer {} leaving ring from {} back to start {}",
-								pSoldier->ubID, pSoldier->sGridNo, pSoldier->usActionData);
 							return( AI_ACTION_GET_CLOSER );
 						}
 					}
 					pSoldier->usActionData = FindClosestBoxingRingSpot( pSoldier, FALSE );
-					SLOGD("Boxer {} leaving ring from {} to {} (breath {}, collapsed {})",
-						pSoldier->ubID, pSoldier->sGridNo, pSoldier->usActionData,
-						pSoldier->bBreath, pSoldier->bCollapsed);
 					return( AI_ACTION_GET_CLOSER );
 				}
 				else if (room != NO_ROOM)
 				{
-					SLOGD("Boxer {} out of ring at {} room {}", pSoldier->ubID, pSoldier->sGridNo, room);
 					// done!
 					pSoldier->uiStatusFlags &= ~(SOLDIER_BOXER);
 					if (pSoldier->bTeam == OUR_TEAM)
@@ -718,10 +712,6 @@ static INT8 DecideActionGreen(SOLDIERTYPE* pSoldier)
 						TriggerEndOfBoxingRecord( NULL );
 
 					}
-				}
-				else
-				{
-					SLOGD("Boxer {} out of ring at {} on a tile with no room", pSoldier->ubID, pSoldier->sGridNo);
 				}
 
 				return( AI_ACTION_ABSOLUTELY_NONE );
