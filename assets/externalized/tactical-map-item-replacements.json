@@ -17,4 +17,11 @@
  *     { "from": "HMX", "to": 0 }                         // HMX no longer placed on maps. Players can still create their own from ingredients
  *  ]
  */
-[]
+ [
+    { "from": "SPECTRA_VEST", "to": "KEVLAR2_VEST" },   // Replaces all Kevlar Vests on maps with Spectra Vests
+    { "from": "SPECTRA_HELMET", "to": "KEVLAR_HELMET" },   // Replaces all Kevlar Vests on maps with Spectra Vests
+    { "from": "SPECTRA_LEGGINGS", "to": "KEVLAR_LEGGINGS" },   // Replaces all Kevlar Vests on maps with Spectra Vests
+ 
+    { "from": "COMPOUND18", "to": 0 }                         // HMX no longer placed on maps. Players can still create their own from ingredients
+ ]
+ 

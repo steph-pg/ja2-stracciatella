@@ -47,7 +47,7 @@
         "enterSound": "sounds/into vehicle.wav",
         "moveSound": "sounds/driving 01.wav",
         "profile": "NPC164",
-        "movementType": "CAR",
+        "movementType": "TRACKED",
         "armourType": "KEVLAR_VEST",
         "seats":  6
     },

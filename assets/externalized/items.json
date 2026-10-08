@@ -1151,7 +1151,7 @@
         "ubWeight": 4,
         "ubPerPocket": 4,
         "usPrice": 750,
-        "ubCoolness": 8,
+        "ubCoolness": 6,
         "bReliability": 0,
         "bRepairEase": -1,
         "bDamageable": true,

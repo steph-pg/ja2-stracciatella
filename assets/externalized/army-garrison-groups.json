@@ -55,12 +55,5 @@
     { "sector":"C13", "composition":"DRASSEN_DEFENCE" },
     { "sector":"D13", "composition":"DRASSEN_MINE" },
     { "sector":"D15", "composition":"DRASSEN_SAMSITE" },
-    { "sector":"G12", "composition":"ROADBLOCK" },
-    { "sector":"M10", "composition":"ROADBLOCK" },
-    { "sector":"G6",  "composition":"ROADBLOCK" },
-    { "sector":"C9",  "composition":"ROADBLOCK" },
-    { "sector":"K10", "composition":"ROADBLOCK" },
-    { "sector":"G7",  "composition":"ROADBLOCK" },
-    { "sector":"G3",  "composition":"ROADBLOCK" },
     { "sector":"C5",  "composition":"SANMONA_SMALL" }
 ]
