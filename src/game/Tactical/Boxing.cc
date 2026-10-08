@@ -54,8 +54,10 @@ void ExitBoxing(void)
 			if (s->uiStatusFlags & SOLDIER_PC)
 			{
 				if (ubPass == 0) continue; // pass 0, only handle AI
-				// put guy under AI control temporarily
+				// put guy under AI control temporarily; the AI skips anyone still
+				// engaged, so drop a flag a give left behind
 				s->uiStatusFlags |= SOLDIER_PCUNDERAICONTROL;
+				s->uiStatusFlags &= ~SOLDIER_ENGAGEDINACTION;
 			}
 			else
 			{

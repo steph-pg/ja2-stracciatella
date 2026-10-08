@@ -55,5 +55,8 @@ protected:
 	void swapInventorySlots(int8_t firstSlot, int8_t secondSlot);
 
 private:
+	void cancelGiveItem();
+	void dropPendingAction();
+
 	SOLDIERTYPE* mSoldier;
 };
