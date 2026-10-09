@@ -352,7 +352,7 @@ properties:
     description: |
       Mercs, militia and enemy soldiers plot their paths through windows too, hopping through them
       like over a fence. An intact window gets smashed, cutting the jumper a little.
-      Civilians and creatures never do.
+      Civilians and creatures never do, and AI soldiers only once they are on red alert or above.
 
       Vanilla setting: `false`
   imp:

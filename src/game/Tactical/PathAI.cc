@@ -2455,7 +2455,12 @@ bool CanPathThroughWindows(const SOLDIERTYPE* const s)
 	if (!s->bActive) return false;
 
 	// Only those who have the hop animation, and no civilians
-	return IS_MERC_BODY_TYPE(s) && s->bTeam != CIV_TEAM;
+	if (!IS_MERC_BODY_TYPE(s) || s->bTeam == CIV_TEAM) return false;
+
+	// The AI only goes through windows once it knows the enemy is about,
+	// a calm patrol or guard should keep using doors
+	bool const fAIControlled = s->bTeam != OUR_TEAM || (s->uiStatusFlags & SOLDIER_PCUNDERAICONTROL);
+	return !fAIControlled || s->bAlertStatus >= STATUS_RED;
 }
 
 
