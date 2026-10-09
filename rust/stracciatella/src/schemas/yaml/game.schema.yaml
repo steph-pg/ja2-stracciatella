@@ -263,7 +263,8 @@ properties:
           more of the bullets flying in than of its own going out, since bullets only start striking
           obstacles a few tiles into their flight. A wall that hides it completely does not count,
           as it would block its own shot too. Getting there may use up the turn; it fires from there
-          on the next ones. The same goes for a soldier watching from the open for a merc who
+          on the next ones. A shot with a 50% or better chance to hit is fired straight away
+          instead, as a likely hit is worth more than the cover. The same goes for a soldier watching from the open for a merc who
           steps out from behind a wall, fires and ducks back: it moves behind such cover first and
           watches that spot from there.
 
