@@ -602,6 +602,11 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						}
 						else
 						{
+							// No stance change follows to finish the path for us, as it does above -
+							// do it here, or an AI soldier that moves crouched waits on it forever
+							pSoldier->ubPathIndex = pSoldier->ubPathDataSize;
+							pSoldier->fContinueMoveAfterStanceChange = FALSE;
+
 							SoldierGotoStationaryStance( pSoldier );
 
 							// Set UI Busy
