@@ -5208,6 +5208,25 @@ void BeginSoldierClimbUpRoof(SOLDIERTYPE* const s)
 }
 
 
+// Smash the glass of the intact window we are jumping through and get a bit cut by it
+void ShatterClimbedWindow(SOLDIERTYPE* const s)
+{
+	// The window structure lives on the south / east tile of the edge it sits on
+	GridNo const sWindowGridNo = (s->bDirection == NORTH || s->bDirection == WEST) ?
+		NewGridNo(s->sGridNo, DirectionInc(s->bDirection)) : s->sGridNo;
+
+	STRUCTURE const* const pStructure = FindStructure(sWindowGridNo, STRUCTURE_WALLNWINDOW);
+	if (!pStructure || (pStructure->fFlags & STRUCTURE_OPEN)) return;
+
+	// Large force takes a window through all its stages, intact -> cracked -> shattered
+	WindowHit(sWindowGridNo, pStructure->usStructureID, s->bDirection == SOUTH || s->bDirection == EAST, TRUE);
+
+	// Never cut deep enough to knock us out in the middle of the hop
+	INT16 const sDamage = std::min<INT16>(2 + Random(4), s->bLife - OKLIFE);
+	if (sDamage > 0) SoldierTakeDamage(s, sDamage, 0, TAKE_DAMAGE_OBJECT, NULL);
+}
+
+
 void BeginSoldierClimbWindow(SOLDIERTYPE* const s)
 {
 	if(!IsFacingClimableWindow(s)) return;
@@ -5223,13 +5242,16 @@ void BeginSoldierClimbWindow(SOLDIERTYPE* const s)
 	if (!IsAnimationValidForBodyType(*s, HOPFENCE))
 	{
 		DeductPoints(s, AP_JUMPFENCE, BP_JUMPFENCE);
+		ShatterClimbedWindow(s);
 		TeleportSoldier(*s, s->sTempNewGridNo, TRUE);
 		return;
 	}
 
 	// We are already facing the window, so no turning is needed - just play the hop.
-	// APs are deducted when the animation starts.
-	s->fClimbingWindow = TRUE;
+	// APs are deducted and the glass is smashed when the animation starts.
+	// Not moving along a path, so the hop end code will stop us on the other side.
+	s->fClimbingWindow                = TRUE;
+	s->fContinueMoveAfterStanceChange = FALSE;
 	EVENT_InitNewSoldierAnim(s, HOPFENCE, 0, FALSE);
 
 	// The hop may have been refused, for instance because we are locked into another
@@ -5241,6 +5263,20 @@ void BeginSoldierClimbWindow(SOLDIERTYPE* const s)
 	}
 
 	if (s->bTeam == OUR_TEAM) SetUIBusy(s);
+}
+
+
+// Hop through the window lying in direction along our path, see IsJumpableWindowStep()
+void BeginSoldierClimbWindowOnPath(SOLDIERTYPE* const s, UINT8 const direction)
+{
+	s->sTempNewGridNo            = NewGridNo(s->sGridNo, DirectionInc(direction));
+	s->fDontChargeTurningAPs     = TRUE;
+	EVENT_SetSoldierDesiredDirectionForward(s, direction);
+	s->fTurningUntilDone         = TRUE;
+	// ATE: Reset flag to go back to prone
+	s->fTurningFromPronePosition = TURNING_FROM_PRONE_OFF;
+	s->fClimbingWindow           = TRUE;
+	s->usPendingAnimation        = HOPFENCE;
 }
 
 void BeginSoldierClimbFence(SOLDIERTYPE* const s)
