@@ -1137,8 +1137,8 @@ static INT8 RollStatWithFloor(INT8 const bBaseAttribute, INT8 const bFloor)
 //Lower bounds for the spread above.  The stats that decide a fight directly
 //-- agility, dexterity, marksmanship, health and morale -- keep their vanilla roll.
 static constexpr INT8 STAT_SPREAD_FLOOR_EXPLOSIVE  = 15;
-static constexpr INT8 STAT_SPREAD_FLOOR_MEDICAL    = 35;
-static constexpr INT8 STAT_SPREAD_FLOOR_LEADERSHIP = 35;
+static constexpr INT8 STAT_SPREAD_FLOOR_MEDICAL    = 1;
+static constexpr INT8 STAT_SPREAD_FLOOR_LEADERSHIP = 1;
 static constexpr INT8 STAT_SPREAD_FLOOR_STRENGTH   = 50;
 static constexpr INT8 STAT_SPREAD_FLOOR_WISDOM     = 50;
 
