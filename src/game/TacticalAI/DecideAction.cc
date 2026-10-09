@@ -3168,7 +3168,9 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 	// spot first steps behind cover that still lets it shoot - a tree or a low wall
 	// right beside it - and fires from there on the turns to come. Getting there may
 	// take the whole turn, and that is fine: it is only tried with a fresh turn's APs.
+	// A shot likely to hit is worth more than the cover, so that one is taken now.
 	if (gamepolicy(ai_smarter_cover_search) && ubBestAttackAction == AI_ACTION_FIRE_GUN &&
+		BestAttack.ubChanceToReallyHit < 50 &&
 		gfTurnBasedAI && ubCanMove && !SkipCoverCheck && !gfHiddenInterrupt &&
 		pSoldier->bActionPoints == pSoldier->bInitialActionPoints &&
 		pSoldier->bOrders != STATIONARY &&
