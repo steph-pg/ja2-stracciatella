@@ -1678,8 +1678,7 @@ static void LoadOppListInfoFromSavedGame(HWFILE const hFile)
 	uiLoadSize = TOTAL_SOLDIERS * TOTAL_SOLDIERS;
 	hFile->read(gbLastKnownOppLevel, uiLoadSize);
 
-	// whether a last known location is a heard gunshot is not saved, so drop what is left
-	// over from before the load rather than pair it with locations it doesn't belong to
+	// heard gunshot flags are not saved
 	for (auto& i : gfLastKnownOppLocIsShot)
 	{
 		std::fill(std::begin(i), std::end(i), false);

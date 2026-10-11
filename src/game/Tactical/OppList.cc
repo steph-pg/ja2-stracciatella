@@ -844,8 +844,7 @@ static bool TeamNoLongerSeesMan(const UINT8 ubTeam, SOLDIERTYPE* const pOpponent
 		if (!IsSoldierValidForSightings(*pMate) || pMate->bLife < OKLIFE)
 			continue; // next merc
 
-		// a collapsed merc keeps on seeing, so by default they keep a sighting alive for the
-		// team just like anyone else; callers who need a witness who can still act say so
+		// collapsed mercs still see, but may be excluded
 		if (!fCollapsedCounts && pMate->bCollapsed)
 			continue; // next merc
 
@@ -873,10 +872,7 @@ static bool TeamNoLongerSeesMan(const UINT8 ubTeam, SOLDIERTYPE* const pOpponent
 }
 
 
-// Is anyone on the team in a position to point a team-mate at this opponent? Seeing them is not
-// quite enough: a collapsed merc goes on seeing while they lie there, and the public opplist duly
-// keeps their sighting at SEEN_CURRENTLY, but face down and unable to act they are nobody's
-// spotter. Allies count, same as they do when the team loses sight.
+// whether a team-mate or ally able to act sees this opponent
 bool TeamHasSpotterFor(const UINT8 ubTeam, SOLDIERTYPE* const pOpponent)
 {
 	return !TeamNoLongerSeesMan(ubTeam, pOpponent, NULL, 0, false);
@@ -2208,7 +2204,7 @@ static void UpdatePersonal(SOLDIERTYPE* pSoldier, UINT8 ubID, INT8 bNewOpplist, 
 	gsLastKnownOppLoc[pSoldier->ubID][ubID] = sGridno;
 	gbLastKnownOppLevel[pSoldier->ubID][ubID] = bLevel;
 
-	// a caller that heard a gunshot marks the location as the shot's right after this
+	// set by the caller for a heard gunshot
 	gfLastKnownOppLocIsShot[pSoldier->ubID][ubID] = false;
 }
 

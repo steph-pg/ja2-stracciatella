@@ -160,10 +160,8 @@
     //  vanilla value: false
     "stay_on_rooftop": true,
 
-    //  AI may fire a gun at opponents it cannot see itself: ones its team-mates have
-    //  in sight or have only just lost, and ones it hears shooting. An opponent out of
-    //  reach behind cover may draw suppressing fire instead. It also lets an enemy that
-    //  only knows roughly where the player is shoot instead of merely manoeuvring.
+    //  AI may shoot at targets it does not see itself. Its own hearing gives an
+    //  approximate target. Needs chance_to_hit_minimum above 0.
     //  vanilla value: false
     "enemy_shoot_unseen": true,
 

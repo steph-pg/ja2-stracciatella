@@ -3073,8 +3073,7 @@ UINT8 AISoldierToLocationChanceToGetThrough( SOLDIERTYPE * pStartSoldier, INT16 
 	}
 }
 
-// Chance to get through to a set height on a tile, from the start soldier's real stance,
-// passing over or past whoever stands there instead of aiming at them
+// chance to get through to a height cube on a tile, ignoring whoever stands there
 UINT8 SoldierToTileHeightChanceToGetThrough(SOLDIERTYPE* const pStartSoldier, const INT16 sGridNo, const INT8 bLevel, const INT8 bCubeLevel)
 {
 	if (pStartSoldier->sGridNo == sGridNo)
