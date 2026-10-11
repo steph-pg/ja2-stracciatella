@@ -685,6 +685,16 @@ static void ChooseWeaponForSoldierCreateStruct(SOLDIERCREATE_STRUCT* pp, INT8 bW
 		Object.fFlags |= OBJECT_UNDROPPABLE;
 		AttachObject( NULL, &(pp->Inv[ HANDPOS ]), &Object );
 	}
+	// Sniper rifles always come with a scope, unless one was already chosen above
+	if( !(pp->Inv[ HANDPOS ].fFlags & OBJECT_NO_OVERWRITE) &&
+		GCM->getItem(usGunIndex)->asWeapon()->ubWeaponType == GUN_SN_RIFLE &&
+		usAttachIndex != SNIPERSCOPE &&
+		ValidAttachment( SNIPERSCOPE, usGunIndex ) )
+	{
+		CreateItem( SNIPERSCOPE, 100, &Object );
+		Object.fFlags |= OBJECT_UNDROPPABLE;
+		AttachObject( NULL, &(pp->Inv[ HANDPOS ]), &Object );
+	}
 }
 
 
