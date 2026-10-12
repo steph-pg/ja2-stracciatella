@@ -383,6 +383,14 @@
 
   "enable_stat_healing": false,
 
+  //  Do health and morale affect how much a merc gets done on an assignment
+  //  (doctoring, repairing, training and militia training)?
+  //    true  - an injured merc loses half the share of health they are missing,
+  //            bandaged or not (half health = 25% less). Morale works both ways,
+  //            1% per 2 points away from 50 (100 morale = +25%, 0 = -25%).
+  //    false - vanilla behaviour: only fatigue matters.
+  "health_and_morale_affect_assignments": true,
+
   //  Percentage modifier to the training points a merc earns each hour from
   //  practising alone and from being taught by a teammate.
   //    100 - vanilla rate
