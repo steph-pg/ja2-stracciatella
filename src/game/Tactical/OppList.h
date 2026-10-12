@@ -63,8 +63,12 @@ extern INT8  gbSeenOpponents[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 extern INT16 gsLastKnownOppLoc[TOTAL_SOLDIERS][TOTAL_SOLDIERS]; // merc vs. merc
 extern INT8  gbLastKnownOppLevel[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 extern bool  gfLastKnownOppLocIsShot[TOTAL_SOLDIERS][TOTAL_SOLDIERS]; // last known location is a heard gunshot
+extern INT16 gsLastSeenOppLoc[TOTAL_SOLDIERS][TOTAL_SOLDIERS]; // not moved by noises
+extern INT8  gbLastSeenOppLevel[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 extern INT16 gsPublicLastKnownOppLoc[MAXTEAMS][TOTAL_SOLDIERS]; // team vs. merc
 extern INT8  gbPublicLastKnownOppLevel[MAXTEAMS][TOTAL_SOLDIERS];
+extern INT16 gsPublicLastSeenOppLoc[MAXTEAMS][TOTAL_SOLDIERS]; // not moved by noises
+extern INT8  gbPublicLastSeenOppLevel[MAXTEAMS][TOTAL_SOLDIERS];
 extern UINT8 gubPublicNoiseVolume[MAXTEAMS];
 extern INT16 gsPublicNoiseGridno[MAXTEAMS];
 extern INT8  gbPublicNoiseLevel[MAXTEAMS];

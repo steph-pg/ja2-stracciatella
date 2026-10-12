@@ -41,6 +41,7 @@
 #include "Interface_Panels.h"
 #include "Interface_Utils.h"
 #include "Interface.h"
+#include "Isometric_Utils.h"
 #include "JAScreens.h"
 #include "Keys.h"
 #include "Lighting.h"
@@ -1678,10 +1679,18 @@ static void LoadOppListInfoFromSavedGame(HWFILE const hFile)
 	uiLoadSize = TOTAL_SOLDIERS * TOTAL_SOLDIERS;
 	hFile->read(gbLastKnownOppLevel, uiLoadSize);
 
-	// heard gunshot flags are not saved
+	// heard gunshot flags and last seen locations are not saved
 	for (auto& i : gfLastKnownOppLocIsShot)
 	{
 		std::fill(std::begin(i), std::end(i), false);
+	}
+	for (auto& i : gsLastSeenOppLoc)
+	{
+		std::fill(std::begin(i), std::end(i), NOWHERE);
+	}
+	for (auto& i : gsPublicLastSeenOppLoc)
+	{
+		std::fill(std::begin(i), std::end(i), NOWHERE);
 	}
 
 	// Load the Public Last Known Opp Locations

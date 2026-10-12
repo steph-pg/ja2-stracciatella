@@ -142,12 +142,13 @@ static bool FindShotTarget(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const pOppo
 
 	INT8 const bKnowledge = pSoldier->bOppList[pOpponent->ubID];
 	INT8 const bPublic    = gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID];
+	// not the last known location, which a heard footstep moves along with them
 	bool const fStayedSinceOurs =
-		gsLastKnownOppLoc[pSoldier->ubID][pOpponent->ubID] == pOpponent->sGridNo &&
-		gbLastKnownOppLevel[pSoldier->ubID][pOpponent->ubID] == pOpponent->bLevel;
+		gsLastSeenOppLoc[pSoldier->ubID][pOpponent->ubID] == pOpponent->sGridNo &&
+		gbLastSeenOppLevel[pSoldier->ubID][pOpponent->ubID] == pOpponent->bLevel;
 	bool const fStayedSincePublic =
-		gsPublicLastKnownOppLoc[pSoldier->bTeam][pOpponent->ubID] == pOpponent->sGridNo &&
-		gbPublicLastKnownOppLevel[pSoldier->bTeam][pOpponent->ubID] == pOpponent->bLevel;
+		gsPublicLastSeenOppLoc[pSoldier->bTeam][pOpponent->ubID] == pOpponent->sGridNo &&
+		gbPublicLastSeenOppLevel[pSoldier->bTeam][pOpponent->ubID] == pOpponent->bLevel;
 
 	target.fNotInSight = true;
 

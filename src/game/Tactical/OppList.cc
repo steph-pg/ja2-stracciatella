@@ -97,8 +97,12 @@ INT8 gbSeenOpponents[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 INT16 gsLastKnownOppLoc[TOTAL_SOLDIERS][TOTAL_SOLDIERS]; // merc vs. merc
 INT8 gbLastKnownOppLevel[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 bool gfLastKnownOppLocIsShot[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
+INT16 gsLastSeenOppLoc[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
+INT8 gbLastSeenOppLevel[TOTAL_SOLDIERS][TOTAL_SOLDIERS];
 INT16 gsPublicLastKnownOppLoc[MAXTEAMS][TOTAL_SOLDIERS]; // team vs. merc
 INT8 gbPublicLastKnownOppLevel[MAXTEAMS][TOTAL_SOLDIERS];
+INT16 gsPublicLastSeenOppLoc[MAXTEAMS][TOTAL_SOLDIERS];
+INT8 gbPublicLastSeenOppLevel[MAXTEAMS][TOTAL_SOLDIERS];
 UINT8 gubPublicNoiseVolume[MAXTEAMS];
 INT16 gsPublicNoiseGridno[MAXTEAMS];
 INT8	gbPublicNoiseLevel[MAXTEAMS];
@@ -2165,6 +2169,13 @@ static void UpdatePublic(const UINT8 ubTeam, SOLDIERTYPE* const s, const INT8 bN
 	gsPublicLastKnownOppLoc[ubTeam][s->ubID] = sGridno;
 	gbPublicLastKnownOppLevel[ubTeam][s->ubID] = bLevel;
 
+	// unlike the last known location, a noise doesn't move this
+	if (bNewOpplist == SEEN_CURRENTLY || bNewOpplist == NOT_HEARD_OR_SEEN)
+	{
+		gsPublicLastSeenOppLoc[ubTeam][s->ubID] = sGridno;
+		gbPublicLastSeenOppLevel[ubTeam][s->ubID] = bLevel;
+	}
+
 	// if team has been told about a guy the team was completely unaware of
 	if (ubTeamMustLookAgain)
 	{
@@ -2204,6 +2215,13 @@ static void UpdatePersonal(SOLDIERTYPE* pSoldier, UINT8 ubID, INT8 bNewOpplist, 
 	gsLastKnownOppLoc[pSoldier->ubID][ubID] = sGridno;
 	gbLastKnownOppLevel[pSoldier->ubID][ubID] = bLevel;
 
+	// unlike the last known location, a noise doesn't move this
+	if (bNewOpplist == SEEN_CURRENTLY || bNewOpplist == NOT_HEARD_OR_SEEN)
+	{
+		gsLastSeenOppLoc[pSoldier->ubID][ubID] = sGridno;
+		gbLastSeenOppLevel[pSoldier->ubID][ubID] = bLevel;
+	}
+
 	// set by the caller for a heard gunshot
 	gfLastKnownOppLocIsShot[pSoldier->ubID][ubID] = false;
 }
@@ -2216,8 +2234,10 @@ static void ResetLastKnownLocs(SOLDIERTYPE const& s)
 		const SoldierID tgt_id = (*i)->ubID;
 		gsLastKnownOppLoc[s.ubID][tgt_id] = NOWHERE;
 		gfLastKnownOppLocIsShot[s.ubID][tgt_id] = false;
+		gsLastSeenOppLoc[s.ubID][tgt_id] = NOWHERE;
 		// IAN added this June 14/97
 		gsPublicLastKnownOppLoc[s.bTeam][tgt_id] = NOWHERE;
+		gsPublicLastSeenOppLoc[s.bTeam][tgt_id] = NOWHERE;
 	}
 }
 
@@ -2268,6 +2288,7 @@ void InitOpponentKnowledgeSystem(void)
 		for (cnt = 0; cnt < MAX_NUM_SOLDIERS; cnt++)
 		{
 			gsPublicLastKnownOppLoc[ iTeam ][ cnt ] = NOWHERE;
+			gsPublicLastSeenOppLoc[ iTeam ][ cnt ] = NOWHERE;
 		}
 	}
 
