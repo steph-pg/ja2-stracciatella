@@ -1974,11 +1974,12 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 						UINT8 const ubBurstAPs = CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[HANDPOS]);
 						INT8  const bAPsForAttack = pSoldier->bActionPoints - ubStanceCost - (BestShot.ubAPCost - BestShot.ubAimTime);
 
-						// very unlikely shots are only worth a burst; spotted targets need a good single shot
+						// very unlikely shots are only worth a burst or a spread of buckshot; spotted targets need a good single shot
 						bool const fTooUnlikelyForSingle = fSuppress || (BestShot.ubChanceToReallyHit <= 5) ||
 							(BestShot.fSpotted && BestShot.ubChanceToReallyHit < MIN_CHANCE_FOR_SPOTTED_SINGLE_SHOT);
 						bool const fCanBurst = IsGunBurstCapable(pSoldier, HANDPOS) &&
 							pSoldier->inv[HANDPOS].ubGunShotsLeft > 1 && bAPsForAttack >= ubBurstAPs;
+						bool const fBuckshot = pSoldier->inv[HANDPOS].ubGunAmmoType == AMMO_BUCKSHOT;
 
 						if (fTooUnlikelyForSingle && fCanBurst)
 						{
@@ -1990,13 +1991,13 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 							pSoldier->bAimTime = 0;
 							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 						}
-						else if (!fTooUnlikelyForSingle)
+						else if (!fTooUnlikelyForSingle || fBuckshot)
 						{
-							SLOGD("DecideActionRed: {} fires at {}, aim {}, chance to really hit {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubAimTime, BestShot.ubChanceToReallyHit, ubBestStance);
+							SLOGD("DecideActionRed: {} fires{} at {}, aim {}, chance to really hit {}, stance change first: {}", pSoldier->ubID, fBuckshot ? " buckshot" : "", BestShot.opponent->ubID, BestShot.ubAimTime, BestShot.ubChanceToReallyHit, ubBestStance);
 							pSoldier->bAimTime = BestShot.ubAimTime;
 							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 						}
-						SLOGD("DecideActionRed: {} holds fire at {}: chance to really hit {} too low for a single shot{}, and can't burst", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubChanceToReallyHit, BestShot.fSpotted ? " at a spotted target" : "");
+						SLOGD("DecideActionRed: {} holds fire at {}: chance to really hit {} too low for a single shot{}, and can't burst or fire buckshot", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubChanceToReallyHit, BestShot.fSpotted ? " at a spotted target" : "");
 					}
 				}
 
