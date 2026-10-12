@@ -120,6 +120,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	enable_stat_healing = gp.getOptionalBool("enable_stat_healing", false);
 
+	health_and_morale_affect_assignments = gp.getOptionalBool("health_and_morale_affect_assignments", false);
 	training_speed_modifier = gp.getOptionalUInt("training_speed_modifier", 100);
 	skyrider_explores_sectors = gp.getOptionalBool("skyrider_explores_sectors", false);
 	quest_experience_all_mercs = gp.getOptionalBool("quest_experience_all_mercs", true);

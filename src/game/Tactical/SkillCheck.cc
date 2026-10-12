@@ -140,6 +140,25 @@ void ReducePointsForFatigue(const SOLDIERTYPE* s, UINT16* pusPoints)
 }
 
 
+void AdjustPointsForHealthAndMorale(const SOLDIERTYPE* s, UINT16* pusPoints)
+{
+	if (!gamepolicy(health_and_morale_affect_assignments)) return;
+
+	INT32 iPoints = *pusPoints;
+
+	// lose half the share of health that is missing, bandaged or not
+	if (s->bLifeMax > 0 && s->bLife < s->bLifeMax)
+	{
+		iPoints -= iPoints * (s->bLifeMax - s->bLife) / (2 * s->bLifeMax);
+	}
+
+	// morale works both ways: 1% per 2 points away from the default
+	iPoints += iPoints * (s->bMorale - DEFAULT_MORALE) / 200;
+
+	*pusPoints = (UINT16)std::clamp(iPoints, 0, 0xFFFF);
+}
+
+
 INT32 GetSkillCheckPenaltyForFatigue( const SOLDIERTYPE *pSoldier, INT32 iSkill )
 {
 	// use only half the full effect of fatigue for skill checks

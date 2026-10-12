@@ -1094,6 +1094,8 @@ UINT16 CalculateHealingPointsForDoctor(SOLDIERTYPE *pDoctor, UINT16 *pusMaxPts, 
 
 	// adjust for fatigue
 	ReducePointsForFatigue( pDoctor, &usHealPts );
+	// adjust for health and morale
+	AdjustPointsForHealthAndMorale( pDoctor, &usHealPts );
 
 	// count how much medical supplies we have
 	usKitPts = 100 * TotalMedicalKitPoints( pDoctor );
@@ -1142,6 +1144,8 @@ UINT8 CalculateRepairPointsForRepairman(SOLDIERTYPE *pSoldier, UINT16 *pusMaxPts
 
 	// adjust for fatigue
 	ReducePointsForFatigue( pSoldier, &usRepairPts );
+	// adjust for health and morale
+	AdjustPointsForHealthAndMorale( pSoldier, &usRepairPts );
 
 
 	// figure out what shape his "equipment" is in ("coming" in JA3: Viagra - improves the "shape" your "equipment" is in)
@@ -2504,6 +2508,8 @@ INT16 GetBonusTrainingPtsDueToInstructor(const SOLDIERTYPE* pInstructor, const S
 
 	// adjust for instructor fatigue
 	ReducePointsForFatigue( pInstructor, &sTrainingPts );
+	// adjust for health and morale
+	AdjustPointsForHealthAndMorale( pInstructor, &sTrainingPts );
 
 	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
 	sTrainingPts = ScaleTrainingPts(sTrainingPts);
@@ -2546,6 +2552,8 @@ INT16 GetSoldierTrainingPts(const SOLDIERTYPE* s, INT8 bTrainStat, BOOLEAN fAtGu
 
 	// adjust for fatigue
 	ReducePointsForFatigue(s, &sTrainingPts);
+	// adjust for health and morale
+	AdjustPointsForHealthAndMorale(s, &sTrainingPts);
 
 	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
 	sTrainingPts = ScaleTrainingPts(sTrainingPts);
@@ -2591,6 +2599,8 @@ INT16 GetSoldierStudentPts(const SOLDIERTYPE* s, INT8 bTrainStat, BOOLEAN fAtGun
 
 	// adjust for fatigue
 	ReducePointsForFatigue(s, &sTrainingPts);
+	// adjust for health and morale
+	AdjustPointsForHealthAndMorale(s, &sTrainingPts);
 
 	// scale what they learn on their own; the instructor's share is scaled by the call below
 	*pusMaxPts   = ScaleTrainingPts(*pusMaxPts);
@@ -2753,6 +2763,8 @@ INT16 GetTownTrainPtsForCharacter(const SOLDIERTYPE* pTrainer, UINT16* pusMaxPts
 
 	// adjust for fatigue of trainer
 	ReducePointsForFatigue( pTrainer, &sTotalTrainingPts );
+	// adjust for health and morale
+	AdjustPointsForHealthAndMorale( pTrainer, &sTotalTrainingPts );
 
 
 /* ARM: Decided this didn't make much sense - the guys I'm training damn well BETTER be loyal - and screw the rest!
