@@ -27,13 +27,11 @@
 #include "StrategicMap.h"
 #include "Structure.h"
 #include "Structure_Wrap.h"
-#include "TeamTurns.h"
 #include "Timer_Control.h"
 #include "WeaponModels.h"
 #include "Weapons.h"
 #include "WorldMan.h"
 #include <string_theory/format>
-#include <algorithm>
 
 extern BOOLEAN gfUseAlternateQueenPosition;
 
@@ -1477,48 +1475,6 @@ static INT8 FireGunOrChangeStanceFirst(SOLDIERTYPE *pSoldier, const ATTACKTYPE &
 }
 
 
-// estimated chance to win an interrupt on the coming enemy turn
-static UINT8 EstimateInterruptChance(const SOLDIERTYPE* const pSoldier)
-{
-	if (pSoldier->bActionPoints < MIN_APS_TO_INTERRUPT || pSoldier->bBreath < OKBREATH ||
-		pSoldier->bCollapsed || (pSoldier->uiStatusFlags & SOLDIER_GASSED))
-	{
-		return 0;
-	}
-
-	INT32 iBestChance = 0;
-	FOR_EACH_MERC(i)
-	{
-		const SOLDIERTYPE* const pOpponent = *i;
-		if (pOpponent->bLife < OKLIFE || pOpponent->bSide == pSoldier->bSide ||
-			CONSIDERED_NEUTRAL(pSoldier, pOpponent))
-		{
-			continue;
-		}
-
-		if (pSoldier->bOppList[pOpponent->ubID] == NOT_HEARD_OR_SEEN &&
-			gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == NOT_HEARD_OR_SEEN)
-		{
-			continue;  // nobody on our team knows of them
-		}
-
-		INT8 const bOurPts   = CalcInterruptDuelPts(pSoldier, pOpponent, TRUE);
-		INT8 const bTheirPts = CalcInterruptDuelPts(pOpponent, pSoldier, FALSE);
-		if (bOurPts == NO_INTERRUPT || bTheirPts == NO_INTERRUPT)
-			continue;
-
-		// on their turn the range penalty is ours
-		INT32 const iRangePenalty = PythSpacesAway(pSoldier->sGridNo, pOpponent->sGridNo) / 10;
-		INT32 const iMargin = (bOurPts - iRangePenalty) - (bTheirPts + iRangePenalty);
-		INT32 const iChance = std::clamp(50 + 20 * iMargin, 0, 100);
-
-		iBestChance = std::max(iBestChance, iChance);
-	}
-
-	return (UINT8) iBestChance;
-}
-
-
 INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 {
 	INT8 bActionReturned;
@@ -1923,11 +1879,6 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 					bool const fSuppress = BestShot.bTargetCubeLevel != 0;
 
-					// rather keep APs for a likely interrupt than suppress
-					if (fSuppress && BestShot.ubPossible && PreRandom(100) < EstimateInterruptChance(pSoldier))
-					{
-						BestShot.ubPossible = FALSE;
-					}
 					if (BestShot.ubPossible && (BestShot.ubChanceToReallyHit > 0 || fSuppress) && BestShot.opponent->bLife >= OKLIFE)
 					{
 						// CalcBestShot rates shots as if standing, so check the real stance like
@@ -1969,7 +1920,12 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 							pSoldier->inv[HANDPOS].ubGunShotsLeft > 1 && bAPsForAttack >= ubBurstAPs;
 						bool const fBuckshot = pSoldier->inv[HANDPOS].ubGunAmmoType == AMMO_BUCKSHOT;
 
-						if (fTooUnlikelyForSingle && fCanBurst)
+						// a burst or buckshot on a long chance only half the time, so we still advance
+						if (fTooUnlikelyForSingle && (fCanBurst || fBuckshot) && PreRandom(100) >= 50)
+						{
+							// not firing
+						}
+						else if (fTooUnlikelyForSingle && fCanBurst)
 						{
 							pSoldier->bDoBurst = 1;
 							pSoldier->bAimTime = 0;
