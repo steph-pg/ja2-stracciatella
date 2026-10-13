@@ -1512,9 +1512,6 @@ static UINT8 EstimateInterruptChance(const SOLDIERTYPE* const pSoldier)
 		INT32 const iMargin = (bOurPts - iRangePenalty) - (bTheirPts + iRangePenalty);
 		INT32 const iChance = std::clamp(50 + 20 * iMargin, 0, 100);
 
-		SLOGD("EstimateInterruptChance: {} vs {} points {} vs {} after range {} -> {}",
-			pSoldier->ubID, pOpponent->ubID, bOurPts, bTheirPts, iRangePenalty, iChance);
-
 		iBestChance = std::max(iBestChance, iChance);
 	}
 
@@ -1927,18 +1924,9 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 					bool const fSuppress = BestShot.bTargetCubeLevel != 0;
 
 					// rather keep APs for a likely interrupt than suppress
-					if (fSuppress && BestShot.ubPossible)
+					if (fSuppress && BestShot.ubPossible && PreRandom(100) < EstimateInterruptChance(pSoldier))
 					{
-						UINT8 const ubInterruptChance = EstimateInterruptChance(pSoldier);
-						if (PreRandom(100) < ubInterruptChance)
-						{
-							SLOGD("DecideActionRed: {} won't suppress {}, keeping its APs for an interrupt (chance {})", pSoldier->ubID, BestShot.opponent->ubID, ubInterruptChance);
-							BestShot.ubPossible = FALSE;
-						}
-						else
-						{
-							SLOGD("DecideActionRed: {} suppresses {} despite an interrupt chance of {}", pSoldier->ubID, BestShot.opponent->ubID, ubInterruptChance);
-						}
+						BestShot.ubPossible = FALSE;
 					}
 					if (BestShot.ubPossible && (BestShot.ubChanceToReallyHit > 0 || fSuppress) && BestShot.opponent->bLife >= OKLIFE)
 					{
@@ -1983,21 +1971,15 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 						if (fTooUnlikelyForSingle && fCanBurst)
 						{
-							if (fSuppress)
-								SLOGD("DecideActionRed: {} fires a suppression burst over {} at height cube {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.bTargetCubeLevel, ubBestStance);
-							else
-								SLOGD("DecideActionRed: {} fires a burst at {}, chance to really hit {}, stance change first: {}", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubChanceToReallyHit, ubBestStance);
 							pSoldier->bDoBurst = 1;
 							pSoldier->bAimTime = 0;
 							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 						}
 						else if (!fTooUnlikelyForSingle || fBuckshot)
 						{
-							SLOGD("DecideActionRed: {} fires{} at {}, aim {}, chance to really hit {}, stance change first: {}", pSoldier->ubID, fBuckshot ? " buckshot" : "", BestShot.opponent->ubID, BestShot.ubAimTime, BestShot.ubChanceToReallyHit, ubBestStance);
 							pSoldier->bAimTime = BestShot.ubAimTime;
 							return(FireGunOrChangeStanceFirst(pSoldier, BestShot, ubBestStance));
 						}
-						SLOGD("DecideActionRed: {} holds fire at {}: chance to really hit {} too low for a single shot{}, and can't burst or fire buckshot", pSoldier->ubID, BestShot.opponent->ubID, BestShot.ubChanceToReallyHit, BestShot.fSpotted ? " at a spotted target" : "");
 					}
 				}
 

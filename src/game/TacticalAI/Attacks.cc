@@ -91,32 +91,12 @@ static INT32 EstimateShotDamage(SOLDIERTYPE* pSoldier, SOLDIERTYPE* pOpponent, U
 #define MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH 25
 
 
-static char const* OppKnowledgeName(INT8 const bKnowledge)
-{
-	switch (bKnowledge)
-	{
-		case HEARD_3_TURNS_AGO: return "heard 3 turns ago";
-		case HEARD_2_TURNS_AGO: return "heard 2 turns ago";
-		case HEARD_LAST_TURN:   return "heard last turn";
-		case HEARD_THIS_TURN:   return "heard this turn";
-		case NOT_HEARD_OR_SEEN: return "nothing";
-		case SEEN_CURRENTLY:    return "seen now";
-		case SEEN_THIS_TURN:    return "seen this turn";
-		case SEEN_LAST_TURN:    return "seen last turn";
-		case SEEN_2_TURNS_AGO:  return "seen 2 turns ago";
-		case SEEN_3_TURNS_AGO:  return "seen 3 turns ago";
-		default:                return "?";
-	}
-}
-
-
 struct ShotTarget
 {
 	INT16 sGridNo;
 	INT8  bLevel;
 	bool  fNotInSight;
 	bool  fHeardShotOnly;
-	char const* szKnownBy;
 };
 
 
@@ -128,7 +108,6 @@ static bool FindShotTarget(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const pOppo
 	target.bLevel         = pOpponent->bLevel;
 	target.fNotInSight    = false;
 	target.fHeardShotOnly = false;
-	target.szKnownBy      = pSoldier->bOppList[pOpponent->ubID] == SEEN_CURRENTLY ? "seen" : "spotted";
 
 	if (pSoldier->bOppList[pOpponent->ubID] == SEEN_CURRENTLY ||
 		(fShootUnseen && gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID] == SEEN_CURRENTLY &&
@@ -155,7 +134,6 @@ static bool FindShotTarget(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const pOppo
 	if (((bKnowledge == SEEN_THIS_TURN || bKnowledge == SEEN_LAST_TURN) && fStayedSinceOurs) ||
 		((bPublic == SEEN_THIS_TURN || bPublic == SEEN_LAST_TURN) && fStayedSincePublic))
 	{
-		target.szKnownBy = "last seen";
 		return true;
 	}
 
@@ -163,7 +141,6 @@ static bool FindShotTarget(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const pOppo
 		gfLastKnownOppLocIsShot[pSoldier->ubID][pOpponent->ubID] &&
 		gsLastKnownOppLoc[pSoldier->ubID][pOpponent->ubID] != NOWHERE)
 	{
-		target.szKnownBy      = "heard shot";
 		target.fHeardShotOnly = true;
 		target.sGridNo        = gsLastKnownOppLoc[pSoldier->ubID][pOpponent->ubID];
 		target.bLevel         = gbLastKnownOppLevel[pSoldier->ubID][pOpponent->ubID];
@@ -173,25 +150,13 @@ static bool FindShotTarget(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const pOppo
 		if (pOccupant && pOccupant != pOpponent &&
 			(pOccupant->bSide == pSoldier->bSide || CONSIDERED_NEUTRAL(pSoldier, pOccupant)))
 		{
-			SLOGD("CalcBestShot: {} vs {} (heard shot) someone else's on grid {} now", pSoldier->ubID, pOpponent->ubID, target.sGridNo);
 			return false;
 		}
 
 		// up to 1.5x gun range
-		if (PythSpacesAway(pSoldier->sGridNo, target.sGridNo) * CELL_X_SIZE * 2 > GunRange(pSoldier->inv[HANDPOS]) * 3)
-		{
-			SLOGD("CalcBestShot: {} vs {} (heard shot) grid {} out of range", pSoldier->ubID, pOpponent->ubID, target.sGridNo);
-			return false;
-		}
-		return true;
+		return PythSpacesAway(pSoldier->sGridNo, target.sGridNo) * CELL_X_SIZE * 2 <= GunRange(pSoldier->inv[HANDPOS]) * 3;
 	}
 
-	if (bKnowledge != NOT_HEARD_OR_SEEN || bPublic != NOT_HEARD_OR_SEEN)
-	{
-		SLOGD("CalcBestShot: {} vs {} not a target: knows {}, public {}, shot heard {}, stayed since ours {}, since public {}",
-			pSoldier->ubID, pOpponent->ubID, OppKnowledgeName(bKnowledge), OppKnowledgeName(bPublic),
-			gfLastKnownOppLocIsShot[pSoldier->ubID][pOpponent->ubID], fStayedSinceOurs, fStayedSincePublic);
-	}
 	return false;
 }
 
@@ -200,27 +165,17 @@ static bool FindShotTarget(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const pOppo
 static void ConsiderSuppression(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const pOpponent, ShotTarget const& target,
 	UINT8 const ubMinAPcost, bool const fMaySuppress, ATTACKTYPE& best, INT32& iBestValue)
 {
-	char const* const szWhy = target.fHeardShotOnly ? "only heard" : "body CTGT 0";
 	INT16 const sGridNo = target.sGridNo;
 	INT8  const bLevel  = target.bLevel;
 
 	// suppression needs a burst
 	if (!fMaySuppress || pOpponent->bLife < OKLIFE)
-	{
-		SLOGD("CalcBestShot: {} vs {} ({}) {}", pSoldier->ubID, pOpponent->ubID, target.szKnownBy, szWhy);
 		return;
-	}
 	if (!IsGunBurstCapable(pSoldier, HANDPOS) || pSoldier->inv[HANDPOS].ubGunShotsLeft <= 1)
-	{
-		SLOGD("CalcBestShot: {} vs {} ({}) {}, no burst (gun can't, or out of ammo)", pSoldier->ubID, pOpponent->ubID, target.szKnownBy, szWhy);
 		return;
-	}
 	UINT8 const ubBurstAPs = CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[HANDPOS]);
 	if (pSoldier->bActionPoints - ubMinAPcost < ubBurstAPs)
-	{
-		SLOGD("CalcBestShot: {} vs {} ({}) {}, no burst (APs {}, need {})", pSoldier->ubID, pOpponent->ubID, target.szKnownBy, szWhy, pSoldier->bActionPoints, ubMinAPcost + ubBurstAPs);
 		return;
-	}
 
 	// try crouched, then standing torso height, from our real stance
 	UINT8 const ubCTGTCube2 = SoldierToTileHeightChanceToGetThrough(pSoldier, sGridNo, bLevel, 2);
@@ -228,19 +183,7 @@ static void ConsiderSuppression(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const 
 	UINT8 const ubSuppressCTGT = std::max(ubCTGTCube2, ubCTGTCube3);
 	INT8  const bSuppressCube  = ubCTGTCube3 > ubCTGTCube2 ? 3 : 2;
 
-	bool const fCandidate = ubSuppressCTGT >= MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH;
-	SLOGD("CalcBestShot: {} vs {} ({}) {}, over at cube 2: {}, cube 3: {} -> {}", pSoldier->ubID, pOpponent->ubID, target.szKnownBy, szWhy, ubCTGTCube2, ubCTGTCube3, fCandidate ? "candidate" : "too low");
-
-	SLOGD("CalcBestShot: {} vs {} tile CTGT by cube 1-4: {} {} {} {}, shooter grid {} stance {} level {}, target grid {} stance {} level {}, aimed at grid {}, dist {}",
-		pSoldier->ubID, pOpponent->ubID,
-		SoldierToTileHeightChanceToGetThrough(pSoldier, sGridNo, bLevel, 1),
-		ubCTGTCube2, ubCTGTCube3,
-		SoldierToTileHeightChanceToGetThrough(pSoldier, sGridNo, bLevel, 4),
-		pSoldier->sGridNo, gAnimControl[pSoldier->usAnimState].ubEndHeight, pSoldier->bLevel,
-		pOpponent->sGridNo, gAnimControl[pOpponent->usAnimState].ubEndHeight, pOpponent->bLevel,
-		sGridNo, PythSpacesAway(pSoldier->sGridNo, sGridNo));
-
-	if (!fCandidate)
+	if (ubSuppressCTGT < MIN_SUPPRESSION_CHANCE_TO_GET_THROUGH)
 		return;
 
 	INT32 const iValue = ubSuppressCTGT * CalcManThreatValue(pOpponent, pSoldier->sGridNo, TRUE, pSoldier);
@@ -321,10 +264,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 		// if we don't have enough APs left to shoot even a snap-shot at this guy
 		if (ubMinAPcost > pSoldier->bActionPoints)
-		{
-			SLOGD("CalcBestShot: {} vs {} ({}) not enough APs (have {}, need {})", pSoldier->ubID, pOpponent->ubID, target.szKnownBy, pSoldier->bActionPoints, ubMinAPcost);
 			continue;          // next opponent
-		}
 
 		// calculate chance to get through the opponent's cover (if any); a heard shot is only suppressed
 
@@ -427,20 +367,14 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 
 		// if we can't get any kind of hit rate at all
 		if (iBestHitRate == 0)
-		{
-			SLOGD("CalcBestShot: {} vs {} ({}) CTGT {}, no chance to hit", pSoldier->ubID, pOpponent->ubID, target.szKnownBy, ubChanceToGetThrough);
 			continue;          // next opponent
-		}
 
 		// calculate chance to REALLY hit: shoot accurately AND get past cover
 		ubChanceToReallyHit = (ubBestChanceToHit * ubChanceToGetThrough) / 100;
 
 		// if we can't REALLY hit at all
 		if (ubChanceToReallyHit == 0)
-		{
-			SLOGD("CalcBestShot: {} vs {} ({}) CTGT {}, CTH {}, chance to really hit 0", pSoldier->ubID, pOpponent->ubID, target.szKnownBy, ubChanceToGetThrough, ubBestChanceToHit);
 			continue;          // next opponent
-		}
 
 		// really limit knife throwing so it doesn't look wrong
 		if ( GCM->getItem(pSoldier->usAttackingWeapon)->getItemClass() == IC_THROWING_KNIFE && (ubChanceToReallyHit < 30 || ( PythSpacesAway( pSoldier->sGridNo, pOpponent->sGridNo ) > CalcMaxTossRange( pSoldier, THROWING_KNIFE, FALSE ) / 2 ) ) )
@@ -462,8 +396,6 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 		{
 			iAttackValue /= 2;
 		}
-
-		SLOGD("CalcBestShot: {} vs {} ({}) CTGT {}, CTH {}, really {}, aim {}, value {}", pSoldier->ubID, pOpponent->ubID, target.szKnownBy, ubChanceToGetThrough, ubBestChanceToHit, ubChanceToReallyHit, ubBestAimTime, iAttackValue);
 
 		// if we can hurt the guy, OR probably not, but at least it's our best
 		// chance to actually hit him and maybe scare him, knock him down, etc.
@@ -492,7 +424,6 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			}
 
 			// OOOF!  That was a lot of work!  But we've got a new best target!
-			SLOGD("CalcBestShot: {} -> {} is the best target so far", pSoldier->ubID, pOpponent->ubID);
 			pBestShot->ubPossible          = TRUE;
 			pBestShot->opponent            = pOpponent;
 			pBestShot->ubAimTime           = ubBestAimTime;
@@ -510,7 +441,6 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 	{
 		BestSuppression.bWeaponIn = pBestShot->bWeaponIn;
 		*pBestShot = BestSuppression;
-		SLOGD("CalcBestShot: {} can only suppress {}, at height cube {}", pSoldier->ubID, BestSuppression.opponent->ubID, BestSuppression.bTargetCubeLevel);
 	}
 }
 
