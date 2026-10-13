@@ -3221,9 +3221,14 @@ BOOLEAN HandleUIReloading(SOLDIERTYPE* pSoldier)
 
 static void ChangeCurrentSquad(INT32 iSquad)
 {
-	// only allow if nothing in hand and the Change Squad button for whichever panel we're in must be enabled
-	if ( ( gpItemPointer == NULL ) && !gfDisableTacticalPanelButtons &&
-			(gsCurInterfacePanel != TEAM_PANEL || iTEAMPanelButtons[CHANGE_SQUAD_BUTTON]->Enabled()))
+	// Holding an item disables the panel buttons, but switching squads with it
+	// in hand is how it gets passed to a merc of another squad
+	bool const item_in_hand = gpItemPointer != NULL && !gfInItemPickupMenu && !InOverheadMap();
+
+	// otherwise the Change Squad button for whichever panel we're in must be enabled
+	if (item_in_hand ||
+		(gpItemPointer == NULL && !gfDisableTacticalPanelButtons &&
+			(gsCurInterfacePanel != TEAM_PANEL || iTEAMPanelButtons[CHANGE_SQUAD_BUTTON]->Enabled())))
 	{
 		if ( IsSquadOnCurrentTacticalMap( iSquad ) )
 		{
