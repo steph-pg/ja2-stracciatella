@@ -812,6 +812,15 @@ properties:
 
       Vanilla setting: `0`
 
+  thrown_knives_stay_clean:
+    type: boolean
+    title: Thrown knives stay clean
+    description: |
+      Thrown knives that hit someone stay regular throwing knives instead of
+      turning bloody, so they stack with the rest and need no cleaning.
+
+      Vanilla setting: `false`
+
   campaign:
     type: object
     properties:

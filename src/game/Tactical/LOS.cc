@@ -1830,13 +1830,14 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 	if (pBullet->usFlags & BULLET_FLAG_KNIFE)
 	{
 		// Place knife on guy....
+		UINT16 const usKnife = gamepolicy(thrown_knives_stay_clean) ? THROWING_KNIFE : BLOODY_THROWING_KNIFE;
 
 		// See if they have room ( and make sure it's not in hand pos?
 		bSlot = FindEmptySlotWithin(&tgt, BIGPOCK1POS, SMALLPOCK8POS );
 		if (bSlot == NO_SLOT)
 		{
 			// Add item
-			CreateItem(BLOODY_THROWING_KNIFE, (INT8) pBullet->ubItemStatus, &Object);
+			CreateItem(usKnife, (INT8) pBullet->ubItemStatus, &Object);
 
 			AddItemToPool(tgt.sGridNo, &Object, INVISIBLE, tgt.bLevel, 0, 0);
 
@@ -1845,7 +1846,7 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 		}
 		else
 		{
-			CreateItem(BLOODY_THROWING_KNIFE, (INT8) pBullet->ubItemStatus, &tgt.inv[bSlot]);
+			CreateItem(usKnife, (INT8) pBullet->ubItemStatus, &tgt.inv[bSlot]);
 		}
 
 		ubAmmoType = AMMO_KNIFE;

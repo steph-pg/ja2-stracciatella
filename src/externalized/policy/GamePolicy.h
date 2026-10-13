@@ -117,6 +117,8 @@ public:
 	bool locksmith_kit_wear;              // botched lock picks wear the locksmith kit down until it is used up, and its status no longer affects the picking chance (false = vanilla, kits never wear out)
 	bool path_through_windows;            // Soldiers can plot their path through windows, hopping them like fences
 
+	bool thrown_knives_stay_clean;        // Thrown knives that hit someone are not turned into bloody knives
+
 	/* IMP */
 	int8_t imp_attribute_max;             // IMP character attribute maximum 0 to 100, vanilla 85
 	int8_t imp_attribute_min;             // IMP character attribute minimum 0 to imp_attribute_max, vanilla 35

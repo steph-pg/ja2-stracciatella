@@ -84,6 +84,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	locksmith_kit_wear = gp.getOptionalBool("locksmith_kit_wear", false);
 	shot_locks_damage_contents = gp.getOptionalBool("shot_locks_damage_contents", false);
 	path_through_windows = gp.getOptionalBool("path_through_windows", false);
+	thrown_knives_stay_clean = gp.getOptionalBool("thrown_knives_stay_clean", false);
 
 	auto imp = gp["imp"].toObject();
 	imp_load_saved_merc_by_nickname = imp.getOptionalBool("load_saved_merc_by_nickname");
