@@ -121,18 +121,19 @@ static bool FindShotTarget(SOLDIERTYPE* const pSoldier, SOLDIERTYPE* const pOppo
 
 	INT8 const bKnowledge = pSoldier->bOppList[pOpponent->ubID];
 	INT8 const bPublic    = gbPublicOpplist[pSoldier->bTeam][pOpponent->ubID];
-	// not the last known location, which a heard footstep moves along with them
-	bool const fStayedSinceOurs =
+	// whether they still stand where we, or our team, last saw them (not the last
+	// known location, which a heard footstep moves along with them)
+	bool const fStillWhereWeSawThem =
 		gsLastSeenOppLoc[pSoldier->ubID][pOpponent->ubID] == pOpponent->sGridNo &&
 		gbLastSeenOppLevel[pSoldier->ubID][pOpponent->ubID] == pOpponent->bLevel;
-	bool const fStayedSincePublic =
+	bool const fStillWhereTeamSawThem =
 		gsPublicLastSeenOppLoc[pSoldier->bTeam][pOpponent->ubID] == pOpponent->sGridNo &&
 		gbPublicLastSeenOppLevel[pSoldier->bTeam][pOpponent->ubID] == pOpponent->bLevel;
 
 	target.fNotInSight = true;
 
-	if (((bKnowledge == SEEN_THIS_TURN || bKnowledge == SEEN_LAST_TURN) && fStayedSinceOurs) ||
-		((bPublic == SEEN_THIS_TURN || bPublic == SEEN_LAST_TURN) && fStayedSincePublic))
+	if (((bKnowledge == SEEN_THIS_TURN || bKnowledge == SEEN_LAST_TURN) && fStillWhereWeSawThem) ||
+		((bPublic == SEEN_THIS_TURN || bPublic == SEEN_LAST_TURN) && fStillWhereTeamSawThem))
 	{
 		return true;
 	}
