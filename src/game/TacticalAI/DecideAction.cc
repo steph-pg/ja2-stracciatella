@@ -1907,6 +1907,12 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 
 								// ShootingStanceChange keeps the attack affordable
 								ubStanceCost = (UINT8) GetAPsToChangeStance(pSoldier, ubBestStance);
+
+								// a stance change lowers the weapon, so a raised one has to be raised again
+								if (gAnimControl[pSoldier->usAnimState].uiFlags & (ANIM_FIREREADY | ANIM_FIRE))
+								{
+									ubStanceCost += (UINT8) GetAPsToReadyWeapon(pSoldier, pSoldier->usAnimState);
+								}
 							}
 						}
 
