@@ -93,6 +93,8 @@ public:
 
 	bool diagonally_interactable_doors;   // Open doors without exposing your mercs too much. Also affects switches.
 
+	bool thrown_knives_stay_clean;        // Thrown knives that hit someone are not turned into bloody knives
+
 	/* IMP */
 	int8_t imp_attribute_max;             // IMP character attribute maximum 0 to 100, vanilla 85
 	int8_t imp_attribute_min;             // IMP character attribute minimum 0 to imp_attribute_max, vanilla 35

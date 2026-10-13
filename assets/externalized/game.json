@@ -190,6 +190,11 @@
   //  vanilla setting: false
   "diagonally_interactable_doors": false,
 
+  //  Thrown knives that hit someone stay regular throwing knives instead of turning bloody,
+  //  so they stack with the rest and need no cleaning.
+  //  vanilla setting: false
+  "thrown_knives_stay_clean": false,
+
   //  IMP creation tweaks
   "imp": {
     //  IMP attribute point defaults:
