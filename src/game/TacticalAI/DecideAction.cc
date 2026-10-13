@@ -3462,7 +3462,13 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 				pSoldier->bTeam != OUR_TEAM)
 			{
 				UINT8 const ubBurstAPs = CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[BestAttack.bWeaponIn]);
-				if (pSoldier->bActionPoints - (BestAttack.ubAPCost - BestAttack.ubAimTime) >= ubBurstAPs )
+				// a stance change lowers the weapon, so a raised one has to be raised again
+				UINT8 ubReraiseAPs = 0;
+				if (fChangeStanceFirst && (gAnimControl[pSoldier->usAnimState].uiFlags & (ANIM_FIREREADY | ANIM_FIRE)))
+				{
+					ubReraiseAPs = GCM->getWeapon(pSoldier->inv[BestAttack.bWeaponIn].usItem)->ubReadyTime;
+				}
+				if (pSoldier->bActionPoints - (BestAttack.ubAPCost - BestAttack.ubAimTime) - ubReraiseAPs >= ubBurstAPs )
 				{
 					// Base chance of bursting is 25% if best shot was +0 aim, down to 8% at +4
 					// (a suppression shot is only worth firing as a burst)
