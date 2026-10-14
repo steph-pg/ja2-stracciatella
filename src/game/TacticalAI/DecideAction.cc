@@ -3898,10 +3898,11 @@ INT8 DecideAction(SOLDIERTYPE *pSoldier)
 
 	HandleSelfBandageEnd(pSoldier);
 
-	// Enemies sneak while moving around at night in realtime
+	// Alerted enemies sneak while moving around at night in realtime
 	if (pSoldier->bTeam == ENEMY_TEAM)
 	{
 		pSoldier->bStealthMode = !gfTurnBasedAI && NightTime() &&
+			gTacticalStatus.Team[ENEMY_TEAM].bAwareOfOpposition &&
 			pSoldier->bAlertStatus < STATUS_BLACK;
 	}
 
