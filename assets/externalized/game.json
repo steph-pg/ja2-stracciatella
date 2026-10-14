@@ -85,6 +85,11 @@
   //  vanilla setting: false
   "muzzle_flashes_reveal_location": true,
 
+  //  A silencer halves the volume of a gunshot (less if the silencer is worn), so nearby enemies
+  //  can still hear it. In vanilla a silencer in good condition cuts the volume down to almost nothing.
+  //  vanilla setting: false
+  "silencer_halves_volume": true,
+
   //  Spotting enemies in real-time mode does not start turn-based mode, as long as no hostile
   //  currently sees any of your mercs. Combat starts as usual once an enemy spots one of them,
   //  or when either side attacks. An attack that starts combat is paid for out of the
