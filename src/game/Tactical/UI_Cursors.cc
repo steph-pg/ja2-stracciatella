@@ -470,6 +470,14 @@ static UICursorID HandleNonActivatedTargetCursor(SOLDIERTYPE* const s, GridNo co
 }
 
 
+// Only a target the shooter sees personally can be aimed at a body part. The
+// opplist doesn't track teammates, who are always known.
+static bool SeesTargetPersonally(SOLDIERTYPE const& s, SOLDIERTYPE const& tgt)
+{
+	return s.bTeam == tgt.bTeam || s.bOppList[tgt.ubID] == SEEN_CURRENTLY;
+}
+
+
 static void DetermineCursorBodyLocation(SOLDIERTYPE* const s, BOOLEAN const display, BOOLEAN const recalc)
 {
 	if (gTacticalStatus.ubAttackBusyCount > 0)
@@ -572,7 +580,7 @@ static void DetermineCursorBodyLocation(SOLDIERTYPE* const s, BOOLEAN const disp
 			}
 		}
 
-		if (tgt && IsValidTargetMerc(tgt))
+		if (tgt && IsValidTargetMerc(tgt) && SeesTargetPersonally(*s, *tgt))
 		{
 			if (flags & TILE_FLAG_FEET) s->bAimShotLocation = AIM_SHOT_LEGS;
 			if (flags & TILE_FLAG_MID)  s->bAimShotLocation = AIM_SHOT_TORSO;
@@ -584,6 +592,7 @@ static void DetermineCursorBodyLocation(SOLDIERTYPE* const s, BOOLEAN const disp
 
 	SOLDIERTYPE* const tgt = gUIFullTarget;
 	if (!tgt) return;
+	if (!SeesTargetPersonally(*s, *tgt)) return;
 
 	ST::string hit_location;
 	if (tgt->ubBodyType == CROW)
