@@ -3,6 +3,7 @@
 #include "Animation_Control.h"
 #include "Boxing.h"
 #include "ContentManager.h"
+#include "Game_Clock.h"
 #include "GameInstance.h"
 #include "GamePolicy.h"
 #include "Isometric_Utils.h"
@@ -3896,6 +3897,13 @@ INT8 DecideAction(SOLDIERTYPE *pSoldier)
 	pSoldier->fAIFlags &= (~AI_CAUTIOUS);
 
 	HandleSelfBandageEnd(pSoldier);
+
+	// Enemies sneak while moving around at night in realtime
+	if (pSoldier->bTeam == ENEMY_TEAM)
+	{
+		pSoldier->bStealthMode = !gfTurnBasedAI && NightTime() &&
+			pSoldier->bAlertStatus < STATUS_BLACK;
+	}
 
 	// if status over-ride is set, bypass RED/YELLOW and go directly to GREEN!
 	if ((pSoldier->bBypassToGreen) && (pSoldier->bAlertStatus < STATUS_BLACK))
