@@ -479,6 +479,13 @@ static void DetermineCursorBodyLocation(SOLDIERTYPE* const s, BOOLEAN const disp
 		return;
 	}
 
+	// Bursts can't be aimed at a body part, and no hit location is shown for them
+	if (s->bDoBurst)
+	{
+		s->bAimShotLocation = AIM_SHOT_RANDOM;
+		return;
+	}
+
 	if (recalc)
 	{
 		auto const cursorPosition{ GetCursorPos() };
@@ -573,8 +580,7 @@ static void DetermineCursorBodyLocation(SOLDIERTYPE* const s, BOOLEAN const disp
 		}
 	}
 
-	if (!display)    return;
-	if (s->bDoBurst) return;
+	if (!display) return;
 
 	SOLDIERTYPE* const tgt = gUIFullTarget;
 	if (!tgt) return;
