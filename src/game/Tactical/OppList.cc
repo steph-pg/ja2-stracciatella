@@ -372,6 +372,18 @@ static void ReevaluateBestSightingPosition(SOLDIERTYPE* pSoldier, INT8 bInterrup
 }
 
 
+// True if every soldier who made a sighting in this real-time pass is ours
+static bool OnlyOurTeamMadeSighting()
+{
+	for (UINT8 i = 0; i < BEST_SIGHTING_ARRAY_SIZE; ++i)
+	{
+		SOLDIERTYPE const* const s = gBestToMakeSighting[i];
+		if (s && s->bTeam != OUR_TEAM) return false;
+	}
+	return true;
+}
+
+
 static void HandleBestSightingPositionInRealtime(void)
 {
 	// This function is called for handling interrupts when opening a door in non-combat or
@@ -388,13 +400,12 @@ static void HandleBestSightingPositionInRealtime(void)
 		SLOGD("HBSPIR called and there is someone in the list" );
 
 		if (gamepolicy(realtime_sneak) &&
-			gBestToMakeSighting[0]->bTeam == OUR_TEAM &&
-			gBestToMakeSighting[1] == NULL &&
+			OnlyOurTeamMadeSighting() &&
 			NobodyAlerted())
 		{
-			// Only we spotted someone and nobody is on alert: keep sneaking in
-			// real-time. Combat starts once a sighting finds an enemy alerted or
-			// someone attacks.
+			// Only our mercs spotted someone and nobody is on alert: keep sneaking
+			// in real-time. Combat starts once a sighting finds an enemy alerted,
+			// an enemy spots us or someone attacks.
 			SLOGD("HBSPIR: realtime sneak, not entering combat");
 		}
 		else
