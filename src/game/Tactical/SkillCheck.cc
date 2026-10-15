@@ -9,6 +9,7 @@
 #include "Morale.h"
 #include "Drugs_And_Alcohol.h"
 #include "StrategicMap.h"
+#include "Game_Clock.h"
 #include "ContentManager.h"
 #include "GameInstance.h"
 #include "policy/GamePolicy.h"
@@ -144,18 +145,26 @@ void AdjustPointsForHealthAndMorale(const SOLDIERTYPE* s, UINT16* pusPoints)
 {
 	if (!gamepolicy(health_and_morale_affect_assignments)) return;
 
-	INT32 iPoints = *pusPoints;
-
-	// lose half the share of health that is missing, bandaged or not
-	if (s->bLifeMax > 0 && s->bLife < s->bLifeMax)
-	{
-		iPoints -= iPoints * (s->bLifeMax - s->bLife) / (2 * s->bLifeMax);
-	}
+	// lose the share of health that is missing, bandaged or not
+	UINT32 const uiLifeMax = std::max<INT32>(s->bLifeMax, 1);
+	UINT32 const uiLife    = std::clamp<INT32>(s->bLife, 0, uiLifeMax);
 
 	// morale works both ways: 1% per 2 points away from the default
-	iPoints += iPoints * (s->bMorale - DEFAULT_MORALE) / 200;
+	UINT32 const uiMorale  = std::max<INT32>(200 + s->bMorale - DEFAULT_MORALE, 0);
 
-	*pusPoints = (UINT16)std::clamp(iPoints, 0, 0xFFFF);
+	// apply both at once so there is only a single rounding step
+	UINT32 const uiNum = *pusPoints * uiLife * uiMorale;
+	UINT32 const uiDen = uiLifeMax * 200;
+	UINT32 uiPoints = uiNum / uiDen;
+
+	// Small hourly yields (practice, repair) would otherwise round every
+	// penalty away, so keep the leftover fraction as a chance of one more
+	// point. The roll is fixed per merc and hour, so the mapscreen face shows
+	// what the hour will actually yield instead of flickering.
+	UINT32 const uiRoll = (s->ubID * 2654435761u ^ (GetWorldTotalMin() / 60) * 40503u) % uiDen;
+	if (uiNum % uiDen > uiRoll) ++uiPoints;
+
+	*pusPoints = (UINT16)std::min<UINT32>(uiPoints, 0xFFFF);
 }
 
 
