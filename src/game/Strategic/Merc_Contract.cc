@@ -34,6 +34,7 @@
 #include "MercProfile.h"
 #include "GamePolicy.h"
 
+#include <algorithm>
 #include <string_theory/string>
 
 
@@ -541,8 +542,9 @@ void CheckIfMercGetsAnotherContract(SOLDIERTYPE& s)
 	}
 	else if (gamepolicy(aim_offers_any_time_left))
 	{
-		// Tapers off past the vanilla window, e.g. 3/4 of the level with 3 days left, 1/5 with 14
-		chance = 3 * s.bExpLevel / (full_days_remaining + 1);
+		// Tapers off past the vanilla window, e.g. 3/4 of the level with 3 days left, 1/5 with 14,
+		// but never below 1%
+		chance = std::max(3 * s.bExpLevel / (full_days_remaining + 1), 1U);
 	}
 	else
 	{
