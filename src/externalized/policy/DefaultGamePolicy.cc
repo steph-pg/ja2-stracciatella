@@ -21,7 +21,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	multiple_interrupts = gp.getOptionalBool("multiple_interrupts");
 	muzzle_flashes_reveal_location = gp.getOptionalBool("muzzle_flashes_reveal_location");
-	silencer_halves_volume = gp.getOptionalBool("silencer_halves_volume");
+	silencer_volume_reduction = gp.getOptionalUInt("silencer_volume_reduction", 100);
 	realtime_sneak = gp.getOptionalBool("realtime_sneak");
 
 	fixed_cost_to_shoot = gp.getOptionalBool("fixed_cost_to_shoot");

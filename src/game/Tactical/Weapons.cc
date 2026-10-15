@@ -906,15 +906,16 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 		bSilencerPos = FindAttachment( &gun, SILENCER );
 		if (bSilencerPos != NO_SLOT)
 		{
-			if (gamepolicy(silencer_halves_volume))
-			{
-				// a working silencer halves the volume, a worn one proportionally less
-				ubVolume -= ubVolume * WEAPON_STATUS_MOD(gun.bAttachStatus[bSilencerPos]) / 200;
-			}
-			else
+			UINT8 const reduction = gamepolicy(silencer_volume_reduction);
+			if (reduction >= 100)
 			{
 				// reduce volume by a percentage equal to silencer's work %age (min 1)
 				ubVolume = 1 + ((100 - WEAPON_STATUS_MOD(gun.bAttachStatus[bSilencerPos])) / (100 / (ubVolume - 1)));
+			}
+			else
+			{
+				// a silencer in good condition cuts the volume by the policy's percentage, a worn one proportionally less
+				ubVolume -= ubVolume * reduction * WEAPON_STATUS_MOD(gun.bAttachStatus[bSilencerPos]) / 10000;
 			}
 		}
 	}

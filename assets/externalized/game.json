@@ -85,10 +85,12 @@
   //  vanilla setting: false
   "muzzle_flashes_reveal_location": true,
 
-  //  A silencer halves the volume of a gunshot (less if the silencer is worn), so nearby enemies
-  //  can still hear it. In vanilla a silencer in good condition cuts the volume down to almost nothing.
-  //  vanilla setting: false
-  "silencer_halves_volume": true,
+  //  How much a silencer cuts the volume of a gunshot, in percent. This applies to a silencer in good
+  //  condition (status 85 and up); a worn one cuts proportionally less. A typical gun that takes a
+  //  silencer has a volume of about 60, so at 50 it is still heard at around 30. 100 keeps the vanilla
+  //  formula, which takes a good silencer down to a volume of 1, practically silent.
+  //  vanilla setting: 100
+  "silencer_volume_reduction": 50,
 
   //  Spotting enemies in real-time mode does not start turn-based mode, as long as no hostile
   //  currently sees any of your mercs. Combat starts as usual once an enemy spots one of them,
