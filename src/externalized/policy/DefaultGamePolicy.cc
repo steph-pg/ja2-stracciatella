@@ -101,6 +101,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	merc_online_min_days = gp.getOptionalUInt("merc_online_min_days", 1);
 	merc_online_max_days = gp.getOptionalUInt("merc_online_max_days", 2);
 
+	aim_offers_any_time_left = gp.getOptionalBool("aim_offers_any_time_left");
+
 	auto progress = gp["progress"].toObject();
 	progress_event_madlab_min = progress.getOptionalInt("event_madlab_min", 35);
 	progress_event_mike_min = progress.getOptionalInt("event_mike_min", 50);

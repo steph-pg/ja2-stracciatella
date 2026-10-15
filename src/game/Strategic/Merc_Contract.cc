@@ -534,9 +534,21 @@ void CheckIfMercGetsAnotherContract(SOLDIERTYPE& s)
 	/* Chance depends on how much time he has left in his contract and his
 	 * experience level (determines demand) */
 	UINT32 const full_days_remaining = (s.iEndofContractTime - now) / (24 * 60);
-	if (full_days_remaining >= 3) return;
+	UINT32 chance;
+	if (full_days_remaining < 3)
+	{
+		chance = (3 - full_days_remaining) * s.bExpLevel;
+	}
+	else if (gamepolicy(aim_offers_any_time_left))
+	{
+		// Tapers off past the vanilla window, e.g. 3/4 of the level with 3 days left, 1/5 with 14
+		chance = 3 * s.bExpLevel / (full_days_remaining + 1);
+	}
+	else
+	{
+		return;
+	}
 
-	UINT32 const chance = (3 - full_days_remaining) * s.bExpLevel;
 	if (Chance(chance)) s.fSignedAnotherContract = TRUE;
 }
 
