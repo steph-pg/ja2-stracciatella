@@ -359,6 +359,12 @@
   "merc_online_min_days": 1,
   "merc_online_max_days": 2,
 
+  //  An AIM merc may sign a contract elsewhere (and refuse to extend with you) no matter how much
+  //  time is left on their contract; the less time left, the more likely. In vanilla offers only
+  //  come in the last 3 days. Mercs on a 2-week contract still stay for its whole duration.
+  //  vanilla setting: false
+  "aim_offers_any_time_left": true,
+
   "progress": {
     //  Progress weight of parameter on campaign progress
     //  vanilla settings: kills 25, control 25, income 50

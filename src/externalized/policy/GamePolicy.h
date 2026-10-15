@@ -132,6 +132,9 @@ public:
 	uint8_t merc_online_min_days;         // The earliest day on or after which M.E.R.C. goes online
 	uint8_t merc_online_max_days;         // The latest day on or before which M.E.R.C. goes online
 
+	/* A.I.M. */
+	bool aim_offers_any_time_left;        // an AIM merc may sign elsewhere with any time left on the contract, more likely the less is left
+
 	// Difficulty / Campaign Progress
 	float progress_weight_kills;         // Weight of kill count on campaign progress
 	float progress_weight_control;       // Weight of area control on campaign progress
