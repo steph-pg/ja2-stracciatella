@@ -385,9 +385,11 @@
 
   //  Do health and morale affect how much a merc gets done on an assignment
   //  (doctoring, repairing, training and militia training)?
-  //    true  - an injured merc loses half the share of health they are missing,
-  //            bandaged or not (half health = 25% less). Morale works both ways,
+  //    true  - an injured merc loses the share of health they are missing,
+  //            bandaged or not (half health = 50% less). Morale works both ways,
   //            1% per 2 points away from 50 (100 morale = +25%, 0 = -25%).
+  //            Fractions carry over as a chance of one more point, so even
+  //            small yields like practice and repair feel it on average.
   //    false - vanilla behaviour: only fatigue matters.
   "health_and_morale_affect_assignments": true,
 
