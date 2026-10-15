@@ -41,6 +41,23 @@ BOOLEAN IsTownFound(INT8 const bTownID)
 	return IsSecretFoundAt(town->getBaseSector().AsByte());
 }
 
+// The real state, regardless of which screen is showing. Saving must use
+// this: a Dead is Dead save is written from the load screen, where
+// IsSecretFoundAt pretends every secret is found.
+static BOOLEAN GetSecretState(UINT8 const sectorID)
+{
+	auto const mapPos{ isSecretFound.find(sectorID) };
+	if (mapPos == isSecretFound.end())
+	{
+		// The game always try to find secrets at J9 and K4, but they
+		// may not be present in a modded set up. So we will just
+		// return TRUE and continue.
+		SLOGW("No secret defined at sector {}", sectorID);
+		return TRUE;
+	}
+	return mapPos->second;
+}
+
 BOOLEAN IsSecretFoundAt(UINT8 const sectorID)
 {
 	if (guiCurrentScreen == SAVE_LOAD_SCREEN && !gfSaveGame)
@@ -55,16 +72,7 @@ BOOLEAN IsSecretFoundAt(UINT8 const sectorID)
 		return TRUE;
 	}
 
-	auto const mapPos{ isSecretFound.find(sectorID) };
-	if (mapPos == isSecretFound.end())
-	{
-		// The game always try to find secrets at J9 and K4, but they
-		// may not be present in a modded set up. So we will just
-		// return TRUE and continue.
-		SLOGW("No secret defined at sector {}", sectorID);
-		return TRUE;
-	}
-	return mapPos->second;
+	return GetSecretState(sectorID);
 }
 
 void SetTownAsFound(INT8 const bTownID, BOOLEAN const fFound)
@@ -115,7 +123,7 @@ void InjectSAMSitesFoundToSavedFile(DataWriter& d)
 	{
 		if (s->isSAMSite)
 		{
-			BOOLEAN fFound = IsSecretFoundAt(s->sectorID);
+			BOOLEAN fFound = GetSecretState(s->sectorID);
 			fSAMFound.push_back(fFound);
 		}
 	}
@@ -154,7 +162,7 @@ BOOLEAN GetMapSecretStateForSave(unsigned int const index)
 		if (s->isSAMSite) continue;
 		if (index == i++)
 		{        // we have found the secret to save
-			return IsSecretFoundAt(s->sectorID);
+			return GetSecretState(s->sectorID);
 		}
 	}
 	SLOGW("There is no secret at slot #{}", index);
