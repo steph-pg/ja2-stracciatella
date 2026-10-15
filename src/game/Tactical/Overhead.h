@@ -285,6 +285,7 @@ void SetEnemyPresence(void);
 void CycleThroughKnownEnemies(void);
 
 BOOLEAN CheckForEndOfCombatMode( BOOLEAN fIncrementTurnsNotSeen );
+BOOLEAN NobodyAlerted(void);
 
 SOLDIERTYPE* FreeUpAttacker(SOLDIERTYPE* attacker);
 

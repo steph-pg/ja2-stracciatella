@@ -4173,7 +4173,7 @@ static BOOLEAN WeSeeNoOne(void)
 }
 
 
-static BOOLEAN NobodyAlerted(void)
+BOOLEAN NobodyAlerted(void)
 {
 	FOR_EACH_MERC(i)
 	{
