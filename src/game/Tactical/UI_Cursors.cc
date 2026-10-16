@@ -167,6 +167,43 @@ UICursorID GetProperItemCursor(SOLDIERTYPE* const s, GridNo const map_pos, BOOLE
 static void DetermineCursorBodyLocation(SOLDIERTYPE*, BOOLEAN fDisplay, BOOLEAN fRecalc);
 
 
+// Calculate chance to hit with a gun or throwing knife and attach it to the mouse cursor
+static void ShowTargetHitChance(SOLDIERTYPE* const s, GridNo const map_pos, BOOLEAN const recalc, bool const is_throwing_knife)
+{
+	if (recalc || giLastBodyLocationTargeted != s->bAimShotLocation || giLastAimTime != s->bShownAimTime)
+	{
+		GridNo targetTile;
+		if (gUIFullTarget)
+		{
+			targetTile = gUIFullTarget->sGridNo;
+			s->bTargetLevel = gUIFullTarget->bLevel;
+		}
+		else
+		{
+			targetTile = map_pos;
+			s->bTargetLevel = gsInterfaceLevel;
+		}
+		giHitChance = is_throwing_knife ? CalcThrownChanceToHit(s, targetTile, s->bShownAimTime / 2, s->bAimShotLocation) :
+			CalcChanceToHitGun(s, targetTile, s->bShownAimTime / 2, s->bAimShotLocation, false);
+		if (gUIFullTarget)
+		{
+			giHitChance *= SoldierToSoldierBodyPartChanceToGetThrough(s, gUIFullTarget, s->bAimShotLocation) / 100.0f;
+		}
+		else
+		{
+			giHitChance *= SoldierToLocationChanceToGetThrough(s, targetTile, gsInterfaceLevel, s->bTargetCubeLevel, 0) / 100.0f;
+		}
+	}
+
+	if (giHitChance != -1)
+	{
+		SetChanceToHitText(st_format_printf("%d%%", giHitChance));
+		giLastBodyLocationTargeted = s->bAimShotLocation;
+		giLastAimTime = s->bShownAimTime;
+	}
+}
+
+
 static UICursorID HandleActivatedTargetCursor(SOLDIERTYPE* const s, GridNo const map_pos, BOOLEAN const recalc)
 {
 	bool const is_throwing_knife = GCM->getItem(s->inv[HANDPOS].usItem)->getItemClass() == IC_THROWING_KNIFE;
@@ -241,42 +278,7 @@ static UICursorID HandleActivatedTargetCursor(SOLDIERTYPE* const s, GridNo const
 		gfCannotGetThrough = chance < OK_CHANCE_TO_GET_THROUGH;
 	}
 
-	if(gamepolicy(show_hit_chance))
-	{
-		// Calculate chance to hit
-		if (recalc || giLastBodyLocationTargeted != s->bAimShotLocation || giLastAimTime != s->bShownAimTime)
-		{
-			GridNo targetTile;
-			if (gUIFullTarget)
-			{
-				targetTile = gUIFullTarget->sGridNo;
-				s->bTargetLevel = gUIFullTarget->bLevel;
-			}
-			else
-			{
-				targetTile = map_pos;
-				s->bTargetLevel = gsInterfaceLevel;
-			}
-			giHitChance = is_throwing_knife ? CalcThrownChanceToHit(s, targetTile, s->bShownAimTime / 2, s->bAimShotLocation) :
-				CalcChanceToHitGun(s, targetTile, s->bShownAimTime / 2, s->bAimShotLocation, false);
-			if (gUIFullTarget)
-			{
-				giHitChance *= SoldierToSoldierBodyPartChanceToGetThrough(s, gUIFullTarget, s->bAimShotLocation) / 100.0f;
-			}
-			else
-			{
-				giHitChance *= SoldierToLocationChanceToGetThrough(s, targetTile, gsInterfaceLevel, s->bTargetCubeLevel, 0) / 100.0f;
-			}
-		}
-
-		// Attach chance-to-hit to mouse cursor
-		if(giHitChance != -1)
-		{
-			SetChanceToHitText(st_format_printf("%d%%", giHitChance));
-			giLastBodyLocationTargeted = s->bAimShotLocation;
-			giLastAimTime = s->bShownAimTime;
-		}
-	}
+	if (gamepolicy(show_hit_chance)) ShowTargetHitChance(s, map_pos, recalc, is_throwing_knife);
 
 	UICursorID cursor = NO_UICURSOR;
 	if (max_point_limit_hit)
@@ -403,13 +405,13 @@ static UICursorID HandleActivatedTargetCursor(SOLDIERTYPE* const s, GridNo const
 static UICursorID HandleNonActivatedTargetCursor(SOLDIERTYPE* const s, GridNo const map_pos, BOOLEAN const show_APs, BOOLEAN const fRecalc, MouseMoveState const uiCursorFlags)
 {
 	bool const is_throwing_knife = GCM->getItem(s->inv[HANDPOS].usItem)->getItemClass() == IC_THROWING_KNIFE;
+	if (!(gTacticalStatus.uiFlags & INCOMBAT))
+	{
+		DetermineCursorBodyLocation(GetSelectedMan(), show_APs, fRecalc);
+	}
+
 	if (!is_throwing_knife)
 	{
-		if (!(gTacticalStatus.uiFlags & INCOMBAT))
-		{
-			DetermineCursorBodyLocation(GetSelectedMan(), show_APs, fRecalc);
-		}
-
 		if (!EnoughAmmo(s, FALSE, HANDPOS))
 		{
 			// Check if ANY ammo exists
@@ -447,6 +449,19 @@ static UICursorID HandleNonActivatedTargetCursor(SOLDIERTYPE* const s, GridNo co
 
 	// If we begin to move, reset the cursor
 	if (uiCursorFlags != MOUSE_STATIONARY) gfCannotGetThrough = FALSE;
+
+	// Guns show chance to hit only over a target, throwing knives everywhere
+	if (gamepolicy(show_hit_chance))
+	{
+		if (uiCursorFlags != MOUSE_STATIONARY)
+		{
+			giHitChance = -1;
+		}
+		else if (is_throwing_knife || gUIFullTarget)
+		{
+			ShowTargetHitChance(s, map_pos, fRecalc, is_throwing_knife);
+		}
+	}
 
 	if (gfCannotGetThrough)
 	{
