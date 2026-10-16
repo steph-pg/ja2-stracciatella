@@ -711,6 +711,11 @@ static UICursorID HandleKnifeCursor(SOLDIERTYPE* const s, GridNo const map_pos, 
 		if (gUIFullTarget && !(guiUIFullTargetFlags & SELECTED_MERC))
 		{
 			DetermineCursorBodyLocation(s, TRUE, TRUE);
+			if (gamepolicy(show_hit_chance))
+			{
+				UINT32 uiHitChance = CalcChanceToStab(s, gUIFullTarget, s->bShownAimTime / 2);
+				SetChanceToHitText(st_format_printf("%d%%", uiHitChance));
+			}
 			return KNIFE_HIT_UICURSOR;
 		}
 		else
@@ -792,6 +797,11 @@ static UICursorID HandlePunchCursor(SOLDIERTYPE* const s, GridNo const map_pos, 
 		if (gUIFullTarget && !(guiUIFullTargetFlags & SELECTED_MERC))
 		{
 			DetermineCursorBodyLocation(s, TRUE, TRUE);
+			if (gamepolicy(show_hit_chance))
+			{
+				UINT32 uiHitChance = CalcChanceToPunch(s, gUIFullTarget, s->bShownAimTime / 2, true);
+				SetChanceToHitText(st_format_printf("%d%%", uiHitChance));
+			}
 			return ACTION_PUNCH_RED;
 		}
 		else
