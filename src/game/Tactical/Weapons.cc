@@ -1095,7 +1095,6 @@ static void UseBlade(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 }
 
 
-static UINT32 CalcChanceToSteal(SOLDIERTYPE* pAttacker, SOLDIERTYPE* pDefender, UINT8 ubAimTime);
 
 
 void UseHandToHand(SOLDIERTYPE* const pSoldier, INT16 const sTargetGridNo, BOOLEAN const fStealing)
@@ -3560,9 +3559,9 @@ UINT32 CalcChanceToPunch(SOLDIERTYPE *pAttacker, SOLDIERTYPE * pDefender, UINT8 
 }
 
 
-static UINT32 CalcChanceToSteal(SOLDIERTYPE* pAttacker, SOLDIERTYPE* pDefender, UINT8 ubAimTime)
+UINT32 CalcChanceToSteal(SOLDIERTYPE* pAttacker, SOLDIERTYPE* pDefender, UINT8 ubAimTime, bool skipSafetyCheck)
 {
-	return( CalcChanceHTH( pAttacker, pDefender, ubAimTime, HTH_MODE_STEAL ) );
+	return( CalcChanceHTH( pAttacker, pDefender, ubAimTime, HTH_MODE_STEAL, skipSafetyCheck ) );
 }
 
 
