@@ -684,6 +684,38 @@ static INT8 CountMilitiaTrainersInSoldiersSector(const SOLDIERTYPE* const pSoldi
 }
 
 
+// frees a trainer slot for pSoldier by moving the least effective militia trainer in their sector into a squad
+static bool BumpWeakestMilitiaTrainerInSoldiersSector(const SOLDIERTYPE* const pSoldier)
+{
+	SOLDIERTYPE* weakest = nullptr;
+	UINT16 weakestPts = 0;
+	FOR_EACH_IN_TEAM(s, OUR_TEAM)
+	{
+		if (s != pSoldier &&
+				s->bLife >= OKLIFE &&
+				s->sSector == pSoldier->sSector &&
+				s->bAssignment == TRAIN_TOWN)
+		{
+			UINT16 usMaxPts;
+			UINT16 const pts = GetTownTrainPtsForCharacter(s, &usMaxPts);
+			if (!weakest || pts < weakestPts)
+			{
+				weakest = s;
+				weakestPts = pts;
+			}
+		}
+	}
+	if (!weakest) return false;
+
+	AddCharacterToAnySquad(weakest);
+	MakeSoldiersTacticalAnimationReflectAssignment(weakest);
+	fTeamPanelDirty          = TRUE;
+	fMapScreenBottomDirty    = TRUE;
+	fCharacterInfoPanelDirty = TRUE;
+	return true;
+}
+
+
 static INT8 GetTrainingStatValue(const SOLDIERTYPE* const s, const INT8 stat)
 {
 	switch (stat)
@@ -4807,7 +4839,8 @@ static void TrainingMenuBtnCallbackPrimary(MOUSE_REGION* pRegion, UINT32 iReason
 					break;
 				}
 
-				if ( CountMilitiaTrainersInSoldiersSector( pSoldier ) >= MAX_MILITIA_TRAINERS_PER_SECTOR )
+				if ( CountMilitiaTrainersInSoldiersSector( pSoldier ) >= MAX_MILITIA_TRAINERS_PER_SECTOR &&
+						!BumpWeakestMilitiaTrainerInSoldiersSector( pSoldier ) )
 				{
 					sString = st_format_printf(gzLateLocalizedString[STR_LATE_47], MAX_MILITIA_TRAINERS_PER_SECTOR);
 					DoScreenIndependantMessageBox( sString, MSG_BOX_FLAG_OK, NULL );
