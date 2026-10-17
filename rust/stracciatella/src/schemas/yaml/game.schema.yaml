@@ -768,6 +768,19 @@ properties:
 
       Vanilla setting: `100`
 
+  repair_kit_wear_modifier:
+    $ref: types/uint16.schema.yaml
+    title: Repair kit wear modifier
+    description: |
+      Percentage modifier to how fast a repair assignment wears down the tool
+      kit. Each hour of repairs has a chance to cost the kit 1% of its status,
+      5% per repair point spent that hour, capped at 100%. This scales that
+      chance: `100` is vanilla, `50` halves it, `0` means repairing never wears
+      kits out. Past 100% every full 100% costs a sure point and the remainder
+      is the chance of one more, so `200` wears kits twice as fast.
+
+      Vanilla setting: `100`
+
   skyrider_explores_sectors:
     type: boolean
     title: Skyrider explores the sectors the helicopter flies over

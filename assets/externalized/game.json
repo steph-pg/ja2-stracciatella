@@ -417,6 +417,16 @@
   //  Vanilla training crawls once a stat is halfway decent, so few mercs are
   //  worth the days it costs. Militia training is not affected.
   "training_speed_modifier": 200,
+
+  //  Percentage modifier to how fast a repair assignment wears down the tool
+  //  kit. In vanilla each hour of repairs has a chance to cost the kit 1% of
+  //  its status, 5% per repair point spent that hour (capped at 100%).
+  //    100 - vanilla rate
+  //    200 - twice as fast; past 100% chance a point is lost for sure and
+  //          the rest is the chance of another
+  //     50 - half as fast
+  //      0 - kits never wear out from repairing
+  "repair_kit_wear_modifier": 100,
   
   //  Does Skyrider map the sectors the helicopter flies over?
   //    true  - every sector the helicopter crosses counts as explored, so it is
