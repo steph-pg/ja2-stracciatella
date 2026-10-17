@@ -4948,6 +4948,17 @@ static bool UIHandleInteractiveTilesAndItemsOnTerrain(SOLDIERTYPE* const pSoldie
 
 			HandleUIMovementCursor(pSoldier, uiCursorFlags, sActionGridNo, MOVEUI_TARGET_STEAL);
 
+			// Chance to steal, mirroring UseHandToHand. The surprise bonus is left
+			// out so the cursor doesn't reveal whether the target has noticed us.
+			if (gamepolicy(show_hit_chance) && tgt->inv[HANDPOS].usItem != NOTHING)
+			{
+				UINT32 const chance =
+					AM_A_ROBOT(tgt) || TANK(tgt) || CREATURE_OR_BLOODCAT(tgt) ? 0 :
+					tgt->bLife < OKLIFE || tgt->bCollapsed ? 100 :
+					CalcChanceToSteal(pSoldier, gUIFullTarget, pSoldier->bAimTime, true);
+				SetChanceToHitText(st_format_printf("%d%%", chance));
+			}
+
 			// Display action points
 			gfUIDisplayActionPoints = TRUE;
 
