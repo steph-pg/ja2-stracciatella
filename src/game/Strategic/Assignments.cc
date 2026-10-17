@@ -2044,10 +2044,16 @@ static void HandleRepairBySoldier(SOLDIERTYPE& s)
 		StatChange(s, DEXTAMT,   repair_pts_used / 2, FROM_SUCCESS);
 
 		// check if kit damaged/depleted
-		if (Random(100) < repair_pts_used * 5) // CJC: added a x5 as this wasn't going down anywhere fast enough
+		// CJC: added a x5 as this wasn't going down anywhere fast enough
+		// The repair_kit_wear_modifier policy scales the (capped) vanilla chance; every full 100%
+		// burns a sure point, the remainder is the chance of one more.
+		UINT32 const wear_chance = std::min(repair_pts_used * 5, 100) * gamepolicy(repair_kit_wear_modifier) / 100;
+		UINT16 kit_pts_lost = wear_chance / 100;
+		if (Random(100) < wear_chance % 100) ++kit_pts_lost;
+		if (kit_pts_lost > 0)
 		{
 			// kit item damaged/depleted, burn up points of toolkit..which is in right hand
-			UseKitPoints(s.inv[HANDPOS], 1, s);
+			UseKitPoints(s.inv[HANDPOS], kit_pts_lost, s);
 		}
 	}
 
