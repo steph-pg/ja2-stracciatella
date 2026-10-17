@@ -447,11 +447,84 @@ FireWeaponResult FireWeapon(SOLDIERTYPE * const pSoldier, GridNo const sTargetGr
 }
 
 
+// Chance to hit a body part, with the sight test also done against that part
+static UINT32 CalcChanceToHitBodyPart(SOLDIERTYPE* const pSoldier, GridNo const sTargetGridNo, UINT8 const ubAimTime, INT8 const bLocation)
+{
+	INT8 const bOldLocation = pSoldier->bAimShotLocation;
+	pSoldier->bAimShotLocation = bLocation;
+	UINT32 const uiChance = CalcChanceToHitGun(pSoldier, sTargetGridNo, ubAimTime, bLocation, FALSE);
+	pSoldier->bAimShotLocation = bOldLocation;
+	return uiChance;
+}
+
+
+// Picks the body part a shot at a random location goes for, given a 0-99 roll
+static INT8 ResolveRandomAimLocation(SOLDIERTYPE* const pSoldier, SOLDIERTYPE const* const pTargetSoldier, GridNo const sTargetGridNo, UINT8 const ubAimTime, UINT32 const uiRoll)
+{
+	if (gamepolicy(ai_better_aiming_choice))
+	{
+		UINT32 const threshold_cth_head = gamepolicy(threshold_cth_head);
+		UINT32 const threshold_cth_legs = gamepolicy(threshold_cth_legs);
+
+		UINT32 const cth_ctgt_head = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_HEAD );
+		UINT32 const cth_ctgt_torso = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_TORSO );
+		UINT32 const cth_ctgt_legs = SoldierToSoldierBodyPartChanceToGetThrough(pSoldier, pTargetSoldier, AIM_SHOT_LEGS);
+
+		UINT32 const cth_aim_shot_head = cth_ctgt_head * CalcChanceToHitBodyPart(pSoldier, sTargetGridNo, ubAimTime, AIM_SHOT_HEAD) / 100;
+		UINT32 const cth_aim_shot_torso = cth_ctgt_torso * CalcChanceToHitBodyPart(pSoldier, sTargetGridNo, ubAimTime, AIM_SHOT_TORSO) / 100;
+		UINT32 const cth_aim_shot_legs = cth_ctgt_legs * CalcChanceToHitBodyPart(pSoldier, sTargetGridNo, ubAimTime, AIM_SHOT_LEGS) / 100;
+
+		if (cth_aim_shot_head >= threshold_cth_head || cth_aim_shot_head >= cth_aim_shot_torso)
+		{
+			return AIM_SHOT_HEAD;
+		}
+		if (gAnimControl[pTargetSoldier->usAnimState].ubEndHeight == ANIM_STAND && (cth_aim_shot_legs >= threshold_cth_legs || cth_aim_shot_legs >= cth_aim_shot_torso))
+		{
+			return AIM_SHOT_LEGS;
+		}
+		return AIM_SHOT_TORSO;
+	}
+
+	INT8 const bLocation = uiRoll < 15 ? AIM_SHOT_LEGS : uiRoll > 94 ? AIM_SHOT_HEAD : AIM_SHOT_TORSO;
+	if (bLocation != AIM_SHOT_HEAD)
+	{
+		UINT32 const uiChanceToGetThrough = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, bLocation );
+
+		// try for a head shot if the body part is mostly covered
+		if (uiChanceToGetThrough < 25 &&
+			SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_HEAD ) > uiChanceToGetThrough * 2)
+		{
+			return AIM_SHOT_HEAD;
+		}
+	}
+	return bLocation;
+}
+
+
+UINT32 CalcRandomAimChanceToHit(SOLDIERTYPE* const pSoldier, SOLDIERTYPE const* const pTargetSoldier, UINT8 const ubAimTime)
+{
+	// Representative rolls for legs, torso and head, weighted by how often they come up
+	static const struct { UINT32 roll; UINT32 weight; } rolls[] = { { 0, 15 }, { 15, 80 }, { 95, 5 } };
+
+	UINT32 uiTotal = 0;
+	for (auto const& r : rolls)
+	{
+		// The better aiming choice doesn't depend on the roll
+		UINT32 const uiWeight = gamepolicy(ai_better_aiming_choice) ? 100 : r.weight;
+		INT8   const bLocation = ResolveRandomAimLocation(pSoldier, pTargetSoldier, pTargetSoldier->sGridNo, ubAimTime, r.roll);
+		uiTotal += uiWeight *
+			CalcChanceToHitBodyPart(pSoldier, pTargetSoldier->sGridNo, ubAimTime, bLocation) *
+			SoldierToSoldierBodyPartChanceToGetThrough(pSoldier, pTargetSoldier, bLocation);
+		if (gamepolicy(ai_better_aiming_choice)) break;
+	}
+	return uiTotal / 10000;
+}
+
+
 void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT *pdXPos, FLOAT *pdYPos, FLOAT *pdZPos )
 {
 	FLOAT  dTargetX, dTargetY, dTargetZ;
 	INT16  sXMapPos, sYMapPos;
-	UINT32 uiRoll;
 
 	// AI suppression fires over the tile instead of at whoever is there
 	bool const fOverTarget = pSoldier->bTeam != OUR_TEAM && pSoldier->bTargetCubeLevel != 0;
@@ -462,63 +535,9 @@ void GetTargetWorldPositions( SOLDIERTYPE *pSoldier, INT16 sTargetGridNo, FLOAT 
 		dTargetX = (FLOAT) CenterX( pTargetSoldier->sGridNo );
 		dTargetY = (FLOAT) CenterY( pTargetSoldier->sGridNo );
 
-		INT8 const bAimShotLocation = pSoldier->bAimShotLocation;
-
 		if (pSoldier->bAimShotLocation == AIM_SHOT_RANDOM)
 		{
-			uiRoll = PreRandom( 100 );
-			if (uiRoll < 15)
-			{
-				pSoldier->bAimShotLocation = AIM_SHOT_LEGS;
-			}
-			else if (uiRoll > 94)
-			{
-				pSoldier->bAimShotLocation = AIM_SHOT_HEAD;
-			}
-			else
-			{
-				pSoldier->bAimShotLocation = AIM_SHOT_TORSO;
-			}
-			if ( pSoldier->bAimShotLocation != AIM_SHOT_HEAD )
-			{
-				UINT32 uiChanceToGetThrough = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, pSoldier->bAimShotLocation );
-
-				if ( uiChanceToGetThrough < 25 )
-				{
-					if ( SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_HEAD ) > uiChanceToGetThrough * 2 )
-					{
-						// try for a head shot then
-						pSoldier->bAimShotLocation = AIM_SHOT_HEAD;
-					}
-				}
-			}
-
-		}
-
-		if (gamepolicy(ai_better_aiming_choice) && bAimShotLocation == AIM_SHOT_RANDOM)
-		{
-			UINT32 const threshold_cth_head = gamepolicy(threshold_cth_head);
-			UINT32 const threshold_cth_legs = gamepolicy(threshold_cth_legs);
-
-			UINT32 const cth_ctgt_head = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_HEAD );
-			UINT32 const cth_ctgt_torso = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, AIM_SHOT_TORSO );
-			UINT32 const cth_ctgt_legs = SoldierToSoldierBodyPartChanceToGetThrough(pSoldier, pTargetSoldier, AIM_SHOT_LEGS);
-
-			UINT32 const cth_aim_shot_head = cth_ctgt_head * CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_HEAD, FALSE) / 100;
-			UINT32 const cth_aim_shot_torso = cth_ctgt_torso * CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_TORSO, FALSE) / 100;
-			UINT32 const cth_aim_shot_legs = cth_ctgt_legs * CalcChanceToHitGun(pSoldier, sTargetGridNo, pSoldier->bAimTime, AIM_SHOT_LEGS, FALSE) / 100;
-
-			pSoldier->bAimShotLocation = AIM_SHOT_TORSO; // default
-
-			if (gAnimControl[pTargetSoldier->usAnimState].ubEndHeight == ANIM_STAND && (cth_aim_shot_legs >= threshold_cth_legs || cth_aim_shot_legs >= cth_aim_shot_torso)) // good enough, override
-			{
-				pSoldier->bAimShotLocation = AIM_SHOT_LEGS;
-			}
-
-			if (cth_aim_shot_head >= threshold_cth_head || cth_aim_shot_head >= cth_aim_shot_torso)  // even better, override
-			{
-				pSoldier->bAimShotLocation = AIM_SHOT_HEAD;
-			}
+			pSoldier->bAimShotLocation = ResolveRandomAimLocation(pSoldier, pTargetSoldier, sTargetGridNo, pSoldier->bAimTime, PreRandom(100));
 		}
 
 		switch( pSoldier->bAimShotLocation )
