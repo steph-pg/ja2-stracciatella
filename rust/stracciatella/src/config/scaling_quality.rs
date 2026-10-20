@@ -18,6 +18,8 @@ pub enum ScalingQuality {
     /// Scale up to the nearest multiple of 640x480 and use nearest neighbor interpolation
     #[default]
     PERFECT,
+    /// Upscale 2x with the Scale2x pixel art algorithm, then scale linearly to the window
+    SCALE2X,
 }
 
 impl FromStr for ScalingQuality {
@@ -28,6 +30,7 @@ impl FromStr for ScalingQuality {
             "LINEAR" => Ok(ScalingQuality::LINEAR),
             "NEAR_PERFECT" => Ok(ScalingQuality::NEAR_PERFECT),
             "PERFECT" => Ok(ScalingQuality::PERFECT),
+            "SCALE2X" => Ok(ScalingQuality::SCALE2X),
             _ => Err(format!("Scaling quality {} is unknown", s)),
         }
     }
@@ -42,6 +45,7 @@ impl Display for ScalingQuality {
                 ScalingQuality::LINEAR => "Linear Interpolation",
                 ScalingQuality::NEAR_PERFECT => "Near perfect with oversampling",
                 ScalingQuality::PERFECT => "Pixel perfect centered",
+                ScalingQuality::SCALE2X => "Scale2x smoothing",
             }
         )
     }
