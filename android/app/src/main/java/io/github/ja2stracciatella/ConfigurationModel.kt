@@ -82,13 +82,15 @@ object ResolutionSerializer : KSerializer<Resolution> {
 enum class ScalingQuality(val value: String) {
     LINEAR("LINEAR"),
     NEAR_PERFECT("NEAR_PERFECT"),
-    PERFECT("PERFECT");
+    PERFECT("PERFECT"),
+    SCALE2X("SCALE2X");
 
     fun getLabel(): String {
         return when (this) {
             LINEAR -> "Linear Interpolation"
             NEAR_PERFECT -> "Near perfect with oversampling"
             PERFECT -> "Pixel perfect centered"
+            SCALE2X -> "Scale2x smoothing"
         }
     }
 

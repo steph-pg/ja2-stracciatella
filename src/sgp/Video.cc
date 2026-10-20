@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <chrono>
 #include <stdexcept>
+#include <vector>
 
 #define MAX_CURSOR_WIDTH  64
 #define MAX_CURSOR_HEIGHT 64
@@ -56,6 +57,7 @@ SDL_Window* g_game_window;
 static SDL_Surface* ScreenBuffer;
 static SDL_Texture* ScreenTexture;
 static SDL_Texture* ScaledScreenTexture;
+static std::vector<UINT16> Scale2xBuffer; // ScreenBuffer upscaled 2x, SCALE2X mode only
 static Uint32       g_window_flags = 0;
 static VideoScaleQuality ScaleQuality = VideoScaleQuality::LINEAR;
 static std::chrono::steady_clock::duration TimeBetweenRefreshScreens;
@@ -133,10 +135,13 @@ void InitializeVideoManager(const VideoScaleQuality quality, const int32_t targe
 		SLOGE("SDL_CreateRGBSurface for ScreenBuffer failed: {}\n", SDL_GetError());
 	}
 
+	// In SCALE2X mode the texture holds the upscaled frame, the logical
+	// presentation still maps it onto SCREEN_WIDTH x SCREEN_HEIGHT.
+	int const textureScale = quality == VideoScaleQuality::SCALE2X ? 2 : 1;
 	ScreenTexture = SDL_CreateTexture(GameRenderer,
 					SDL_PIXELFORMAT_RGB565,
 					SDL_TEXTUREACCESS_STREAMING,
-					SCREEN_WIDTH, SCREEN_HEIGHT);
+					SCREEN_WIDTH * textureScale, SCREEN_HEIGHT * textureScale);
 
 	if (ScreenTexture == NULL) {
 		SLOGE("SDL_CreateTexture for ScreenTexture failed: {}\n", SDL_GetError());
@@ -169,6 +174,11 @@ void InitializeVideoManager(const VideoScaleQuality quality, const int32_t targe
 		{
 			SLOGE("SDL_CreateTexture for ScaledScreenTexture failed: {}\n", SDL_GetError());
 		}
+	}
+	else if (ScaleQuality == VideoScaleQuality::SCALE2X)
+	{
+		Scale2xBuffer.assign(SCREEN_WIDTH * 2 * SCREEN_HEIGHT * 2, 0);
+		SDL_SetTextureScaleMode(ScreenTexture, SDL_SCALEMODE_LINEAR);
 	}
 	else
 	{
@@ -224,6 +234,8 @@ void ShutdownVideoManager(void)
 		SDL_DestroyTexture(ScaledScreenTexture);
 		ScaledScreenTexture = NULL;
 	}
+
+	Scale2xBuffer = {};
 
 	if (GameRenderer != NULL) {
 		SDL_DestroyRenderer(GameRenderer);
@@ -438,6 +450,65 @@ static void ScrollJA2Background(INT16 sScrollXIncrement, INT16 sScrollYIncrement
 	ExecuteVideoOverlaysToAlternateBuffer(BACKBUFFER);
 }
 
+// Scale2x (EPX): every source pixel becomes a 2x2 block. A corner of the
+// block takes the colour of the two neighbours meeting there if they match,
+// which rounds off diagonal edges without inventing new colours.
+static void Scale2xRegion(SDL_Surface const* src, SDL_Rect const& r, UINT16* dst, int dstPitch)
+{
+	int const srcPitch = src->pitch / int(sizeof(UINT16));
+	UINT16 const* const pixels = static_cast<UINT16 const*>(src->pixels);
+	int const maxX = src->w - 1;
+	int const maxY = src->h - 1;
+
+	for (int y = r.y; y < r.y + r.h; ++y)
+	{
+		UINT16 const* const above = pixels + std::max(y - 1, 0) * srcPitch;
+		UINT16 const* const row   = pixels + y * srcPitch;
+		UINT16 const* const below = pixels + std::min(y + 1, maxY) * srcPitch;
+		UINT16* const out0 = dst + (y * 2) * dstPitch;
+		UINT16* const out1 = out0 + dstPitch;
+
+		for (int x = r.x; x < r.x + r.w; ++x)
+		{
+			UINT16 const B = above[x];
+			UINT16 const D = row[std::max(x - 1, 0)];
+			UINT16 const E = row[x];
+			UINT16 const F = row[std::min(x + 1, maxX)];
+			UINT16 const H = below[x];
+
+			UINT16 e0 = E, e1 = E, e2 = E, e3 = E;
+			if (B != H && D != F)
+			{
+				if (D == B) e0 = D;
+				if (B == F) e1 = F;
+				if (D == H) e2 = D;
+				if (H == F) e3 = F;
+			}
+			out0[x * 2]     = e0;
+			out0[x * 2 + 1] = e1;
+			out1[x * 2]     = e2;
+			out1[x * 2 + 1] = e3;
+		}
+	}
+}
+
+
+static void UpdateScale2xTexture(SDL_Rect const& updated)
+{
+	// An output block depends on the neighbours of its source pixel, so the
+	// pixels bordering the changed area have to be redone as well.
+	SDL_Rect const r{ ClipToSurface(SDL_Rect{
+		updated.x - 1, updated.y - 1, updated.w + 2, updated.h + 2 }, ScreenBuffer) };
+	int const dstPitch = ScreenBuffer->w * 2;
+	Scale2xRegion(ScreenBuffer, r, Scale2xBuffer.data(), dstPitch);
+
+	SDL_Rect const scaled{ r.x * 2, r.y * 2, r.w * 2, r.h * 2 };
+	SDL_UpdateTexture(ScreenTexture, &scaled,
+	                  Scale2xBuffer.data() + scaled.y * dstPitch + scaled.x,
+	                  dstPitch * int(sizeof(UINT16)));
+}
+
+
 void RefreshScreen(void)
 {
 	// Not initialised yet or already shut down?
@@ -522,7 +593,11 @@ void RefreshScreen(void)
 	MouseBackground = blitted;
 
 	SDL_Rect const UpdateRect{ ClipToSurface(ScreenTextureUpdateRect, ScreenBuffer) };
-	if (UpdateRect.w > 0 && UpdateRect.h > 0)
+	if (UpdateRect.w > 0 && UpdateRect.h > 0 && ScaleQuality == VideoScaleQuality::SCALE2X)
+	{
+		UpdateScale2xTexture(UpdateRect);
+	}
+	else if (UpdateRect.w > 0 && UpdateRect.h > 0)
 	{
 		uint8_t const * SrcPixels = static_cast<uint8_t *>(ScreenBuffer->pixels)
 			+ UpdateRect.y * ScreenBuffer->pitch
