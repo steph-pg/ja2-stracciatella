@@ -40,7 +40,7 @@ impl Display for ScalingQuality {
             "{}",
             match self {
                 ScalingQuality::LINEAR => "Linear Interpolation",
-                ScalingQuality::NEAR_PERFECT => "Near perfect with oversampling",
+                ScalingQuality::NEAR_PERFECT => "Near perfect (pixel art)",
                 ScalingQuality::PERFECT => "Pixel perfect centered",
             }
         )

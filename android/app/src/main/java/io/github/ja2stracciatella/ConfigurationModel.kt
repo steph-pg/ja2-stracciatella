@@ -87,7 +87,7 @@ enum class ScalingQuality(val value: String) {
     fun getLabel(): String {
         return when (this) {
             LINEAR -> "Linear Interpolation"
-            NEAR_PERFECT -> "Near perfect with oversampling"
+            NEAR_PERFECT -> "Near perfect (pixel art)"
             PERFECT -> "Pixel perfect centered"
         }
     }

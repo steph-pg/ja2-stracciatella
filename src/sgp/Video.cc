@@ -26,8 +26,6 @@
 
 #define MAX_DIRTY_REGIONS 128
 
-#define OVERSAMPLING_SCALE 4
-
 
 // Globals for mouse cursor
 static UINT16 gusMouseCursorWidth;
@@ -55,7 +53,6 @@ SDL_Window* g_game_window;
 
 static SDL_Surface* ScreenBuffer;
 static SDL_Texture* ScreenTexture;
-static SDL_Texture* ScaledScreenTexture;
 static Uint32       g_window_flags = 0;
 static VideoScaleQuality ScaleQuality = VideoScaleQuality::LINEAR;
 static std::chrono::steady_clock::duration TimeBetweenRefreshScreens;
@@ -92,7 +89,6 @@ void VideoSetBrightness(float brightness)
 	if (brightness < 0) return;
 
 	if (ScreenTexture)        SDL_SetTextureColorModFloat(ScreenTexture, brightness, brightness, brightness);
-	if (ScaledScreenTexture)  SDL_SetTextureColorModFloat(ScaledScreenTexture, brightness, brightness, brightness);
 }
 
 
@@ -159,15 +155,12 @@ void InitializeVideoManager(const VideoScaleQuality quality, const int32_t targe
 	}
 	else if (ScaleQuality == VideoScaleQuality::NEAR_PERFECT)
 	{
-		SDL_SetTextureScaleMode(ScreenTexture, SDL_SCALEMODE_NEAREST);
-		ScaledScreenTexture = SDL_CreateTexture(GameRenderer,
-			SDL_PIXELFORMAT_RGB565,
-			SDL_TEXTUREACCESS_TARGET,
-			SCREEN_WIDTH * OVERSAMPLING_SCALE, SCREEN_HEIGHT * OVERSAMPLING_SCALE);
-
-		if (ScaledScreenTexture == NULL)
+		// Sharp pixels at non-integer scales, only the edges between
+		// source pixels are interpolated.
+		if (!SDL_SetTextureScaleMode(ScreenTexture, SDL_SCALEMODE_PIXELART))
 		{
-			SLOGE("SDL_CreateTexture for ScaledScreenTexture failed: {}\n", SDL_GetError());
+			SLOGW("Pixel art scaling is not supported by this renderer, falling back to linear: {}", SDL_GetError());
+			SDL_SetTextureScaleMode(ScreenTexture, SDL_SCALEMODE_LINEAR);
 		}
 	}
 	else
@@ -218,11 +211,6 @@ void ShutdownVideoManager(void)
 	if (ScreenTexture != NULL) {
 		SDL_DestroyTexture(ScreenTexture);
 		ScreenTexture = NULL;
-	}
-
-	if (ScaledScreenTexture != NULL) {
-		SDL_DestroyTexture(ScaledScreenTexture);
-		ScaledScreenTexture = NULL;
 	}
 
 	if (GameRenderer != NULL) {
@@ -526,16 +514,7 @@ void RefreshScreen(void)
 
 	SDL_RenderClear(GameRenderer);
 
-	if (ScaleQuality == VideoScaleQuality::NEAR_PERFECT) {
-		SDL_SetRenderTarget(GameRenderer, ScaledScreenTexture);
-		SDL_RenderTexture(GameRenderer, ScreenTexture, nullptr, nullptr);
-
-		SDL_SetRenderTarget(GameRenderer, nullptr);
-		SDL_RenderTexture(GameRenderer, ScaledScreenTexture, nullptr, nullptr);
-	}
-	else {
-		SDL_RenderTexture(GameRenderer, ScreenTexture, NULL, NULL);
-	}
+	SDL_RenderTexture(GameRenderer, ScreenTexture, NULL, NULL);
 
 	Visualizer::Render(GameRenderer);
 
