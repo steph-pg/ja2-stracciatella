@@ -1951,7 +1951,10 @@ static BOOLEAN BulletHitMerc(BULLET* pBullet, STRUCTURE* pStructure, BOOLEAN fIn
 						}
 						break;
 					case ANIM_PRONE:
-						ubHitLocation = AIM_SHOT_TORSO;
+						// The target is too flat to tell where the bullet lands from its
+						// height, so vanilla always scores a torso hit. Optionally roll the
+						// same split as a shot at a random location instead.
+						ubHitLocation = gamepolicy(prone_random_hit_location) ? RandomHitLocation(PreRandom(100)) : AIM_SHOT_TORSO;
 						break;
 
 				}

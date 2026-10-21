@@ -472,6 +472,17 @@ properties:
       the modifier moves every weight penalty along with it.
 
       Vanilla setting: `100`
+  prone_random_hit_location:
+    type: boolean
+    title: Random hit location on prone targets
+    description: |
+      Where a bullet hitting a prone target lands. When enabled, it uses the same split as a
+      shot at a random location: 15% legs, 80% torso, 5% head. The shooter still can't aim at a
+      body part on a prone target.
+
+      When `false`, the vanilla behaviour is used: every hit on a prone target is a torso hit.
+
+      Vanilla setting: `false`
   always_show_cursor_in_tactical:
     type: boolean
     title: Always show cursor in tactical
