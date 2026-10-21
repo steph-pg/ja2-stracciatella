@@ -793,7 +793,7 @@ static void RenderSoldierCell(SOLDIERCELL* const c)
 			buf->ShadowRect(x, y, x + 30, y + 26);
 		}
 
-		if (GetDrunkLevel(c->pSoldier) != SOBER)
+		if (!(c->uiFlags & CELL_MERC) && GetDrunkLevel(c->pSoldier) != SOBER)
 		{ // the same drunk icon the tactical faces show, in the bottom left corner
 			UINT16 const icon = 8;
 			ETRLEObject const& e = gpAR->iPortraitIcons->SubregionProperties(icon);
@@ -2513,7 +2513,8 @@ static void ResetNextAttackCounter(SOLDIERCELL* pCell)
 }
 
 
-// Drinking shows in the ratings the same way it does in tactical
+// Drinking shows in the militia and enemy ratings the same way it does in
+// tactical. Mercs keep their raw stats, as in vanilla
 static INT32 ARStrength(SOLDIERTYPE const* const s)
 {
 	return gamepolicy(alcohol_boosts_strength) ? BoostStatForBeingDrunk(s, s->bStrength) : s->bStrength;
@@ -2552,10 +2553,10 @@ static void CalculateAttackValues(void)
 		pSoldier = pCell->pSoldier;
 		if( !pSoldier->bLife )
 			continue;
-		pCell->usAttack =		ARStrength(pSoldier) +
-												ARStat(pSoldier, pSoldier->bDexterity) +
-												ARStat(pSoldier, pSoldier->bWisdom) +
-												ARStat(pSoldier, pSoldier->bMarksmanship) +
+		pCell->usAttack =		pSoldier->bStrength +
+												pSoldier->bDexterity +
+												pSoldier->bWisdom +
+												pSoldier->bMarksmanship +
 												pSoldier->bMorale;
 		//Give player controlled mercs a significant bonus to compensate for lack of control
 		//as the player would typically do much better in tactical.
@@ -2566,8 +2567,8 @@ static void CalculateAttackValues(void)
 		}
 		usBreathStrengthPercentage = 100 - ( 100 - pCell->pSoldier->bBreathMax ) / 3;
 		pCell->usAttack =		pCell->usAttack * usBreathStrengthPercentage / 100;
-		pCell->usDefence =	ARStat(pSoldier, pSoldier->bAgility) +
-												ARStat(pSoldier, pSoldier->bWisdom) +
+		pCell->usDefence =	pSoldier->bAgility +
+												pSoldier->bWisdom +
 												pSoldier->bBreathMax +
 												pSoldier->bMedical +
 												pSoldier->bMorale;
