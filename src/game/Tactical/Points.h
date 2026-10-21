@@ -79,8 +79,6 @@
 #define AP_MIN_AIM_ATTACK		0 // minimum permitted extra aiming
 #define AP_MAX_AIM_ATTACK		4 // maximum permitted extra aiming
 
-#define AP_BURST			5
-
 #define AP_DROP_BOMB			3
 
 #define AP_RELOAD_GUN			5 // loading new clip/magazine

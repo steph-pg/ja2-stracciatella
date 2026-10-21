@@ -126,6 +126,15 @@ properties:
       discount when injured.
 
       Vanilla setting: `false`
+  ap_burst:
+    $ref: types/uint8.schema.yaml
+    title: AP to burst
+    description: |
+      Action points added for firing a burst, for a merc with 25 base APs. It scales with the
+      merc's actual base APs, rounded up, and never drops below 3. A spring and bolt upgrade
+      still discounts it; the G11 always pays 1.
+
+      Vanilla setting: `5`
   enemy_weapon_minimal_status:
     $ref: types/percentage.schema.yaml
     title: Minimal status of enemy weapons

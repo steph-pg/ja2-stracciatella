@@ -109,6 +109,12 @@
   // vanilla setting: false
   "fixed_cost_to_shoot": false,
 
+  // Action points added for firing a burst, for a merc with 25 base APs. It scales with the
+  // merc's actual base APs, rounded up, and never drops below 3. A spring and bolt upgrade
+  // still discounts it; the G11 always pays 1.
+  // vanilla value: 5
+  "ap_burst": 5,
+
   //  Minimal status in % for each gun in the hand of enemy soldiers. Note that this value has no influence on enemy behaviour like CTH.
   //  vanilla value: 0
   "enemy_weapon_minimal_status": 0,

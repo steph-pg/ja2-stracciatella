@@ -25,6 +25,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	realtime_sneak = gp.getOptionalBool("realtime_sneak");
 
 	fixed_cost_to_shoot = gp.getOptionalBool("fixed_cost_to_shoot");
+	ap_burst = gp.getOptionalUInt("ap_burst", 5);
 
 	enemy_weapon_minimal_status = gp.getOptionalInt("enemy_weapon_minimal_status", 0);
 

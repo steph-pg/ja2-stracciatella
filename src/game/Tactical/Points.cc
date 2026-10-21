@@ -887,11 +887,11 @@ UINT8 CalcAPsToBurst(INT8 const bBaseActionPoints, OBJECTTYPE const& o)
 		INT8 const bAttachPos = FindAttachment(&o, SPRING_AND_BOLT_UPGRADE );
 		if ( bAttachPos != -1 )
 		{
-			return (std::max(3, (AP_BURST * bBaseActionPoints + (AP_MAXIMUM - 1)) / AP_MAXIMUM) * 100) / (100 + o.bAttachStatus[bAttachPos] / 5);
+			return (std::max(3, (gamepolicy(ap_burst) * bBaseActionPoints + (AP_MAXIMUM - 1)) / AP_MAXIMUM) * 100) / (100 + o.bAttachStatus[bAttachPos] / 5);
 		}
 		else
 		{
-			return std::max(3, (AP_BURST * bBaseActionPoints + (AP_MAXIMUM - 1)) / AP_MAXIMUM);
+			return std::max(3, (gamepolicy(ap_burst) * bBaseActionPoints + (AP_MAXIMUM - 1)) / AP_MAXIMUM);
 		}
 	}
 }
