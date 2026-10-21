@@ -56,6 +56,7 @@ public:
 	int8_t enemy_weapon_minimal_status;   /**< Minimal status of the enemy weapon (0 - 100). */
 
 	int8_t gun_jam_chance_minimum;        // Minimum % chance for a gun to jam even in perfect condition (0 = vanilla, never jams above status 80)
+	uint8_t ap_steal_item;                // APs to snatch an item from someone's hands, on top of walking up and standing (vanilla 10)
 
 	bool gui_extras;                      /* graphical user interface cosmetic mod */
 	bool show_enemy_equipment;            // hovering a visible enemy shows a box listing their weapon type, armour pieces and head gear

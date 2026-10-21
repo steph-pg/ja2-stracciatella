@@ -150,6 +150,14 @@ properties:
       Set to `0` for the vanilla behaviour.
 
       Vanilla setting: `0`
+  ap_steal_item:
+    $ref: types/uint8.schema.yaml
+    title: AP to steal an item
+    description: |
+      Action points to snatch an item from someone's hands, on top of walking up to them and
+      standing up.
+
+      Vanilla setting: `10`
   squad_size:
     $ref: types/uint16.schema.yaml
     title: Maximum Squad Size

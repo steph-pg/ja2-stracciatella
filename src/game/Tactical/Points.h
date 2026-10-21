@@ -28,8 +28,6 @@
 #define AP_REVERSE_MODIFIER		1
 #define AP_STEALTH_MODIFIER		2
 
-#define AP_STEAL_ITEM			10 // APs to steal item....
-
 #define AP_TAKE_BLOOD			10
 
 #define AP_TALK			6

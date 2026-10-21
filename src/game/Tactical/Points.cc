@@ -1804,7 +1804,7 @@ INT8 GetAPsToStealItem( SOLDIERTYPE *pSoldier, INT16 usMapPos )
 	UINT16 sAPCost = PlotPath(pSoldier, usMapPos, NO_COPYROUTE, NO_PLOT, pSoldier->usUIMovementMode, pSoldier->bActionPoints);
 
 	// ADD APS TO PICKUP
-	sAPCost += AP_STEAL_ITEM;
+	sAPCost += gamepolicy(ap_steal_item);
 
 	// CJC August 13 2002: added cost to stand into equation
 	if (!(PTR_STANDING))

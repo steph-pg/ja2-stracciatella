@@ -29,6 +29,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	enemy_weapon_minimal_status = gp.getOptionalInt("enemy_weapon_minimal_status", 0);
 
 	gun_jam_chance_minimum = gp.getOptionalInt("gun_jam_chance_minimum", 0);
+	ap_steal_item = gp.getOptionalUInt("ap_steal_item", 10);
 
 	squad_size = gp.getOptionalUInt("squad_size", 6);
 
