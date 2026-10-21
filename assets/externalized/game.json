@@ -269,6 +269,12 @@
   //  vanilla setting: 0
   "alcohol_ap_bonus": 80,
 
+  //  Does being drunk raise strength by as much as it lowers dexterity (+25%, +35%
+  //  and +50% for the three levels of drunkenness, up to 100)? Effective strength
+  //  sets how much a merc can carry, melee damage, throwing range and door smashing.
+  //  vanilla setting: false
+  "alcohol_boosts_strength": true,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {

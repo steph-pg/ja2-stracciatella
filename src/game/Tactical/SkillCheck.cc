@@ -9,6 +9,9 @@
 #include "Morale.h"
 #include "Drugs_And_Alcohol.h"
 #include "StrategicMap.h"
+#include "ContentManager.h"
+#include "GameInstance.h"
+#include "policy/GamePolicy.h"
 
 
 INT8 EffectiveStrength(const SOLDIERTYPE* s)
@@ -18,6 +21,11 @@ INT8 EffectiveStrength(const SOLDIERTYPE* s)
 	// plus 1/2 strength scaled according to how hurt we are
 	INT32 iEffStrength = s->bStrength / 2;
 	iEffStrength += (s->bStrength / 2) * s->effectiveLife() / (s->bLifeMax);
+
+	if (gamepolicy(alcohol_boosts_strength))
+	{
+		iEffStrength = BoostStatForBeingDrunk(s, iEffStrength);
+	}
 
 	// ATE: Make sure at least 2...
 	iEffStrength = std::max(iEffStrength, 2);

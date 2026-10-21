@@ -469,6 +469,14 @@ INT32 EffectStatForBeingDrunk(const SOLDIERTYPE* pSoldier, INT32 iStat)
 }
 
 
+// The mirror image of EffectStatForBeingDrunk(): where that takes 25% off, this
+// adds 25%, capped at 100
+INT32 BoostStatForBeingDrunk(const SOLDIERTYPE* pSoldier, INT32 iStat)
+{
+	return std::max(iStat, std::min(iStat * ( 200 - giDrunkModifier[ GetDrunkLevel( pSoldier ) ] ) / 100, 100));
+}
+
+
 BOOLEAN MercUnderTheInfluence(const SOLDIERTYPE* pSoldier)
 {
 	// Are we in a side effect or good effect?

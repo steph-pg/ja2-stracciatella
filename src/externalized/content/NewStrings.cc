@@ -1,7 +1,9 @@
 #include "NewStrings.h"
 
 #include "Cheats.h"
+#include "ContentManager.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "Drugs_And_Alcohol.h"
 #include "Items.h"
 #include "MercProfile.h"
@@ -679,6 +681,10 @@ const ST::string GetModifiersForEffectiveAttributes(SOLDIERTYPE* const s, Attrib
 			firstAid = s->bLifeMax - s->bLife - s->bBleeding;
 			firstAidMod = effAttr * (s->bLife + firstAid / 2) / s->bLifeMax;
 			effAttr += firstAidMod;
+			if (gamepolicy(alcohol_boosts_strength)) {
+				alcoMod = BoostStatForBeingDrunk(s, effAttr) - effAttr;
+				effAttr += alcoMod;
+			}
 			if (effAttr < 2) {
 				effAttr = 2;
 				comment = st_format_printf(". " + commentStrings[COMMENT_LESS_THAN], effAttr);
@@ -688,6 +694,9 @@ const ST::string GetModifiersForEffectiveAttributes(SOLDIERTYPE* const s, Attrib
 			result += "\n" + segmentHeaderStrings[HEADER_MODIFIED_BY];
 			result += st_format_printf("\n" + tab + vitalSignStrings[VITAL_HEALTH], ColorCodeModifier("{+d}", (s->bStrength / 2 + healthMod) - s->bStrength));
 			result += st_format_printf("\n" + tab + vitalSignStrings[VITAL_FIRST_AID], ColorCodeModifier("{+d}", firstAidMod - healthMod));
+			if (gamepolicy(alcohol_boosts_strength)) {
+				result += st_format_printf("\n" + tab + drugStrings[DRUG_TYPE_ALCOHOL], ColorCodeModifier("{+d}", alcoMod));
+			}
 			break;
 		case ATTR_LEADERSHIP:
 			effAttr = s->bLeadership;
