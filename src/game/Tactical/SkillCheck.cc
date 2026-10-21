@@ -23,6 +23,11 @@ INT8 EffectiveStrength(const SOLDIERTYPE* s)
 	INT32 iEffStrength = s->bStrength / 2;
 	iEffStrength += (s->bStrength / 2) * s->effectiveLife() / (s->bLifeMax);
 
+	if (gamepolicy(alcohol_boosts_strength))
+	{
+		iEffStrength = BoostStatForBeingDrunk(s, iEffStrength);
+	}
+
 	// ATE: Make sure at least 2...
 	iEffStrength = std::max(iEffStrength, 2);
 

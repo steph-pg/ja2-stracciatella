@@ -752,6 +752,15 @@ properties:
       and the stat penalties for being drunk still apply.
 
       Vanilla setting: `0`
+  alcohol_boosts_strength:
+    type: boolean
+    title: Alcohol boosts strength
+    description: |
+      Being drunk raises strength by as much as it lowers dexterity (+25%, +35% and +50% for the three levels of
+      drunkenness, up to 100). Effective strength sets how much a merc can carry, melee damage, throwing range and
+      door smashing.
+
+      Vanilla setting: `false`
 
   locksmith_kit_wear:
     type: boolean
