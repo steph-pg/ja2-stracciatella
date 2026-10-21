@@ -122,7 +122,7 @@ public:
 
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
 
-	bool drinks_and_drugs_rework; // true: drinking and drugs cost APs, beer restores breath, bottles can break. false: vanilla
+	bool drinks_and_drugs_rework; // true: drinking and drugs cost APs, beer restores breath, bottles can break (always when thrown) and broken ones cannot be drunk. false: vanilla
 	uint8_t alcohol_ap_bonus;     // % of the current alcohol effect added as APs, never above the normal maximum (0 = vanilla)
 	bool alcohol_boosts_strength; // true: being drunk raises strength as much as it lowers dexterity, up to 100. false: vanilla
 	uint8_t bar_defenders_drunk_chance; // % chance each non-elite defender of a bar sector has been drinking when a battle starts there (0 = vanilla)

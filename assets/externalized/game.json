@@ -259,6 +259,8 @@
 
   //  Drinking and taking drugs cost 5 APs, beer restores up to 30 breath (less from a
   //  part-empty bottle), and bottles can break in explosions and when the merc falls.
+  //  Thrown bottles always break unless caught or landing in water. A broken bottle is
+  //  left at 1% and cannot be drunk from.
   //  vanilla setting: false
   "drinks_and_drugs_rework": true,
 

@@ -1,4 +1,5 @@
 #include "Directories.h"
+#include "Drugs_And_Alcohol.h"
 #include "Font_Control.h"
 #include "Handle_Items.h"
 #include "ItemModel.h"
@@ -411,6 +412,12 @@ static BOOLEAN PhysicsUpdateLife(REAL_OBJECT* pObject, float DeltaTime)
 						// ATE; If an armed object, don't add....
 						if ( pObject->ubActionCode != THROW_ARM_ITEM )
 						{
+							// a bottle that hits the ground or a roof breaks, one that
+							// lands in water survives
+							if ( !pObject->fInWater )
+							{
+								ShatterBottles( pObject->Obj, pObject->sGridNo );
+							}
 							AddItemToPool(pObject->sGridNo, &pObject->Obj, VISIBLE, bLevel, 0, -1);
 						}
 					}

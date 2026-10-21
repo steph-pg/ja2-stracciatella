@@ -200,6 +200,11 @@ static void HourlyLarryUpdate(void)
 		for ( bLarryItemLoop = 0; bLarryItemLoop < NUM_LARRY_ITEMS; bLarryItemLoop++ )
 		{
 			bSlot = FindObj( pSoldier, LarryItems[ bLarryItemLoop ][ 0 ] );
+			// nothing to tempt him in a broken bottle
+			if ( bSlot != NO_SLOT && !IsDrinkable( pSoldier->inv[ bSlot ] ) )
+			{
+				bSlot = NO_SLOT;
+			}
 			if ( bSlot != NO_SLOT )
 			{
 				usTemptation = LarryItems[ bLarryItemLoop ][ 1 ];
