@@ -480,11 +480,11 @@
   "drinks_and_drugs_rework": true,
 
   //  Percentage of the current alcohol effect a merc gets as extra APs, like a weak
-  //  energy booster. One drink is worth 8 effect, so 40 gives about +3 APs per drink
+  //  energy booster. One drink is worth 8 effect, so 80 gives about +6 APs per drink
   //  at its peak. The bonus never takes a merc above 25 APs, and the stat penalties
   //  for being drunk still apply.
   //  vanilla setting: 0
-  "alcohol_ap_bonus": 40,
+  "alcohol_ap_bonus": 80,
 
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
