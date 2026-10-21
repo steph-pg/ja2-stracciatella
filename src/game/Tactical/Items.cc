@@ -3161,6 +3161,12 @@ static BOOLEAN DamageItem(OBJECTTYPE* pObject, INT32 iDamage, BOOLEAN fOnGround)
 				bDamage = CheckItemForDamage( pObject->usItem, iDamage );
 				switch( pObject->usItem )
 				{
+					// bottles are glass too, and their status is what is left to drink
+					case ALCOHOL:
+					case WINE:
+					case BEER:
+						if (!gamepolicy(drinks_and_drugs_rework)) break;
+						[[fallthrough]];
 					case JAR_CREATURE_BLOOD:
 					case JAR:
 					case JAR_HUMAN_BLOOD:
@@ -3262,6 +3268,8 @@ void CheckEquipmentForDamage( SOLDIERTYPE *pSoldier, INT32 iDamage )
 	}
 }
 
+#define CHANCE_TO_BREAK_BOTTLE	30
+
 void CheckEquipmentForFragileItemDamage( SOLDIERTYPE *pSoldier, INT32 iDamage )
 {
 	// glass jars etc can be damaged by falling over
@@ -3270,6 +3278,8 @@ void CheckEquipmentForFragileItemDamage( SOLDIERTYPE *pSoldier, INT32 iDamage )
 
 	FOR_EACH_SOLDIER_INV_SLOT(i, *pSoldier)
 	{
+		BOOLEAN fBroke = FALSE;
+
 		switch (i->usItem)
 		{
 			case JAR_CREATURE_BLOOD:
@@ -3278,16 +3288,38 @@ void CheckEquipmentForFragileItemDamage( SOLDIERTYPE *pSoldier, INT32 iDamage )
 			case JAR_ELIXIR:
 				ubNumberOfObjects = i->ubNumberOfObjects;
 				DamageItem(i, iDamage, FALSE);
-				if (!fPlayedGlassBreak && ubNumberOfObjects != i->ubNumberOfObjects)
+				fBroke = ubNumberOfObjects != i->ubNumberOfObjects;
+				break;
+
+			case ALCOHOL:
+			case WINE:
+			case BEER:
+				if (!gamepolicy(drinks_and_drugs_rework)) break;
+
+				/* A bottle survives the fall or shatters; there is no such thing as a
+				 * slightly damaged one, so roll for each one carried rather than
+				 * shaving status off the way DamageItem() would.  Status doubles as
+				 * how much is left to drink, so a broken bottle is a spilled one. */
+				for (UINT8 ubLoop = 0; ubLoop < i->ubNumberOfObjects; ++ubLoop)
 				{
-					PlayLocationJA2Sample(pSoldier->sGridNo, GLASS_CRACK, MIDVOLUME, 1);
-					fPlayedGlassBreak = TRUE;
-					// only dirty once
-					DirtyMercPanelInterface( pSoldier, DIRTYLEVEL2 );
+					if (i->bStatus[ubLoop] > 1 && PreRandom(100) < CHANCE_TO_BREAK_BOTTLE)
+					{
+						i->bStatus[ubLoop] = 1;
+						fBroke = TRUE;
+					}
 				}
 				break;
+
 			default:
 				break;
+		}
+
+		if (fBroke && !fPlayedGlassBreak)
+		{
+			PlayLocationJA2Sample(pSoldier->sGridNo, GLASS_CRACK, MIDVOLUME, 1);
+			fPlayedGlassBreak = TRUE;
+			// only dirty once
+			DirtyMercPanelInterface( pSoldier, DIRTYLEVEL2 );
 		}
 	}
 }

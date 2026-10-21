@@ -135,6 +135,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	quest_experience_all_mercs = gp.getOptionalBool("quest_experience_all_mercs", true);
 	enemy_autoresolve_retreat_health_percent = gp.getOptionalUInt("enemy_autoresolve_retreat_health_percent", 0);
 	explosives_skill_damage_bonus = gp.getOptionalUInt("explosives_skill_damage_bonus", 0);
+	drinks_and_drugs_rework = gp.getOptionalBool("drinks_and_drugs_rework", false);
+	alcohol_ap_bonus = gp.getOptionalUInt("alcohol_ap_bonus", 0);
 
 	auto campaign = gp["campaign"].toObject();
 	ST::string sector_string = campaign.getOptionalString("start_sector");

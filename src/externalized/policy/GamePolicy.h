@@ -165,6 +165,8 @@ public:
 	bool quest_experience_all_mercs;      // true: quest experience rewards go to every merc on the team. false: vanilla, only the squad present when the quest is closed
 	uint8_t enemy_autoresolve_retreat_health_percent; // Health (in percent of maximum) below which enemy soldiers flee an autoresolve battle; 0 disables enemy retreating
 	uint8_t explosives_skill_damage_bonus; // % blast damage bonus at 100 Explosives (0 = vanilla)
+	bool drinks_and_drugs_rework; // true: drinking and drugs cost APs, beer restores breath, bottles can break. false: vanilla
+	uint8_t alcohol_ap_bonus;     // % of the current alcohol effect added as APs, never above the normal maximum (0 = vanilla)
 
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start

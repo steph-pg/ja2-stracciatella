@@ -735,6 +735,23 @@ properties:
       Enable ability to heal stat loss from critical hits with doctoring.
 
       Vanilla setting: `false`
+  drinks_and_drugs_rework:
+    type: boolean
+    title: Drinks and drugs rework
+    description: |
+      Drinking and taking drugs cost 5 APs, beer restores up to 30 breath (less from a part-empty bottle), and
+      bottles can break in explosions and when the merc falls.
+
+      Vanilla setting: `false`
+  alcohol_ap_bonus:
+    $ref: types/uint8.schema.yaml
+    title: Alcohol AP bonus
+    description: |
+      Percentage of the current alcohol effect a merc gets as extra APs, like a weak energy booster. One drink is
+      worth 8 effect, so 40 gives about +3 APs per drink at its peak. The bonus never takes a merc above 25 APs,
+      and the stat penalties for being drunk still apply.
+
+      Vanilla setting: `0`
 
   locksmith_kit_wear:
     type: boolean

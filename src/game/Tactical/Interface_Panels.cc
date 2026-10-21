@@ -1488,8 +1488,10 @@ static void SMInvClickCamoCallback(MOUSE_REGION* pRegion, UINT32 iReason)
 			// Say OK acknowledge....
 			DoMercBattleSound(s, BATTLE_SOUND_COOL1);
 		}
-		else if (ApplyDrugs(s, obj))
+		else if (ApplyDrugs(s, obj, &fGoodAPs))
 		{
+			if (!fGoodAPs) return;
+
 			// Say OK acknowledge....
 			DoMercBattleSound(s, BATTLE_SOUND_COOL1);
 		}
