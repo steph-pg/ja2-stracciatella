@@ -257,6 +257,11 @@
 
   "enable_stat_healing": false,
 
+  //  Drinking and taking drugs cost 5 APs, beer restores up to 30 breath (less from a
+  //  part-empty bottle), and bottles can break in explosions and when the merc falls.
+  //  vanilla setting: false
+  "drinks_and_drugs_rework": true,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {

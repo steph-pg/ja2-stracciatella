@@ -538,6 +538,14 @@ properties:
       Enable ability to heal stat loss from critical hits with doctoring.
 
       Vanilla setting: `false`
+  drinks_and_drugs_rework:
+    type: boolean
+    title: Drinks and drugs rework
+    description: |
+      Drinking and taking drugs cost 5 APs, beer restores up to 30 breath (less from a part-empty bottle), and
+      bottles can break in explosions and when the merc falls.
+
+      Vanilla setting: `false`
 
   campaign:
     type: object

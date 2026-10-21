@@ -3,6 +3,7 @@
 #include "Soldier_Profile.h"
 #include "Drugs_And_Alcohol.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "ContentManager.h"
 #include "ItemModel.h"
 #include "Items.h"
@@ -83,7 +84,8 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject, BOOLEAN *pfGoodA
 	 * the collapse rather than waiting it out, and refusing it would deny them
 	 * that.  EnoughPoints() turns down everything while collapsed, so only ask it
 	 * about the drug while the merc is on their feet. */
-	if ( !pSoldier->bCollapsed && !EnoughPoints( pSoldier, AP_USE_DRUGS, 0, TRUE ) )
+	if ( gamepolicy(drinks_and_drugs_rework) &&
+		!pSoldier->bCollapsed && !EnoughPoints( pSoldier, AP_USE_DRUGS, 0, TRUE ) )
 	{
 		(*pfGoodAPs) = FALSE;
 		return( TRUE );
@@ -149,7 +151,7 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject, BOOLEAN *pfGoodA
 			/* Beer refreshes as well as it intoxicates.  UseKitPoints() returns what
 			 * it actually managed to drain, which is the status of the bottle when it
 			 * is not full, so a half-empty one is worth half the breath. */
-			if ( usItem == BEER )
+			if ( gamepolicy(drinks_and_drugs_rework) && usItem == BEER )
 			{
 				sBreathGain = BP_USE_BEER * usPointsUsed / 100;
 			}
@@ -237,7 +239,10 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject, BOOLEAN *pfGoodA
 	/* Charge for the dose, and hand back the beer's breath in the same
 	 * transaction.  DeductPoints() clamps the action points at zero, so billing a
 	 * collapsed merc who has none costs them nothing extra. */
-	DeductPoints( pSoldier, AP_USE_DRUGS, sBreathGain );
+	if ( gamepolicy(drinks_and_drugs_rework) )
+	{
+		DeductPoints( pSoldier, AP_USE_DRUGS, sBreathGain );
+	}
 
 	// Dirty panel
 	DirtyMercPanelInterface(pSoldier, DIRTYLEVEL2);

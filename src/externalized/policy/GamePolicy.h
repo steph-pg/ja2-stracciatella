@@ -122,6 +122,8 @@ public:
 
 	bool enable_stat_healing;		// Enable ability to heal stats with doctoring
 
+	bool drinks_and_drugs_rework; // true: drinking and drugs cost APs, beer restores breath, bottles can break. false: vanilla
+
 	uint16_t start_sector;        // Starting sector
 	bool reveal_start_sector;     // Should the start sector radar map be shown at start
 

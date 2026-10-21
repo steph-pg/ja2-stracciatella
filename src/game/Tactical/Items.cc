@@ -3121,14 +3121,16 @@ static BOOLEAN DamageItem(OBJECTTYPE* pObject, INT32 iDamage, BOOLEAN fOnGround)
 				bDamage = CheckItemForDamage( pObject->usItem, iDamage );
 				switch( pObject->usItem )
 				{
-					case JAR_CREATURE_BLOOD:
-					case JAR:
-					case JAR_HUMAN_BLOOD:
-					case JAR_ELIXIR:
 					// bottles are glass too, and their status is what is left to drink
 					case ALCOHOL:
 					case WINE:
 					case BEER:
+						if (!gamepolicy(drinks_and_drugs_rework)) break;
+						[[fallthrough]];
+					case JAR_CREATURE_BLOOD:
+					case JAR:
+					case JAR_HUMAN_BLOOD:
+					case JAR_ELIXIR:
 						if ( PreRandom( bDamage ) > 5 )
 						{
 							// smash!
@@ -3252,6 +3254,8 @@ void CheckEquipmentForFragileItemDamage( SOLDIERTYPE *pSoldier, INT32 iDamage )
 			case ALCOHOL:
 			case WINE:
 			case BEER:
+				if (!gamepolicy(drinks_and_drugs_rework)) break;
+
 				/* A bottle survives the fall or shatters; there is no such thing as a
 				 * slightly damaged one, so roll for each one carried rather than
 				 * shaving status off the way DamageItem() would.  Status doubles as
