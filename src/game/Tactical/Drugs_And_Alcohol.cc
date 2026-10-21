@@ -379,6 +379,14 @@ void HandleAPEffectDueToDrugs(const SOLDIERTYPE* const pSoldier, UINT8* const pu
 		}
 	}
 
+	// A buzz works like a weak booster, on top of the stat penalties for being
+	// drunk, but unlike adrenaline it never lifts a merc past the normal maximum
+	INT16 const sAlcoholAPs = pSoldier->bDrugEffect[ DRUG_TYPE_ALCOHOL ] * gamepolicy(alcohol_ap_bonus) / 100;
+	if ( sAlcoholAPs > 0 && sPoints < AP_MAXIMUM )
+	{
+		sPoints = std::min<INT16>( sPoints + sAlcoholAPs, AP_MAXIMUM );
+	}
+
 	bDrunkLevel = GetDrunkLevel( pSoldier );
 
 	if ( bDrunkLevel == HUNGOVER )

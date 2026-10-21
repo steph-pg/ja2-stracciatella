@@ -100,6 +100,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	enable_stat_healing = gp.getOptionalBool("enable_stat_healing", false);
 
 	drinks_and_drugs_rework = gp.getOptionalBool("drinks_and_drugs_rework", false);
+	alcohol_ap_bonus = gp.getOptionalUInt("alcohol_ap_bonus", 0);
 
 	auto campaign = gp["campaign"].toObject();
 	ST::string sector_string = campaign.getOptionalString("start_sector");
