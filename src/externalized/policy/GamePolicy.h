@@ -52,6 +52,7 @@ public:
 	bool realtime_sneak;                  // spotting enemies while none is on alert does not start turn-based mode; a real-time attack that starts combat costs APs
 
 	bool fixed_cost_to_shoot;    // Changes the formula for APs to shoot
+	uint8_t ap_burst;                     // APs to fire a burst for a merc with 25 base APs, scaled to their actual base APs (vanilla 5)
 
 	int8_t enemy_weapon_minimal_status;   /**< Minimal status of the enemy weapon (0 - 100). */
 
