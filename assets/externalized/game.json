@@ -125,6 +125,10 @@
   // vanilla value: 0
   "gun_jam_chance_minimum": 2,
 
+  // Action points to snatch an item from someone's hands, on top of walking up and standing.
+  // vanilla value: 10
+  "ap_steal_item": 10,
+
   // Maxiumum number of soldiers in one squad.
   // Larger squad sizes requires the wider screen to display all members. For a squad size of n, the screen must be at
   // least (640 + (n-6)*83) pixels wide. For example, squad size of 8 requires the screen to be at least 806px wide.

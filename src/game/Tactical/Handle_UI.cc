@@ -3382,7 +3382,7 @@ static INT8 DrawUIMovementPath(SOLDIERTYPE* const pSoldier, UINT16 usMapPos, Mov
 			{
 				sActionGridNo = sAdjustedGridNo;
 			}
-			sAPCost += AP_STEAL_ITEM;
+			sAPCost += gamepolicy(ap_steal_item);
 			// CJC August 13 2002: take into account stance in AP prediction
 			if (!(PTR_STANDING))
 			{

@@ -1521,7 +1521,7 @@ void EVENT_InitNewSoldierAnim(SOLDIERTYPE* const pSoldier, UINT16 usNewState, UI
 
 		case STEAL_ITEM:
 
-			DeductPoints( pSoldier, AP_STEAL_ITEM, 0 );
+			DeductPoints( pSoldier, gamepolicy(ap_steal_item), 0 );
 			break;
 
 		case CROW_DIE:
