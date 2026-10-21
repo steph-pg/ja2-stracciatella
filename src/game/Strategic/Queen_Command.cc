@@ -36,6 +36,7 @@
 #include "Morale.h"
 #include "Vehicles.h"
 #include "Logger.h"
+#include "Drugs_And_Alcohol.h"
 #include "JAScreens.h"
 
 //The sector information required for the strategic AI.  Contains the number of enemy troops,
@@ -475,6 +476,11 @@ void PrepareEnemyForSectorBattle()
 	if (total_admins == 0 && total_troops == 0 && total_elites == 0) return;
 
 	AddSoldierInitListEnemyDefenceSoldiers(total_admins, total_troops, total_elites);
+
+	FOR_EACH_IN_TEAM(s, ENEMY_TEAM)
+	{
+		MaybeMakeBarDefenderTipsy(*s, gWorldSector);
+	}
 
 	/* Now, we have to go through all of the enemies in the new map and assign
 	 * their respective groups if in a mobile group, but only for the ones that

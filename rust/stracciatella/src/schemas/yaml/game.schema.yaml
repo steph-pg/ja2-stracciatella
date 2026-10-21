@@ -761,6 +761,16 @@ properties:
       door smashing.
 
       Vanilla setting: `false`
+  bar_defenders_drunk_chance:
+    $ref: types/uint8.schema.yaml
+    title: Bar defenders drunk chance
+    description: |
+      Percentage chance that each defender of a sector with a bar (Drassen C13 and D13, San Mona C5, C6 and D5,
+      Grumm H2) has been drinking when a battle starts there, in tactical and autoresolve alike. Applies to queen
+      soldiers holding the sector and to militia defending it, but never to elites. Drinkers start at the
+      "feeling good" level, which wears off without a hangover.
+
+      Vanilla setting: `0`
 
   locksmith_kit_wear:
     type: boolean

@@ -4,6 +4,7 @@
 #include "Creature_Spreading.h"
 #include "Cursors.h"
 #include "Directories.h"
+#include "Drugs_And_Alcohol.h"
 #include "Easings.h"
 #include "English.h"
 #include "Font.h"
@@ -11,6 +12,7 @@
 #include "Game_Clock.h"
 #include "Game_Event_Hook.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "GameLoop.h"
 #include "GamePolicy.h"
 #include "GameScreen.h"
@@ -111,6 +113,7 @@ struct AUTORESOLVE_STRUCT
 	SGPVObject* iFaces; //for generic civs and enemies
 	INT32 iMercFaces[20]; //for each merc face
 	SGPVObject* iIndent;
+	SGPVObject* iPortraitIcons; //status icons shared with the tactical faces
 	SGPVSurface* iInterfaceBuffer;
 	UINT32 uiTimeSlice;
 	UINT32 uiTotalElapsedBattleTimeInMilliseconds;
@@ -789,6 +792,13 @@ static void RenderSoldierCell(SOLDIERCELL* const c)
 		{ // Merc is unconcious (and not taking damage), so darken his portrait.
 			buf->ShadowRect(x, y, x + 30, y + 26);
 		}
+
+		if (GetDrunkLevel(c->pSoldier) != SOBER)
+		{ // the same drunk icon the tactical faces show, in the bottom left corner
+			UINT16 const icon = 8;
+			ETRLEObject const& e = gpAR->iPortraitIcons->SubregionProperties(icon);
+			BltVideoObject(buf, gpAR->iPortraitIcons, icon, x + 1, y + 26 - e.usHeight - 1);
+		}
 	}
 
 	RenderSoldierCellHealth(c);
@@ -1446,6 +1456,7 @@ static SOLDIERCELL* MakeEnemyTroops(SOLDIERCELL* cell, size_t n, AUTORESOLVE_STR
 		cell->usIndex        = s->ubBodyType == REGFEMALE ? ELITEF_FACE : face;
 		s->sSector           = ar->ubSector;
 		s->name              = name;
+		MaybeMakeBarDefenderTipsy(*s, ar->ubSector);
 	}
 	return cell;
 }
@@ -1512,6 +1523,7 @@ static void CreateAutoResolveInterface(void)
 
 	// Add the battle over panels
 	ar->iIndent = AddVideoObjectFromFile(INTERFACEDIR "/indent.sti");
+	ar->iPortraitIcons = AddVideoObjectFromFile(INTERFACEDIR "/portraiticons.sti");
 
 	// Add all the faces now
 	FOR_EACH_AR_MERC(cell)
@@ -1572,6 +1584,7 @@ static void CreateAutoResolveInterface(void)
 		Assert(s); // Failed to create militia soldier for autoresolve?
 		s->sSector = ar->ubSector;
 		s->name = gpStrategicString[STR_AR_MILITIA_NAME];
+		MaybeMakeBarDefenderTipsy(*s, ar->ubSector);
 	}
 
 	if (gubEnemyEncounterCode != CREATURE_ATTACK_CODE)
@@ -1658,6 +1671,7 @@ static void RemoveAutoResolveInterface()
 	DeleteVideoObject(ar.iPanelImages);
 	DeleteVideoObject(ar.iFaces);
 	DeleteVideoObject(ar.iIndent);
+	DeleteVideoObject(ar.iPortraitIcons);
 	DeleteVideoSurface(ar.iInterfaceBuffer);
 
 	/* KM: By request of AM, I have added this bleeding event in cases where
@@ -2499,6 +2513,19 @@ static void ResetNextAttackCounter(SOLDIERCELL* pCell)
 }
 
 
+// Drinking shows in the ratings the same way it does in tactical
+static INT32 ARStrength(SOLDIERTYPE const* const s)
+{
+	return gamepolicy(alcohol_boosts_strength) ? BoostStatForBeingDrunk(s, s->bStrength) : s->bStrength;
+}
+
+
+static INT32 ARStat(SOLDIERTYPE const* const s, INT8 const stat)
+{
+	return EffectStatForBeingDrunk(s, stat);
+}
+
+
 static void CalculateAttackValues(void)
 {
 	SOLDIERCELL *pCell;
@@ -2525,10 +2552,10 @@ static void CalculateAttackValues(void)
 		pSoldier = pCell->pSoldier;
 		if( !pSoldier->bLife )
 			continue;
-		pCell->usAttack =		pSoldier->bStrength +
-												pSoldier->bDexterity +
-												pSoldier->bWisdom +
-												pSoldier->bMarksmanship +
+		pCell->usAttack =		ARStrength(pSoldier) +
+												ARStat(pSoldier, pSoldier->bDexterity) +
+												ARStat(pSoldier, pSoldier->bWisdom) +
+												ARStat(pSoldier, pSoldier->bMarksmanship) +
 												pSoldier->bMorale;
 		//Give player controlled mercs a significant bonus to compensate for lack of control
 		//as the player would typically do much better in tactical.
@@ -2539,8 +2566,8 @@ static void CalculateAttackValues(void)
 		}
 		usBreathStrengthPercentage = 100 - ( 100 - pCell->pSoldier->bBreathMax ) / 3;
 		pCell->usAttack =		pCell->usAttack * usBreathStrengthPercentage / 100;
-		pCell->usDefence =	pSoldier->bAgility +
-												pSoldier->bWisdom +
+		pCell->usDefence =	ARStat(pSoldier, pSoldier->bAgility) +
+												ARStat(pSoldier, pSoldier->bWisdom) +
 												pSoldier->bBreathMax +
 												pSoldier->bMedical +
 												pSoldier->bMorale;
@@ -2577,14 +2604,14 @@ static void CalculateAttackValues(void)
 	{
 		pCell = &gpCivs[ i ];
 		pSoldier = pCell->pSoldier;
-		pCell->usAttack =		pSoldier->bStrength +
-												pSoldier->bDexterity +
-												pSoldier->bWisdom +
-												pSoldier->bMarksmanship +
+		pCell->usAttack =		ARStrength(pSoldier) +
+												ARStat(pSoldier, pSoldier->bDexterity) +
+												ARStat(pSoldier, pSoldier->bWisdom) +
+												ARStat(pSoldier, pSoldier->bMarksmanship) +
 												pSoldier->bMorale;
 		pCell->usAttack =		pCell->usAttack * pSoldier->bBreath / 100;
-		pCell->usDefence =	pSoldier->bAgility +
-												pSoldier->bWisdom +
+		pCell->usDefence =	ARStat(pSoldier, pSoldier->bAgility) +
+												ARStat(pSoldier, pSoldier->bWisdom) +
 												pSoldier->bBreathMax +
 												pSoldier->bMedical +
 												pSoldier->bMorale;
@@ -2624,14 +2651,14 @@ static void CalculateAttackValues(void)
 	{
 		pCell = &gpEnemies[ i ];
 		pSoldier = pCell->pSoldier;
-		pCell->usAttack =		pSoldier->bStrength +
-												pSoldier->bDexterity +
-												pSoldier->bWisdom +
-												pSoldier->bMarksmanship +
+		pCell->usAttack =		ARStrength(pSoldier) +
+												ARStat(pSoldier, pSoldier->bDexterity) +
+												ARStat(pSoldier, pSoldier->bWisdom) +
+												ARStat(pSoldier, pSoldier->bMarksmanship) +
 												pSoldier->bMorale;
 		pCell->usAttack =		pCell->usAttack * pSoldier->bBreath / 100;
-		pCell->usDefence =	pSoldier->bAgility +
-												pSoldier->bWisdom +
+		pCell->usDefence =	ARStat(pSoldier, pSoldier->bAgility) +
+												ARStat(pSoldier, pSoldier->bWisdom) +
 												pSoldier->bBreathMax +
 												pSoldier->bMedical +
 												pSoldier->bMorale;

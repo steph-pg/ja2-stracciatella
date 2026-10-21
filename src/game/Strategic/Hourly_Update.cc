@@ -6,6 +6,7 @@
 #include "Strategic_Merc_Handler.h"
 #include "Strategic_Mines.h"
 #include "Campaign.h"
+#include "Drugs_And_Alcohol.h"
 #include "Morale.h"
 #include "Quests.h"
 #include "Game_Clock.h"
@@ -221,25 +222,13 @@ static void HourlyLarryUpdate(void)
 
 		// check to see if we're in a bar sector, if we are, we have access to alcohol
 		// which may be better than anything we've got...
-		static const SGPSector bars[] = {
-			{13, MAP_ROW_D},
-			{13, MAP_ROW_C},
-			{5, MAP_ROW_C},
-			{5, MAP_ROW_D},
-			{6, MAP_ROW_C},
-			{2, MAP_ROW_H}
-		};
 		if ( usTemptation < BAR_TEMPTATION && GetCurrentBalance() >= GCM->getItem(ALCOHOL)->getPrice() )
 		{
-			for (const auto& bar : bars)
+			if (IsBarSector(pSoldier->sSector))
 			{
-				if (pSoldier->sSector == bar)
-				{
-					// in a bar!
-					fBar = TRUE;
-					usTemptation = BAR_TEMPTATION;
-					break;
-				}
+				// in a bar!
+				fBar = TRUE;
+				usTemptation = BAR_TEMPTATION;
 			}
 		}
 

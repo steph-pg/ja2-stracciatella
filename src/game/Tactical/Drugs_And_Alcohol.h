@@ -32,5 +32,8 @@ INT32 EffectStatForBeingDrunk(const SOLDIERTYPE* pSoldier, INT32 iStat);
 INT32 BoostStatForBeingDrunk(const SOLDIERTYPE* pSoldier, INT32 iStat);
 BOOLEAN MercUnderTheInfluence(const SOLDIERTYPE* pSoldier);
 
+bool IsBarSector(const SGPSector& sector);
+void MaybeMakeBarDefenderTipsy(SOLDIERTYPE& s, const SGPSector& sector);
+
 
 #endif
