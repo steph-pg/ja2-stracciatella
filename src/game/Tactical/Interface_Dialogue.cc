@@ -4357,7 +4357,7 @@ static void DialogueMessageBoxCallBack(MessageBoxReturnValue const ubExitValue)
 					if (s->bInSector &&
 						s->bLife >= OKLIFE &&
 						s->bBreath >= OKBREATH &&
-						(!pLier || (EffectiveWisdom(s) + EffectiveLeadership(s) > EffectiveWisdom(pLier) + EffectiveLeadership(s))))
+						(!pLier || (EffectiveWisdom(s) + EffectiveLeadership(s) > EffectiveWisdom(pLier) + EffectiveLeadership(pLier))))
 					{
 						pLier = s;
 					}
