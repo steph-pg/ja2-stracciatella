@@ -276,6 +276,11 @@
   //  vanilla setting: 100
   "carry_capacity_modifier": 90,
 
+  //  Does a load over 100% cut action points directly, on top of the agility penalty?
+  //  When false, overburdening only lowers agility, which still costs some APs through it.
+  //  vanilla setting: true
+  "overburden_reduces_ap": false,
+
   //  Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
   //  vanilla setting: false
   "always_show_cursor_in_tactical": false,
