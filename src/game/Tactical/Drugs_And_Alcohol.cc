@@ -142,7 +142,7 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject )
 			if (--pObject->ubNumberOfObjects == 0) DeleteObj(pObject);
 
 			// ATE: Make guy collapse from heart attack if too much stuff taken....
-			if ( pSoldier->bDrugSideEffectRate[ ubDrugType ] > ( ubDrugSideEffect[ ubDrugType ] * 3 ) )
+			if ( pSoldier->bDrugSideEffect[ ubDrugType ] > ( ubDrugSideEffect[ ubDrugType ] * 3 ) )
 			{
 				// Keel over...
 				DeductPoints( pSoldier, 0, 10000, FALSE );
