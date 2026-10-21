@@ -17,6 +17,7 @@
 #include "Faces.h"
 #include "Font_Control.h"
 #include "GameInstance.h"
+#include "GamePolicy.h"
 #include "GameSettings.h"
 #include "Game_Clock.h"
 #include "HImage.h"
@@ -349,7 +350,7 @@ INT8 CalcActionPoints(const SOLDIERTYPE* const pSold)
 	if (pSold->bBreath < 100)
 		ubPoints -= (ubPoints * (100 - pSold->bBreath)) / 200;
 
-	if (pSold->sWeightCarriedAtTurnStart > 100)
+	if (gamepolicy(overburden_reduces_ap) && pSold->sWeightCarriedAtTurnStart > 100)
 	{
 		ubPoints = (UINT8) ( ((UINT32)ubPoints) * 100 / pSold->sWeightCarriedAtTurnStart );
 	}
