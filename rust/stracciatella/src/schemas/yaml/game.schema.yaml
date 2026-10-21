@@ -902,6 +902,14 @@ properties:
       tolerance).
 
       Vanilla setting: `130`
+  alcohol_crash_morale_loss:
+    $ref: types/uint8.schema.yaml
+    title: Alcohol crash morale loss
+    description: |
+      Morale a merc loses when an alcohol buzz wears off, once for each level of drunkenness.
+      The morale boost while drunk is unaffected.
+
+      Vanilla setting: `10`
 required:
   - extra_hotkeys
   - can_enter_turnbased

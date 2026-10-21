@@ -14,6 +14,9 @@
 #include "MapScreen.h"
 #include "Soldier_Macros.h"
 #include "Logger.h"
+#include "ContentManager.h"
+#include "GameInstance.h"
+#include "GamePolicy.h"
 
 #define MORALE_MOD_MAX				50 // morale *mod* range is -50 to 50, if you change this, check the decay formulas!
 
@@ -387,7 +390,8 @@ static void UpdateSoldierMorale(SOLDIERTYPE* pSoldier, UINT8 ubType, INT8 bMoral
 
 static void HandleMoraleEventForSoldier(SOLDIERTYPE* pSoldier, INT8 bMoraleEvent)
 {
-	UpdateSoldierMorale( pSoldier, gbMoraleEvent[bMoraleEvent].ubType, gbMoraleEvent[bMoraleEvent].bChange );
+	INT8 const bChange = bMoraleEvent == MORALE_ALCOHOL_CRASH ? -gamepolicy(alcohol_crash_morale_loss) : gbMoraleEvent[bMoraleEvent].bChange;
+	UpdateSoldierMorale( pSoldier, gbMoraleEvent[bMoraleEvent].ubType, bChange );
 }
 
 
