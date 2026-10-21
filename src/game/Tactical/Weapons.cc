@@ -458,6 +458,12 @@ static UINT32 CalcChanceToHitBodyPart(SOLDIERTYPE* const pSoldier, GridNo const 
 }
 
 
+INT8 RandomHitLocation(UINT32 const uiRoll)
+{
+	return uiRoll < 15 ? AIM_SHOT_LEGS : uiRoll > 94 ? AIM_SHOT_HEAD : AIM_SHOT_TORSO;
+}
+
+
 // Picks the body part a shot at a random location goes for, given a 0-99 roll
 static INT8 ResolveRandomAimLocation(SOLDIERTYPE* const pSoldier, SOLDIERTYPE const* const pTargetSoldier, GridNo const sTargetGridNo, UINT8 const ubAimTime, UINT32 const uiRoll)
 {
@@ -485,7 +491,7 @@ static INT8 ResolveRandomAimLocation(SOLDIERTYPE* const pSoldier, SOLDIERTYPE co
 		return AIM_SHOT_TORSO;
 	}
 
-	INT8 const bLocation = uiRoll < 15 ? AIM_SHOT_LEGS : uiRoll > 94 ? AIM_SHOT_HEAD : AIM_SHOT_TORSO;
+	INT8 const bLocation = RandomHitLocation(uiRoll);
 	if (bLocation != AIM_SHOT_HEAD)
 	{
 		UINT32 const uiChanceToGetThrough = SoldierToSoldierBodyPartChanceToGetThrough( pSoldier, pTargetSoldier, bLocation );

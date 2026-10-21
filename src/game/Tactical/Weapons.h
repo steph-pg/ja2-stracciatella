@@ -151,6 +151,8 @@ extern UINT32 AICalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 
 // Chance to hit, chance to get through included, of a shot at a random body
 // part, averaged over the body parts it may end up going for
 UINT32 CalcRandomAimChanceToHit(SOLDIERTYPE* pSoldier, SOLDIERTYPE const* pTargetSoldier, UINT8 ubAimTime);
+// Body part a random shot lands on for a 0-99 roll: 15% legs, 80% torso, 5% head
+INT8 RandomHitLocation(UINT32 uiRoll);
 extern UINT32 CalcChanceToPunch(SOLDIERTYPE *pAttacker, SOLDIERTYPE * pDefender, UINT8 ubAimTime, bool skipSafetyCheck = false);
 extern UINT32 CalcChanceToStab(SOLDIERTYPE * pAttacker,SOLDIERTYPE *pDefender, UINT8 ubAimTime);
 extern UINT32 CalcChanceToSteal(SOLDIERTYPE* pAttacker, SOLDIERTYPE* pDefender, UINT8 ubAimTime, bool skipSafetyCheck = false);

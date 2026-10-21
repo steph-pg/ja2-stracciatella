@@ -281,6 +281,11 @@
   //  vanilla setting: true
   "overburden_reduces_ap": false,
 
+  //  Can a bullet hitting a prone target land on the legs or head instead of always the torso?
+  //  When true, it uses the same split as a shot at a random location: 15% legs, 80% torso, 5% head.
+  //  vanilla setting: false
+  "prone_random_hit_location": true,
+
   //  Always show mouse cursor during tactical view (if false, no mourse cursor is shown when moving in real-time mode, selecting a merc, etc)
   //  vanilla setting: false
   "always_show_cursor_in_tactical": false,
