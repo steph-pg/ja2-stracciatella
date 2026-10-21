@@ -1,5 +1,7 @@
 #include "Militia_Control.h"
 #include "Campaign_Types.h"
+#include "Drugs_And_Alcohol.h"
+#include "Queen_Command.h"
 #include "Overhead.h"
 #include "Overhead_Types.h"
 #include "Soldier_Control.h"
@@ -56,6 +58,15 @@ void PrepareMilitiaForTactical()
 	ubRegs = pSector->ubNumberOfCivsAtLevel[ REGULAR_MILITIA ];
 	ubElites = pSector->ubNumberOfCivsAtLevel[ ELITE_MILITIA ];
 	AddSoldierInitListMilitia( ubGreen, ubRegs, ubElites );
+
+	// Militia only have a fight on their hands if the enemy is here too
+	if (NumEnemiesInSector(gWorldSector) != 0)
+	{
+		FOR_EACH_IN_TEAM(s, MILITIA_TEAM)
+		{
+			MaybeMakeBarDefenderTipsy(*s, gWorldSector);
+		}
+	}
 }
 
 

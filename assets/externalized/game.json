@@ -275,6 +275,14 @@
   //  vanilla setting: false
   "alcohol_boosts_strength": true,
 
+  //  Percentage chance that each defender of a sector with a bar (Drassen C13 and D13,
+  //  San Mona C5, C6 and D5, Grumm H2) has been drinking when a battle starts there,
+  //  in tactical and autoresolve alike. Applies to queen soldiers holding the sector
+  //  and to militia defending it, but never to elites. Drinkers start at the "feeling
+  //  good" level, which wears off without a hangover.
+  //  vanilla setting: 0
+  "bar_defenders_drunk_chance": 10,
+
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
   "campaign": {

@@ -14,6 +14,10 @@
 #include "Text.h"
 #include "Interface.h"
 #include "Timer_Control.h"
+#include "Logger.h"
+#include "Overhead_Types.h"
+#include "Quests.h"
+#include "StrategicMap.h"
 
 
 UINT8 ubDrugTravelRate[]	= {4,	2};
@@ -474,6 +478,52 @@ INT32 EffectStatForBeingDrunk(const SOLDIERTYPE* pSoldier, INT32 iStat)
 INT32 BoostStatForBeingDrunk(const SOLDIERTYPE* pSoldier, INT32 iStat)
 {
 	return std::max(iStat, std::min(iStat * ( 200 - giDrunkModifier[ GetDrunkLevel( pSoldier ) ] ) / 100, 100));
+}
+
+
+// The bars of Drassen, San Mona and Grumm
+static const SGPSector g_bar_sectors[] =
+{
+	{13, MAP_ROW_D},
+	{13, MAP_ROW_C},
+	{5, MAP_ROW_C},
+	{5, MAP_ROW_D},
+	{6, MAP_ROW_C},
+	{2, MAP_ROW_H}
+};
+
+
+bool IsBarSector(const SGPSector& sector)
+{
+	for (const auto& bar : g_bar_sectors)
+	{
+		if (sector == bar) return true;
+	}
+	return false;
+}
+
+
+void MaybeMakeBarDefenderTipsy(SOLDIERTYPE& s, const SGPSector& sector)
+{
+	UINT8 const chance = gamepolicy(bar_defenders_drunk_chance);
+	if (chance == 0 || !IsBarSector(sector)) return;
+
+	// Only the side holding the sector was at the bar when the fight came to them
+	bool const enemy_held = StrategicMap[sector.AsStrategicIndex()].fEnemyControlled;
+	if (s.bTeam != (enemy_held ? ENEMY_TEAM : MILITIA_TEAM)) return;
+
+	// Elites stay sober on duty
+	if (s.ubSoldierClass == SOLDIER_CLASS_ELITE || s.ubSoldierClass == SOLDIER_CLASS_ELITE_MILITIA) return;
+
+	if (GetDrunkLevel(&s) != SOBER || PreRandom(100) >= chance) return;
+
+	// One to three drinks' worth, already wearing off and with no hangover to
+	// follow, so they never get past "feeling good"
+	s.bDrugEffect[DRUG_TYPE_ALCOHOL]     = (INT8)(ubDrugEffect[DRUG_TYPE_ALCOHOL] * (1 + PreRandom(3)));
+	s.bDrugEffectRate[DRUG_TYPE_ALCOHOL] = -ubDrugWearoffRate[DRUG_TYPE_ALCOHOL];
+
+	SLOGD("Bar defender {} in {} has been drinking (alcohol effect {})",
+		s.ubID, sector, s.bDrugEffect[DRUG_TYPE_ALCOHOL]);
 }
 
 
