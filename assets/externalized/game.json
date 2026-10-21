@@ -501,6 +501,10 @@
   //  vanilla setting: 130
   "suppression_fire_reaction_threshold": 0,
 
+  //  Morale a merc loses when an alcohol buzz wears off, once for each level of drunkenness.
+  //  vanilla setting: 10
+  "alcohol_crash_morale_loss": 10,
+
   //  Night vision gear runs on batteries.
   //    true  - NV and UV goggles only extend sight while batteries are attached
   //            to them. Every engagement fought in the dark costs 10% of their

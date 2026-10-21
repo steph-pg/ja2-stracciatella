@@ -145,6 +145,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	suppression_fire_modifier = gp.getOptionalUInt("suppression_fire_modifier", 6);
 	suppression_fire_reaction_threshold = gp.getOptionalUInt("suppression_fire_reaction_threshold", 130);
 
+	alcohol_crash_morale_loss = gp.getOptionalUInt("alcohol_crash_morale_loss", 10);
+
 	night_goggles_need_batteries = gp.getOptionalBool("night_goggles_need_batteries", false);
 }
 
