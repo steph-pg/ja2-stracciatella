@@ -33,6 +33,10 @@ INT32 BoostStatForBeingDrunk(const SOLDIERTYPE* pSoldier, INT32 iStat);
 BOOLEAN MercUnderTheInfluence(const SOLDIERTYPE* pSoldier);
 
 bool IsBarSector(const SGPSector& sector);
+
+bool IsBottle(UINT16 usItem);
+bool IsDrinkable(OBJECTTYPE const& o);
+void ShatterBottles(OBJECTTYPE& o, INT16 sGridNo);
 void MaybeMakeBarDefenderTipsy(SOLDIERTYPE& s, const SGPSector& sector);
 
 

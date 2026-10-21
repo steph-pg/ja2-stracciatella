@@ -15,6 +15,7 @@
 #include "Interface.h"
 #include "Timer_Control.h"
 #include "Logger.h"
+#include "Sound_Control.h"
 #include "Overhead_Types.h"
 #include "Quests.h"
 #include "StrategicMap.h"
@@ -79,6 +80,13 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject, BOOLEAN *pfGoodA
 
 	// Determine what type of drug....
 	if ( ubDrugType == NO_DRUG )
+	{
+		return( FALSE );
+	}
+
+	// There is nothing left to drink in a broken bottle, so it is as good as no
+	// drug at all and the caller says it cannot be done
+	if ( !IsDrinkable( *pObject ) )
 	{
 		return( FALSE );
 	}
@@ -152,6 +160,21 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject, BOOLEAN *pfGoodA
 			else
 			{
 				ubKitPoints = 100;
+			}
+
+			if ( gamepolicy(drinks_and_drugs_rework) )
+			{
+				/* UseKitPoints() drinks from the last bottle in the stack, so move an
+				 * intact one there rather than "drinking" from a broken one. */
+				UINT8 const ubLast = pObject->ubNumberOfObjects - 1;
+				for (INT8 i = ubLast; i >= 0; --i)
+				{
+					if ( pObject->bStatus[i] > 1 )
+					{
+						std::swap( pObject->bStatus[i], pObject->bStatus[ubLast] );
+						break;
+					}
+				}
 			}
 
 			UINT16 const usPointsUsed = UseKitPoints(*pObject, ubKitPoints, *pSoldier);
@@ -495,6 +518,46 @@ static const SGPSector g_bar_sectors[] =
 	{6, MAP_ROW_C},
 	{2, MAP_ROW_H}
 };
+
+
+bool IsBottle(UINT16 const usItem)
+{
+	return usItem == ALCOHOL || usItem == WINE || usItem == BEER;
+}
+
+
+// A broken bottle is left at 1%, which is just glass with nothing in it
+bool IsDrinkable(OBJECTTYPE const& o)
+{
+	if ( !gamepolicy(drinks_and_drugs_rework) || !IsBottle( o.usItem ) ) return true;
+
+	for (UINT8 i = 0; i < o.ubNumberOfObjects; ++i)
+	{
+		if ( o.bStatus[i] > 1 ) return true;
+	}
+	return false;
+}
+
+
+void ShatterBottles(OBJECTTYPE& o, INT16 const sGridNo)
+{
+	if ( !gamepolicy(drinks_and_drugs_rework) || !IsBottle( o.usItem ) ) return;
+
+	bool fBroke = false;
+	for (UINT8 i = 0; i < o.ubNumberOfObjects; ++i)
+	{
+		if ( o.bStatus[i] > 1 )
+		{
+			o.bStatus[i] = 1;
+			fBroke = true;
+		}
+	}
+
+	if ( fBroke )
+	{
+		PlayLocationJA2Sample( sGridNo, SoundRange<GLASS_SHATTER1, GLASS_SHATTER2>(), MIDVOLUME, 1 );
+	}
+}
 
 
 bool IsBarSector(const SGPSector& sector)
