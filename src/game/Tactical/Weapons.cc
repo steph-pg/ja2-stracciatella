@@ -331,6 +331,10 @@ FireWeaponResult CheckForGunJam(SOLDIERTYPE * const pSoldier)
 				}
 				else
 				{
+					// MECHANICAL/DEXTERITY GAIN: Failed to unjam a gun
+					StatChange(*pSoldier, MECHANAMT, 2, FROM_FAILURE);
+					StatChange(*pSoldier, DEXTAMT,   2, FROM_FAILURE);
+
 					return FireWeaponResult::JAMMED;
 				}
 			}
@@ -980,11 +984,11 @@ static void AgilityForEnemyMissingPlayer(const SOLDIERTYPE* const attacker, SOLD
 
 static void AgilityForEnemyHittingPlayer(const SOLDIERTYPE* const attacker, SOLDIERTYPE* const target, const UINT agil_amt)
 {
-	if (!gamepolicy(agility_from_failed_dodges)) return;
-
-	// a failed dodge still teaches something, but as a failure it can't complete a point
+	// a failed dodge still teaches something, but as a failure it can't complete a point;
+	// someone collapsed or out of breath never got to dodge (the hit chance is 100)
 	if (target->bTeam != attacker->bTeam &&
-			target->bTeam == OUR_TEAM && target->bLife >= OKLIFE)
+			target->bTeam == OUR_TEAM && target->bLife >= OKLIFE &&
+			target->bBreath >= OKBREATH && !target->bCollapsed)
 	{
 		StatChange(*target, AGILAMT, agil_amt, FROM_FAILURE);
 	}
@@ -1319,7 +1323,7 @@ void UseHandToHand(SOLDIERTYPE* const pSoldier, INT16 const sTargetGridNo, BOOLE
 				// being attacked... successfully dodged, give experience
 				AgilityForEnemyMissingPlayer(pSoldier, pTargetSoldier, 8);
 			}
-			else if (pTargetSoldier->bOppList[pSoldier->ubID] != NOT_HEARD_OR_SEEN && !pTargetSoldier->bCollapsed)
+			else if (pTargetSoldier->bOppList[pSoldier->ubID] != NOT_HEARD_OR_SEEN)
 			{
 				// being attacked... saw it coming but failed to dodge
 				AgilityForEnemyHittingPlayer(pSoldier, pTargetSoldier, 4);
