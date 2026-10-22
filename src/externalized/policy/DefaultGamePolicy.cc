@@ -64,6 +64,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	skip_sleep_explanation = gp.getOptionalBool("skip_sleep_explanation");
 
 	pablo_wont_steal = gp.getOptionalBool("pablo_wont_steal");
+	sam_reinforcements_march_at_night = gp.getOptionalBool("sam_reinforcements_march_at_night");
 
 	critical_damage_head_multiplier = gp.getOptionalDouble("tactical_head_damage_multiplier", 1.5);
 	critical_damage_legs_multiplier = gp.getOptionalDouble("tactical_legs_damage_multiplier", 0.5);

@@ -389,6 +389,15 @@ properties:
       Packages at Drassen airport never get stolen, no need to bribe Pablo.
 
       Vanilla setting: `false`
+  sam_reinforcements_march_at_night:
+    type: boolean
+    title: SAM reinforcements march at night
+    description: |
+      The all-elite squad the queen sends to retake a captured SAM site marches through the night
+      instead of stopping to sleep on the way, like other enemy groups sometimes do. Only applies
+      while the squad is still all elites and still heading for the SAM site.
+
+      Vanilla setting: `false`
   chance_to_hit_minimum:
     type: integer
     title: Chance-to-hit minimum
@@ -998,6 +1007,7 @@ required:
   - skip_sleep_explanation
   - extra_attachments
   - pablo_wont_steal
+  - sam_reinforcements_march_at_night
   - chance_to_hit_minimum
   - chance_to_hit_maximum
   - tactical_head_damage_multiplier
