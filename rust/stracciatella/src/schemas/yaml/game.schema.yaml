@@ -228,6 +228,15 @@ properties:
           When already facing its focus, lay down if nothing else.
 
           Vanilla setting: `false`
+      burst_at_accuracy_extremes:
+        type: boolean
+        title: Burst at accuracy extremes
+        description: |
+          When a burst is possible, always take it if the shot already has a 70%+ chance to really
+          hit with no aim clicks (aiming buys little, the extra rounds are worth more), or under 5%
+          even when aimed (aiming won't land it, spraying might). Otherwise the vanilla roll decides.
+
+          Vanilla setting: `false`
       corpse_warning_duration:
         $ref: types/uint8.schema.yaml
         title: Corpse ambush warning duration
@@ -301,6 +310,7 @@ properties:
       - threshold_cth_head
       - threshold_cth_legs
       - go_prone_more_often
+      - burst_at_accuracy_extremes
       - corpse_warning_duration
       - corpse_warning_distance
       - stay_on_rooftop
