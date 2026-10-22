@@ -24,6 +24,8 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	silencer_halves_volume = gp.getOptionalBool("silencer_halves_volume");
 	realtime_sneak = gp.getOptionalBool("realtime_sneak");
 
+	allow_overwatch_interrupt = gp.getOptionalBool("allow_overwatch_interrupt");
+
 	fixed_cost_to_shoot = gp.getOptionalBool("fixed_cost_to_shoot");
 	ap_burst = gp.getOptionalUInt("ap_burst", 5);
 

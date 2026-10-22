@@ -51,6 +51,8 @@ public:
 	bool silencer_halves_volume;          // a silencer halves the gunshot volume instead of nearly muting it
 	bool realtime_sneak;                  // spotting enemies while none is on alert does not start turn-based mode; a real-time attack that starts combat costs APs
 
+	bool allow_overwatch_interrupt;       // a player merc who already sees an enemy that does not see him gets an interrupt duel the moment that enemy spots him (the merc enters the enemy's opplist as SEEN_CURRENTLY). Independent of the enemy's alert status
+
 	bool fixed_cost_to_shoot;    // Changes the formula for APs to shoot
 	uint8_t ap_burst;                     // APs to fire a burst for a merc with 25 base APs, scaled to their actual base APs (vanilla 5)
 
