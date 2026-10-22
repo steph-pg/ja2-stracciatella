@@ -90,6 +90,12 @@
   //  vanilla setting: false
   "silencer_halves_volume": true,
 
+  //  A merc who fails to dodge an enemy knife or punch still learns from it: Agility rolls
+  //  at half the dodge amount that can bring them close to the next point but never over it.
+  //  Surprise attacks give nothing. In vanilla only successful dodges train Agility.
+  //  vanilla setting: false
+  "agility_from_failed_dodges": false,
+
   //  Spotting enemies in real-time mode does not start turn-based mode, as long as no enemy is
   //  on alert (red or black). Combat starts as usual once a sighting happens with an enemy
   //  alerted, when an enemy spots one of your mercs, or when either side attacks. An attack that starts combat is paid for out of the

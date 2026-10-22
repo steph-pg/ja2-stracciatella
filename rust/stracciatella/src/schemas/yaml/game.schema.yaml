@@ -117,6 +117,16 @@ properties:
       look that was happening anyway, and a silencer made no difference to it.
 
       Vanilla setting: `false`
+  agility_from_failed_dodges:
+    type: boolean
+    title: Agility from failed dodges
+    description: |
+      A merc hit by an enemy knife or punch they saw coming gets Agility rolls at half the amount
+      a successful dodge gives (5 for a knife, 4 for a punch). Like every gain from a failure, these
+      can bring the stat close to its next point but never over it. In vanilla only successful dodges
+      train Agility.
+
+      Vanilla setting: `false`
   fixed_cost_to_shoot:
     type: boolean
     title: Fixed cost to shoot
@@ -1016,6 +1026,7 @@ required:
   - drop_everything
   - all_drops_visible
   - multiple_interrupts
+  - agility_from_failed_dodges
   - allow_overwatch_interrupt
   - enemy_weapon_minimal_status
   - gun_jam_chance_minimum
