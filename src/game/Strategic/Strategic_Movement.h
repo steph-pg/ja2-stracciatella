@@ -62,6 +62,7 @@ struct ENEMYGROUP
 	UINT8 ubIntention;						//the type of group this is:  patrol, assault, spies, etc.
 	UINT8 ubTroopsInBattle;				//number of soldiers currently in battle.
 	UINT8 ubElitesInBattle;				//number of elite soldiers currently in battle.
+	BOOLEAN fSamCounterattack;			//the elite squad sent by the SAM meanwhile event to retake a SAM site
 };
 
 

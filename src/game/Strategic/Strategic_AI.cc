@@ -3091,6 +3091,7 @@ void ExecuteStrategicAIAction(UINT16 usActionCode, const SGPSector* sMap)
 			}
 			//Assign the elite squad to attack the SAM site
 			pGroup->pEnemyGroup->ubIntention = REINFORCEMENTS;
+			pGroup->pEnemyGroup->fSamCounterattack = TRUE;
 			gGarrisonGroup[ SectorInfo[ ubSectorID ].ubGarrisonID ].ubPendingGroupID = pGroup->ubGroupID;
 
 			if( pPendingGroup )

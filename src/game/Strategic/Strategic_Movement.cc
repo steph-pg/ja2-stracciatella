@@ -1640,6 +1640,21 @@ static void DelayEnemyGroupsIfPathsCross(GROUP& player_group)
 }
 
 
+// The elite squad sent to retake a SAM site doesn't stop to sleep, as long as it is
+// still all elites and still heading for a SAM site.
+static bool IsSamCounterattackMarchingAtNight(const GROUP* const pGroup)
+{
+	if (!gamepolicy(sam_reinforcements_march_at_night)) return false;
+
+	const ENEMYGROUP* const eg = pGroup->pEnemyGroup;
+	if (!eg || !eg->fSamCounterattack) return false;
+	if (!eg->ubNumElites || eg->ubNumTroops || eg->ubNumAdmins) return false;
+
+	if (pGroup->ubMoveType != ONE_WAY) return false;
+	const WAYPOINT* const wp = GetFinalWaypoint(pGroup);
+	return wp && IsThisSectorASAMSector(wp->sSector);
+}
+
 //Calculates and posts an event to move the group to the next sector.
 static void InitiateGroupMovementToNextSector(GROUP* pGroup)
 {
@@ -1699,7 +1714,7 @@ static void InitiateGroupMovementToNextSector(GROUP* pGroup)
 	if (!pGroup->ubSector.z)
 	{
 		BOOLEAN fCalcRegularTime = TRUE;
-		if( !pGroup->fPlayer )
+		if( !pGroup->fPlayer && !IsSamCounterattackMarchingAtNight( pGroup ) )
 		{ //Determine if the enemy group is "sleeping".  If so, then simply delay their arrival time by the amount of time
 			//they are going to be sleeping for.
 			if( GetWorldHour() >= 21 || GetWorldHour() <= 4 )
@@ -2635,7 +2650,8 @@ static void SaveEnemyGroupStruct(HWFILE const f, GROUP const& g)
 	INJ_U8(  d, eg.ubIntention)
 	INJ_U8(  d, eg.ubTroopsInBattle)
 	INJ_U8(  d, eg.ubElitesInBattle)
-	INJ_SKIP(d, 20)
+	INJ_BOOL(d, eg.fSamCounterattack)
+	INJ_SKIP(d, 19)
 	Assert(d.getConsumed() == lengthof(data));
 
 	f->write(data, sizeof(data));
@@ -2659,7 +2675,8 @@ static void LoadEnemyGroupStructFromSavedGame(HWFILE const f, GROUP& g)
 	EXTR_U8(  d, eg->ubIntention)
 	EXTR_U8(  d, eg->ubTroopsInBattle)
 	EXTR_U8(  d, eg->ubElitesInBattle)
-	EXTR_SKIP(d, 20)
+	EXTR_BOOL(d, eg->fSamCounterattack)
+	EXTR_SKIP(d, 19)
 	Assert(d.getConsumed() == lengthof(data));
 
 	g.pEnemyGroup = eg;
