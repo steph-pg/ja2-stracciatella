@@ -105,6 +105,10 @@
     //  When already facing its focus, lay down if nothing else.
     // vanilla setting: false
     "go_prone_more_often": false,
+    //  When a burst is possible, always take it if the shot already has a 70%+ chance to really hit
+    //  with no aim clicks, or under 5% even when aimed. Otherwise the vanilla roll decides.
+    // vanilla setting: false
+    "burst_at_accuracy_extremes": false,
 
     //  Avoid ambushes
     //  On seeing a corpse, the AI suspects an ambush and refuses to walk into the tiles around it.

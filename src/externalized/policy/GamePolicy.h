@@ -58,6 +58,7 @@ public:
 
 	bool ai_better_aiming_choice;         // decide where to shoot depending on to-hit probability if random choice is being made
 	bool ai_go_prone_more_often;          // especially when already facing the right direction
+	bool ai_burst_at_accuracy_extremes;   // burst instead of an aimed shot when the shot is near-certain unaimed or hopeless aimed
 	int8_t threshold_cth_head;            // threshold AI always take head shots, increase game difficulty
 	int8_t threshold_cth_legs;            // threshold AI switch to leg shots from torso
 
