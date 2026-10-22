@@ -67,6 +67,7 @@ public:
 	bool informative_tooltips;            /* Reveal modifiers in hover boxes */
 	bool extra_attachments;               // allow more item attachments options
 	bool skip_sleep_explanation;          // skip annoying popups
+	bool prorated_rest_after_arrival;     // mercs who arrived on foot mid-hour get only part of that hour's rest
 
 	bool extra_mousewheel_actions;        // Extra tactical mouse wheel bindings: look cursor on wheel click, aim level on wheel scroll
 	bool can_enter_turnbased;             // 'd' can start turnbased if in real-time

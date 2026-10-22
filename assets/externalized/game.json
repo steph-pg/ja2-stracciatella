@@ -244,6 +244,12 @@
   //  vanilla setting: false
   "skip_sleep_explanation": false,
 
+  //  A merc who arrives in a sector on foot only gets the part of that hour's rest they were
+  //  actually there for, in quarters, rounded up: arriving at 13:58 and resting until 14:00
+  //  still gives a quarter. Vanilla gives the full hour no matter when they arrived.
+  //  vanilla setting: false
+  "prorated_rest_after_arrival": false,
+
   //  Enables extra attachments: boosters and break lights on leggings, goggles on helmets,
   //  quick glue and duct tape in a repair kit. A stack gives up one item per attachment.
   //  vanilla setting: false

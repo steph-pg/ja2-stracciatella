@@ -62,6 +62,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	informative_tooltips = gp.getOptionalBool("informative_tooltips", false);
 	extra_attachments = gp.getOptionalBool("extra_attachments");
 	skip_sleep_explanation = gp.getOptionalBool("skip_sleep_explanation");
+	prorated_rest_after_arrival = gp.getOptionalBool("prorated_rest_after_arrival");
 
 	pablo_wont_steal = gp.getOptionalBool("pablo_wont_steal");
 	sam_reinforcements_march_at_night = gp.getOptionalBool("sam_reinforcements_march_at_night");

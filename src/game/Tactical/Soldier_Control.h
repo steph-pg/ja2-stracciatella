@@ -376,6 +376,7 @@ struct SOLDIERTYPE
 	BOOLEAN fBetweenSectors; //set when the group isn't actually in a sector.
 	//sSectorX and sSectorY will reflect the sector the
 	//merc was at last.
+	UINT32 uiLastArrivalTime; //world minute the merc last arrived in a sector on foot
 
 	UINT8 ubMovementNoiseHeard;// 8 flags by direction
 

@@ -2110,6 +2110,14 @@ static void RestCharacter(SOLDIERTYPE* pSoldier)
 		bMaxBreathRegain = ( bMaxBreathRegain * 3 / 2 );
 	}
 
+	// only rested for the part of the hour since arriving on foot, in quarters rounded up
+	UINT32 const minutes_since_arrival = GetWorldTotalMin() - pSoldier->uiLastArrivalTime;
+	if (gamepolicy(prorated_rest_after_arrival) && minutes_since_arrival < 60)
+	{
+		UINT32 const quarters = std::max((minutes_since_arrival * 4 + 59) / 60, 1U);
+		bMaxBreathRegain = bMaxBreathRegain * quarters / 4;
+	}
+
 	pSoldier -> bBreathMax += bMaxBreathRegain;
 
 

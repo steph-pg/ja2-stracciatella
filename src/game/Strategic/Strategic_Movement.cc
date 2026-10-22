@@ -1239,6 +1239,7 @@ void GroupArrivedAtSector(GROUP& g, BOOLEAN const check_for_battle, BOOLEAN cons
 			{
 				SOLDIERTYPE& s = *i->pSoldier;
 				s.fBetweenSectors      = FALSE;
+				s.uiLastArrivalTime    = GetWorldTotalMin();
 				s.sSector              = cSector;
 				s.ubPrevSectorID       = g.ubPrev.AsByte();
 				s.ubInsertionDirection = insertion_direction;
