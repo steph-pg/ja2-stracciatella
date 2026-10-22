@@ -206,7 +206,15 @@
 
     //  At night, AI soldiers path around lit tiles the player can see
     //  vanilla value: false
-    "avoid_light_tiles_at_night": true
+    "avoid_light_tiles_at_night": true,
+
+    //  Turn-based combat decisions: soldiers advance from cover to cover and,
+    //  once they have moved, hold cover rather than walk out into the open;
+    //  the last shot of a turn leaves the APs to step into cover afterwards;
+    //  and the choice between shooting and cover weighs the soldier's wounds,
+    //  the opponents in sight and a target close to going down.
+    //  vanilla value: false
+    "improved_decide_action": true
   },
 
   //  How much variation should there be in elite soldier xp level?

@@ -50,6 +50,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	enemy_shoot_unseen = ai.getOptionalBool("enemy_shoot_unseen");
 	ai_smarter_cover_search = ai.getOptionalBool("smarter_cover_search");
 	avoid_light_tiles_at_night = ai.getOptionalBool("avoid_light_tiles_at_night");
+	ai_improved_decide_action = ai.getOptionalBool("improved_decide_action");
 
 	interrupt_after_being_under_fire = gp.getOptionalBool("interrupt_after_being_under_fire", true);
 

@@ -85,6 +85,7 @@ public:
 	bool enemy_shoot_unseen;              // AI may shoot at opponents it cannot see itself
 	bool ai_smarter_cover_search;         // AI weighs cover against opponents who could stand up and shoot and against the tiles it has been shot at from, searches its whole radius for it, and steps behind cover it can still shoot past before opening fire or watching for an opponent (false = vanilla)
 	bool avoid_light_tiles_at_night;      // at night, AI soldiers path around lit tiles the player can see
+	bool ai_improved_decide_action;       // AI advances from cover to cover, steps into cover after its last shot of the turn, and weighs its wounds, the opponents in sight and a nearly downed target when choosing between shooting and cover (false = vanilla)
 
 	bool interrupt_after_being_under_fire; // only being shot at during the turn in progress blocks a soldier's interrupts; vanilla keeps them blocked through the next turn too, since the under-fire mark is only cleared once their own turn begins. Applies to mercs and AI alike
 

@@ -1476,6 +1476,106 @@ static INT8 FireGunOrChangeStanceFirst(SOLDIERTYPE *pSoldier, const ATTACKTYPE &
 }
 
 
+// With the improved decision making a soldier closing in on sDestGridNo moves
+// from cover to cover, rather than as far as its APs go into whatever open ground
+// that ends on. Once it has moved this turn it holds a covered spot rather than
+// walk out of it into the open; a fresh turn always presses on. AI_ACTION_NONE
+// leaves the move to the vanilla advance.
+static INT8 AdvanceUnderCover(SOLDIERTYPE* const pSoldier, INT16 const sDestGridNo, INT8 const bAction)
+{
+	bool fStayPut;
+	INT16 const sCover = FindCoverTowards(pSoldier, sDestGridNo, bAction, &fStayPut);
+
+	if (sCover != NOWHERE)
+	{
+		// leave a spot next to a warning corpse to the vanilla advance, which avoids it
+		if (gamepolicy(corpse_warning_duration) > 0 && !ArmySeesOpponents() &&
+			GetNearestRottingCorpseAIWarning(sCover) > 0)
+		{
+			return AI_ACTION_NONE;
+		}
+
+		SLOGD("AdvanceUnderCover: soldier {} moves to cover at {} on the way to {}", pSoldier->ubID, sCover, sDestGridNo);
+		pSoldier->usActionData = sCover;
+		pSoldier->bPathStored  = FALSE;
+		return bAction;
+	}
+
+	if (fStayPut && pSoldier->bActionPoints < pSoldier->bInitialActionPoints)
+	{
+		SLOGD("AdvanceUnderCover: soldier {} holds cover at {} rather than head for {} in the open",
+			pSoldier->ubID, pSoldier->sGridNo, sDestGridNo);
+		if (gAnimControl[pSoldier->usAnimState].ubEndHeight == ANIM_STAND && IsValidStance(pSoldier, ANIM_CROUCH) &&
+			GetAPsToChangeStance(pSoldier, ANIM_CROUCH) <= pSoldier->bActionPoints)
+		{
+			pSoldier->usActionData = ANIM_CROUCH;
+			pSoldier->bNextAction  = AI_ACTION_END_TURN;
+			return AI_ACTION_CHANGE_STANCE;
+		}
+		pSoldier->usActionData = NOWHERE;
+		return AI_ACTION_END_TURN;
+	}
+
+	return AI_ACTION_NONE;
+}
+
+
+// FindBestNearbyCover for a soldier left with only bAPs to get there.
+static INT16 CoverReachableWith(SOLDIERTYPE* const pSoldier, INT8 const bAPs)
+{
+	INT8 const bRealAPs = pSoldier->bActionPoints;
+	pSoldier->bActionPoints = bAPs;
+
+	INT16 sCover = NOWHERE;
+	if (bAPs >= MinPtsToMove(pSoldier))
+	{
+		INT32 iPercentBetter;
+		sCover = FindBestNearbyCover(pSoldier, pSoldier->bAIMorale, &iPercentBetter);
+	}
+
+	pSoldier->bActionPoints = bRealAPs;
+	return sCover;
+}
+
+
+// With the improved decision making a soldier firing the last shot it can afford
+// this turn steps into cover straight afterwards, rather than spending the turn
+// down to APs that reach no cover and finishing it where it stood to fire. When
+// only an unaimed shot leaves enough APs, and aiming would add little to it, the
+// aim is dropped. ubRawAPCost is the cost of the shot before aiming or bursting.
+static void PlanCoverAfterShot(SOLDIERTYPE* const pSoldier, ATTACKTYPE const& attack, UINT8 const ubRawAPCost)
+{
+	if (!gfTurnBasedAI || SkipCoverCheck || gfHiddenInterrupt || TANK(pSoldier) ||
+		(pSoldier->uiStatusFlags & SOLDIER_BOXER) || pSoldier->bOrders == STATIONARY ||
+		pSoldier->bNextAction != AI_ACTION_NONE ||
+		(pSoldier->bTeam == OUR_TEAM && !(pSoldier->fAIFlags & AI_RTP_OPTION_CAN_SEEK_COVER)))
+	{
+		return;
+	}
+
+	UINT8 const ubShotAPs = ubRawAPCost + (pSoldier->bDoBurst ?
+		CalcAPsToBurst(CalcActionPoints(pSoldier), pSoldier->inv[attack.bWeaponIn]) : pSoldier->bAimTime);
+	INT8 const bAPsAfter = pSoldier->bActionPoints - ubShotAPs;
+
+	// with another shot still affordable, the next decision deals with it
+	if (bAPsAfter >= ubRawAPCost) return;
+
+	INT16 sCover = CoverReachableWith(pSoldier, bAPsAfter);
+	if (sCover == NOWHERE && !pSoldier->bDoBurst && pSoldier->bAimTime > 0 &&
+		attack.ubChanceToReallyHitUnaimed * 3 >= attack.ubChanceToReallyHit * 2)
+	{
+		sCover = CoverReachableWith(pSoldier, bAPsAfter + pSoldier->bAimTime);
+		if (sCover != NOWHERE) pSoldier->bAimTime = 0;
+	}
+	if (sCover == NOWHERE) return;
+
+	SLOGD("PlanCoverAfterShot: soldier {} fires (aim {}, burst {}) then takes cover at {}",
+		pSoldier->ubID, (int) pSoldier->bAimTime, (int) pSoldier->bDoBurst, sCover);
+	pSoldier->bNextAction      = AI_ACTION_TAKE_COVER;
+	pSoldier->usNextActionData = sCover;
+}
+
+
 INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 {
 	INT8 bActionReturned;
@@ -2161,6 +2261,15 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 						// SEEK CLOSEST DISTURBANCE: GO DIRECTLY TOWARDS CLOSEST KNOWN OPPONENT
 						//////////////////////////////////////////////////////////////////////
 
+						if (gamepolicy(ai_improved_decide_action) && gfTurnBasedAI && !fClimb && !SkipCoverCheck)
+						{
+							bActionReturned = AdvanceUnderCover(pSoldier, sClosestDisturbance, AI_ACTION_SEEK_OPPONENT);
+							if (bActionReturned != AI_ACTION_NONE)
+							{
+								return(bActionReturned);
+							}
+						}
+
 						// try to move towards him
 						pSoldier->usActionData = GoAsFarAsPossibleTowards(pSoldier,sClosestDisturbance,AI_ACTION_SEEK_OPPONENT);
 
@@ -2313,6 +2422,15 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier, UINT8 ubUnconsciousOK)
 						//////////////////////////////////////////////////////////////////////
 						// GO DIRECTLY TOWARDS CLOSEST FRIEND UNDER FIRE OR WHO LAST RADIOED
 						//////////////////////////////////////////////////////////////////////
+						if (gamepolicy(ai_improved_decide_action) && gfTurnBasedAI && !fClimb && !SkipCoverCheck)
+						{
+							bActionReturned = AdvanceUnderCover(pSoldier, sClosestFriend, AI_ACTION_SEEK_FRIEND);
+							if (bActionReturned != AI_ACTION_NONE)
+							{
+								return(bActionReturned);
+							}
+						}
+
 						pSoldier->usActionData = GoAsFarAsPossibleTowards(pSoldier,sClosestFriend,AI_ACTION_SEEK_OPPONENT);
 
 						if (pSoldier->usActionData != NOWHERE)
@@ -3343,6 +3461,24 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 			case AGGRESSIVE:		iOffense += 20; break;
 			case ATTACKSLAYONLY:iOffense += 30; break;
 		}
+
+		// With the improved decision making the choice also weighs what the shot
+		// risks and what it may win: a wounded soldier values their skin more, every
+		// opponent in sight beyond the first is another gun to answer the shot, and
+		// a target close to going down is worth staying in the open for.
+		if (gamepolicy(ai_improved_decide_action))
+		{
+			iDefense += 20 * (pSoldier->bLifeMax - pSoldier->bLife) / std::max<INT32>(1, pSoldier->bLifeMax);
+			if (pSoldier->bOppCnt > 1)
+			{
+				iDefense += 5 * std::min<INT32>(pSoldier->bOppCnt - 1, 4);
+			}
+			const SOLDIERTYPE* const opp = BestAttack.opponent;
+			if (opp != NULL && opp->bLife >= OKLIFE && opp->bLife < opp->bLifeMax / 3)
+			{
+				iOffense += 15;
+			}
+		}
 		SLOGD("{} - CHOICE: iOffense = {}, iDefense = {}\n",
 			pSoldier->name, iOffense,iDefense);
 
@@ -3389,6 +3525,8 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 
 		if (ubBestAttackAction == AI_ACTION_FIRE_GUN)
 		{
+			UINT8 const ubRawShotAPs = BestAttack.ubAPCost - BestAttack.ubAimTime;
+
 			// Do we need to change stance?  NB We'll have to ready our gun again
 			// (not for a suppression burst)
 			if ( BestAttack.bTargetCubeLevel == 0 && !TANK( pSoldier ) && ( pSoldier->bActionPoints - (BestAttack.ubAPCost - BestAttack.ubAimTime) ) >= (AP_CROUCH + GetAPsToReadyWeapon( pSoldier, pSoldier->usAnimState ) ) )
@@ -3532,6 +3670,12 @@ static INT8 DecideActionBlack(SOLDIERTYPE* pSoldier)
 			{
 				pSoldier->bAimTime			= 0;
 				pSoldier->bDoBurst			= 1;
+			}
+
+			// a stance change takes the queued action for the shot itself
+			if (gamepolicy(ai_improved_decide_action) && !fChangeStanceFirst)
+			{
+				PlanCoverAfterShot(pSoldier, BestAttack, ubRawShotAPs);
 			}
 
 			/*

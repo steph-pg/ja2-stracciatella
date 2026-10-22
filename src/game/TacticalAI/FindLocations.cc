@@ -36,6 +36,7 @@
 
 #include <algorithm>
 #include <map>
+#include <vector>
 
 #ifdef _DEBUG
 	INT16 gsCoverValue[WORLD_MAX];
@@ -1371,6 +1372,136 @@ INT16 FindCoverToFireFrom(SOLDIERTYPE* pSoldier, const SOLDIERTYPE* pTarget, INT
 	}
 	return sBestSpot;
 }
+
+
+// A tile the soldier can reach this turn on the way to sDestGridNo that shields
+// it from the threats a third better than going as far as it can would. Only
+// tiles that cover at least half the ground the farthest one does are weighed,
+// so the advance slows down for cover but never stalls. When there is no such
+// tile but the soldier's own spot is that much safer than pressing on,
+// *pfStayPut is set. NOWHERE leaves the advance to GoAsFarAsPossibleTowards.
+INT16 FindCoverTowards(SOLDIERTYPE* pSoldier, INT16 sDestGridNo, INT8 bAction, bool* pfStayPut)
+{
+	*pfStayPut = false;
+
+	UINT16 const usMovementMode = DetermineMovementMode(pSoldier, bAction);
+	pSoldier->usUIMovementMode = usMovementMode;
+
+	// keep the APs GoAsFarAsPossibleTowards keeps, to crouch or react on arrival
+	INT32 const iAPBudget = pSoldier->bActionPoints - MAX_AP_CARRIED;
+	INT32 iSearchRange = iAPBudget - MinAPsToStartMovement(pSoldier, usMovementMode);
+	iSearchRange = std::min<INT32>(iSearchRange, AI_PATHCOST_RADIUS);
+	if (iSearchRange <= 0) return NOWHERE;
+
+	UINT32 const uiThreatCnt = BuildCoverThreatList(pSoldier, MAX_THREAT_RANGE + CELL_X_SIZE * iSearchRange);
+	if (uiThreatCnt == 0) return NOWHERE;
+
+	INT16 sOrigin;
+	INT32 const iRoamRange = RoamingRange(pSoldier, &sOrigin);
+
+	INT16 const sMaxLeft  = (INT16) std::min<INT32>(iSearchRange, pSoldier->sGridNo % MAXCOL);
+	INT16 const sMaxRight = (INT16) std::min<INT32>(iSearchRange, MAXCOL - ((pSoldier->sGridNo % MAXCOL) + 1));
+	INT16 const sMaxUp    = (INT16) std::min<INT32>(iSearchRange, pSoldier->sGridNo / MAXROW);
+	INT16 const sMaxDown  = (INT16) std::min<INT32>(iSearchRange, MAXROW - ((pSoldier->sGridNo / MAXROW) + 1));
+
+	gubNPCAPBudget  = (UINT8) iAPBudget;
+	gubNPCDistLimit = (UINT8) iSearchRange;
+
+	for (INT16 sYOffset = -sMaxUp; sYOffset <= sMaxDown; ++sYOffset)
+	{
+		for (INT16 sXOffset = -sMaxLeft; sXOffset <= sMaxRight; ++sXOffset)
+		{
+			INT16 const sGridNo = pSoldier->sGridNo + sXOffset + (MAXCOL * sYOffset);
+			if (sGridNo < 0 || sGridNo >= WORLD_MAX) continue;
+			gpWorldLevelData[sGridNo].uiFlags &= ~(MAPELEMENT_REACHABLE);
+		}
+	}
+
+	FindBestPath(pSoldier, NOWHERE, pSoldier->bLevel, usMovementMode, COPYREACHABLE_AND_APS, 0);
+	gpWorldLevelData[pSoldier->sGridNo].uiFlags &= ~(MAPELEMENT_REACHABLE);
+
+	bool const fHasGasMask = IsWearingHeadGear(*pSoldier, GASMASK);
+	INT32 const iHereDist = PythSpacesAway(pSoldier->sGridNo, sDestGridNo);
+
+	// first see how far this turn can take us, then weigh the tiles that keep up
+	struct Candidate { INT16 sGridNo; INT32 iProgress; INT32 iPathCost; };
+	std::vector<Candidate> candidates;
+	INT32 iMaxProgress = 0;
+
+	for (INT16 sYOffset = -sMaxUp; sYOffset <= sMaxDown; ++sYOffset)
+	{
+		for (INT16 sXOffset = -sMaxLeft; sXOffset <= sMaxRight; ++sXOffset)
+		{
+			INT16 const sGridNo = pSoldier->sGridNo + sXOffset + (MAXCOL * sYOffset);
+			if (sGridNo < 0 || sGridNo >= WORLD_MAX) continue;
+
+			if (!(gpWorldLevelData[sGridNo].uiFlags & MAPELEMENT_REACHABLE)) continue;
+			if (Water(sGridNo))                                              continue;
+			if (!fHasGasMask && InGas(pSoldier, sGridNo))                    continue;
+			if (sGridNo == pSoldier->sBlackList)                             continue;
+			if (iRoamRange < MAX_ROAMING_RANGE && sOrigin != NOWHERE &&
+				SpacesAway(sOrigin, sGridNo) > iRoamRange)                     continue;
+
+			INT32 const iProgress = iHereDist - PythSpacesAway(sGridNo, sDestGridNo);
+			if (iProgress <= 0) continue;
+
+			INT32 const iPathCost = gubAIPathCosts[AI_PATHCOST_RADIUS + sXOffset][AI_PATHCOST_RADIUS + sYOffset];
+			candidates.push_back({ sGridNo, iProgress, iPathCost });
+			iMaxProgress = std::max(iMaxProgress, iProgress);
+		}
+	}
+
+	gubNPCAPBudget  = 0;
+	gubNPCDistLimit = 0;
+
+	if (iMaxProgress == 0)
+	{
+		SLOGD("FindCoverTowards: soldier {} at {} can get no closer to {}", pSoldier->ubID, pSoldier->sGridNo, sDestGridNo);
+		return NOWHERE;
+	}
+
+	INT32 const iMinProgress = std::max<INT32>(1, (iMaxProgress + 1) / 2);
+
+	INT16 sBestSpot = NOWHERE, sFarthest = NOWHERE;
+	INT32 iBestExposure = 0, iBestProgress = 0, iFarExposure = 0, iFarPathCost = 0;
+
+	for (Candidate const& c : candidates)
+	{
+		if (c.iProgress < iMinProgress) continue;
+
+		INT32 const iExposure = CalcExposure(pSoldier, c.sGridNo, pSoldier->bActionPoints - c.iPathCost, uiThreatCnt);
+
+		// the least exposed spot wins, the one farther along if two are as good
+		if (sBestSpot == NOWHERE || iExposure < iBestExposure ||
+			(iExposure == iBestExposure && c.iProgress > iBestProgress))
+		{
+			sBestSpot     = c.sGridNo;
+			iBestExposure = iExposure;
+			iBestProgress = c.iProgress;
+		}
+
+		// the spot going as far as we can would take us, the nearer one if two are as far
+		if (c.iProgress == iMaxProgress && (sFarthest == NOWHERE || c.iPathCost < iFarPathCost))
+		{
+			sFarthest    = c.sGridNo;
+			iFarExposure = iExposure;
+			iFarPathCost = c.iPathCost;
+		}
+	}
+
+	INT32 const iHereExposure = CalcExposure(pSoldier, pSoldier->sGridNo, pSoldier->bActionPoints, uiThreatCnt);
+	INT32 const iWorthIt      = iFarExposure * 2 / 3;
+
+	SLOGD("FindCoverTowards: soldier {} at {} heading for {}: exposure here {}, at farthest {} ({} tiles) {}, best {} ({} tiles) {}",
+		pSoldier->ubID, pSoldier->sGridNo, sDestGridNo, iHereExposure, sFarthest, iMaxProgress, iFarExposure,
+		sBestSpot, iBestProgress, iBestExposure);
+
+	if (iBestExposure < iWorthIt) return sBestSpot;
+
+	if (iHereExposure < iWorthIt) *pfStayPut = true;
+	return NOWHERE;
+}
+
 
 INT16 FindSpotMaxDistFromOpponents(SOLDIERTYPE *pSoldier)
 {
