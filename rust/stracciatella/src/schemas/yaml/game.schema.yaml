@@ -305,6 +305,29 @@ properties:
           watches that spot from there.
 
           Vanilla setting: `false`
+      improved_decide_action:
+        type: boolean
+        title: Improved decide action
+        description: |
+          Makes the AI's combat decisions in turn-based play less reckless, in three ways.
+
+          A soldier closing in on an opponent, or heading to help a team-mate in trouble, moves from
+          cover to cover. Of the tiles it can reach this turn that cover at least half the ground
+          going as far as possible would, it picks the one least exposed to the opponents it knows
+          of, as long as that is a third safer than the farthest one. Once it has moved this turn,
+          it holds a covered spot rather than walk out into the open; a fresh turn always presses
+          on.
+
+          A soldier firing the last shot it can afford this turn keeps the APs to step into cover
+          straight afterwards, instead of spending them down to an amount that reaches no cover.
+          If only an unaimed shot leaves enough, the aim is dropped when aiming would add little
+          to the chance to hit.
+
+          When choosing between shooting and taking cover, the soldier also weighs its own wounds
+          and every opponent in sight beyond the first in favour of cover, and a target that is
+          close to going down in favour of the shot.
+
+          Vanilla setting: `false`
     required:
       - better_aiming_choice
       - threshold_cth_head
