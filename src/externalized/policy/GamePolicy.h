@@ -49,7 +49,6 @@ public:
 	bool multiple_interrupts;             // can interrupt more than once per turn
 	bool muzzle_flashes_reveal_location;   // a muzzle flash gives the firer away to the other teams at the flash's extended sighting range, and a silencer hides the flash entirely
 	bool silencer_halves_volume;          // a silencer halves the gunshot volume instead of nearly muting it
-	bool agility_from_failed_dodges;      // being hit by a melee attack you saw coming gives half the dodge Agility, as a failure
 	bool realtime_sneak;                  // spotting enemies while none is on alert does not start turn-based mode; a real-time attack that starts combat costs APs
 
 	bool allow_overwatch_interrupt;       // a player merc who already sees an enemy that does not see him gets an interrupt duel the moment that enemy spots him (the merc enters the enemy's opplist as SEEN_CURRENTLY). Independent of the enemy's alert status

@@ -282,7 +282,7 @@ BOOLEAN AttemptToCrowbarLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 		if (iResult > -10)
 		{
 			// STR GAIN - Damaged a lock by prying
-			StatChange(*pSoldier, STRAMT, 5, FROM_SUCCESS);
+			StatChange(*pSoldier, STRAMT, 5, FROM_FAILURE);
 
 			// we came close... so do some damage to the lock
 			pDoor->bLockDamage += (INT8) (10 + iResult);
@@ -290,7 +290,7 @@ BOOLEAN AttemptToCrowbarLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 		else if ( iResult > -40 && pSoldier->sGridNo != pSoldier->sSkillCheckGridNo )
 		{
 			// give token point for effort :-)
-			StatChange(*pSoldier, STRAMT, 1, FROM_SUCCESS);
+			StatChange(*pSoldier, STRAMT, 1, FROM_FAILURE);
 		}
 
 		return( FALSE );
@@ -359,7 +359,7 @@ BOOLEAN AttemptToSmashDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 		if (iResult > -10)
 		{
 			// STR GAIN - Damaged a lock by prying
-			StatChange(*pSoldier, STRAMT, 5, FROM_SUCCESS);
+			StatChange(*pSoldier, STRAMT, 5, FROM_FAILURE);
 
 			// we came close... so do some damage to the lock
 			pDoor->bLockDamage += (INT8) (10 + iResult);
@@ -367,7 +367,7 @@ BOOLEAN AttemptToSmashDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 		else if ( iResult > -40 && pSoldier->sGridNo != pSoldier->sSkillCheckGridNo )
 		{
 			// give token point for effort :-)
-			StatChange(*pSoldier, STRAMT, 1, FROM_SUCCESS);
+			StatChange(*pSoldier, STRAMT, 1, FROM_FAILURE);
 		}
 		return( FALSE );
 	}
@@ -461,19 +461,26 @@ BOOLEAN AttemptToPickLock( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 BOOLEAN AttemptToUntrapDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 {
 	INT32 iResult;
+	StatKind ubStat;
 
 	// See if we measure up to the task.
 	if ( pDoor->ubTrapID == EXPLOSION  )
 	{
 		iResult = SkillCheck( pSoldier, DISARM_TRAP_CHECK, static_cast<int8_t>(-pDoor->ubTrapLevel * 7) );
+		ubStat = EXPLODEAMT;
 	}
 	else
 	{
 		iResult = SkillCheck( pSoldier, DISARM_ELECTRONIC_TRAP_CHECK, static_cast<int8_t>(-pDoor->ubTrapLevel * 7) );
+		// the check uses whichever of the two is higher, so train that one
+		ubStat = EffectiveMechanical( pSoldier ) >= EffectiveExplosive( pSoldier ) ? MECHANAMT : EXPLODEAMT;
 	}
 
 	if (iResult > 0)
 	{
+		// MECHANICAL/EXPLOSIVES GAIN:  Disarmed a door trap
+		StatChange(*pSoldier, ubStat, 6 * pDoor->ubTrapLevel, FROM_SUCCESS);
+
 		// succeeded!
 		pDoor->ubTrapLevel = 0;
 		pDoor->ubTrapID = NO_TRAP;
@@ -481,6 +488,9 @@ BOOLEAN AttemptToUntrapDoor( SOLDIERTYPE * pSoldier, DOOR * pDoor )
 	}
 	else
 	{
+		// MECHANICAL/EXPLOSIVES GAIN:  Failed to disarm a door trap
+		StatChange(*pSoldier, ubStat, 3 * pDoor->ubTrapLevel, FROM_FAILURE);
+
 		// trap should REALLY go off now!
 		return( FALSE );
 	}
