@@ -369,6 +369,16 @@ properties:
       Skips the `cannot sleep` popup when driving or when the merc is already rested.
 
       Vanilla setting: `false`
+  prorated_rest_after_arrival:
+    type: boolean
+    title: Prorated rest after arrival
+    description: |
+      A merc who arrives in a sector on foot only gets the part of that hour's rest they were
+      actually there for, counted in quarters and rounded up: arriving at 13:58 and resting until
+      14:00 still gives a quarter. Without it the full hour of rest is given no matter when they
+      arrived, so travelling and resting overlap. Vehicle passengers are not affected.
+
+      Vanilla setting: `false`
   extra_attachments:
     type: boolean
     title: Extra attachments
@@ -1005,6 +1015,7 @@ required:
   - enemy_elite_maximum_level
   - gui_extras
   - skip_sleep_explanation
+  - prorated_rest_after_arrival
   - extra_attachments
   - pablo_wont_steal
   - sam_reinforcements_march_at_night

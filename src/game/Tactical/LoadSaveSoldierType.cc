@@ -137,7 +137,7 @@ void ExtractSoldierType(const BYTE* const data, SOLDIERTYPE* const s, bool strac
 	EXTR_SKIP(d, 13)
 	s->UpdateCounter = {};
 	s->DamageCounter = {};
-	EXTR_SKIP_I32(d)
+	EXTR_U32(d, s->uiLastArrivalTime)
 	ExtractStatDamage(s->bAgilityDamage);
 	ExtractStatDamage(s->bDexterityDamage);
 	ExtractStatDamage(s->bStrengthDamage);
@@ -651,7 +651,7 @@ void InjectSoldierType(BYTE* const data, const SOLDIERTYPE* const s)
 	INJ_SKIP(d, 5)
 	INJ_I32(d, 0)
 	INJ_I32(d, 0)
-	INJ_SKIP_I32(d)
+	INJ_U32(d, s->uiLastArrivalTime)
 	INJ_I8(d, s->bAgilityDamage)
 	INJ_I8(d, s->bDexterityDamage)
 	INJ_I8(d, s->bStrengthDamage)
