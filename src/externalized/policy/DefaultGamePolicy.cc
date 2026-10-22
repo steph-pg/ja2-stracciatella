@@ -22,6 +22,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	multiple_interrupts = gp.getOptionalBool("multiple_interrupts");
 	muzzle_flashes_reveal_location = gp.getOptionalBool("muzzle_flashes_reveal_location");
 	silencer_halves_volume = gp.getOptionalBool("silencer_halves_volume");
+	agility_from_failed_dodges = gp.getOptionalBool("agility_from_failed_dodges");
 	realtime_sneak = gp.getOptionalBool("realtime_sneak");
 
 	allow_overwatch_interrupt = gp.getOptionalBool("allow_overwatch_interrupt");
