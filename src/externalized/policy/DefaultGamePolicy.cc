@@ -29,6 +29,9 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	fixed_cost_to_shoot = gp.getOptionalBool("fixed_cost_to_shoot");
 	ap_burst = gp.getOptionalUInt("ap_burst", 5);
 
+	ap_unjam = gp.getOptionalUInt("ap_unjam", 0);
+	unjam_makes_no_shot = gp.getOptionalBool("unjam_makes_no_shot");
+
 	enemy_weapon_minimal_status = gp.getOptionalInt("enemy_weapon_minimal_status", 0);
 
 	gun_jam_chance_minimum = gp.getOptionalInt("gun_jam_chance_minimum", 0);

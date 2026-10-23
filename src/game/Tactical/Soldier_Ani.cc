@@ -720,10 +720,10 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					{
 						// CHECK FOR GUN JAM
 						weaponJammed = CheckForGunJam(pSoldier);
-						// A cleared jam ends the attack as well, the burst waits for the
-						// next order
+						// A cleared jam may end the attack as well, the burst then waits
+						// for the next order
 						if (weaponJammed == FireWeaponResult::JAMMED ||
-							weaponJammed == FireWeaponResult::UNJAMMED)
+							(weaponJammed == FireWeaponResult::UNJAMMED && gamepolicy(unjam_makes_no_shot)))
 						{
 							fStop = TRUE;
 							// stop shooting!
@@ -743,6 +743,14 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 							SLOGD("Freeing up attacker - aborting start of attack due to burst gun jam");
 							FreeUpAttacker(pSoldier);
+						}
+						else if (weaponJammed == FireWeaponResult::UNJAMMED)
+						{
+							// Play intermediate animation, then carry on with the burst
+							if (HandleUnjamAnimation(pSoldier, pSoldier->usAnimState, pSoldier->usAniCode + 1))
+							{
+								return( TRUE );
+							}
 						}
 					}
 
@@ -1124,9 +1132,9 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				{
 					// CODE: CHECK FOR OK WEAPON SHOT!
 					auto const okFireWeapon = OKFireWeapon(pSoldier);
-					// A cleared jam skips the shot too, it waits for the next order
+					// A cleared jam may skip the shot too, it then waits for the next order
 					if (okFireWeapon == FireWeaponResult::JAMMED ||
-						okFireWeapon == FireWeaponResult::UNJAMMED)
+						(okFireWeapon == FireWeaponResult::UNJAMMED && gamepolicy(unjam_makes_no_shot)))
 					{
 						SLOGD("Fire Weapon: Gun Cannot fire, code 470");
 
@@ -1161,6 +1169,14 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 						// Play intermediate animation, then carry on past the skipped shot
 						if (okFireWeapon == FireWeaponResult::UNJAMMED &&
 							HandleUnjamAnimation(pSoldier, pSoldier->usAnimState, pSoldier->usAniCode + 1))
+						{
+							return( TRUE );
+						}
+					}
+					else if (okFireWeapon == FireWeaponResult::UNJAMMED)
+					{
+						// Play intermediate animation, then fire
+						if (HandleUnjamAnimation(pSoldier, pSoldier->usAnimState, pSoldier->usAniCode + 1))
 						{
 							return( TRUE );
 						}

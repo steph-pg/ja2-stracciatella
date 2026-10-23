@@ -49,6 +49,14 @@ static UICursorID HandleRemoteCursor(            SOLDIERTYPE*, BOOLEAN activated
 static UICursorID HandleBombCursor(              SOLDIERTYPE*, GridNo map_pos, BOOLEAN activated, MouseMoveState);
 static UICursorID HandleJarCursor(               SOLDIERTYPE*, GridNo map_pos, MouseMoveState);
 static UICursorID HandleTinCanCursor(            SOLDIERTYPE*, GridNo map_pos, MouseMoveState);
+static UICursorID HandleUnjamCursor(             SOLDIERTYPE*, GridNo map_pos, BOOLEAN show_APs);
+
+
+// Whether attacking now would only clear a jam, with no shot to aim
+static bool IsUnjamOnly(SOLDIERTYPE const& s)
+{
+	return gamepolicy(unjam_makes_no_shot) && IsUnjamAttempt(s);
+}
 
 
 static BOOLEAN gfCannotGetThrough = FALSE;
@@ -122,7 +130,9 @@ UICursorID GetProperItemCursor(SOLDIERTYPE* const s, GridNo const map_pos, BOOLE
 	switch (item_cursor)
 	{
 		case TARGETCURS:
+			// Without ammo the reload cursor comes first, a jam cannot be cleared then
 			cursor =
+				IsUnjamOnly(*s) && EnoughAmmo(s, FALSE, HANDPOS) ? HandleUnjamCursor(s, tgt_grid_no, activated || show_APs) :
 				activated ? HandleActivatedTargetCursor(s, tgt_grid_no, recalc) :
 				HandleNonActivatedTargetCursor(s, tgt_grid_no, show_APs, recalc, cursor_flags);
 
@@ -954,6 +964,28 @@ static UICursorID HandleRepairCursor(SOLDIERTYPE* const s, GridNo const map_pos,
 }
 
 
+static UICursorID HandleUnjamCursor(SOLDIERTYPE* const s, GridNo const map_pos, BOOLEAN const show_APs)
+{
+	// Clearing a jam takes no aim
+	s->bShownAimTime = REFINE_AIM_1;
+
+	if (gTacticalStatus.uiFlags & INCOMBAT)
+	{
+		gsCurrentActionPoints         = CalcTotalAPsToAttack(s, map_pos, TRUE, 0);
+		gfUIDisplayActionPoints       = show_APs;
+		gfUIDisplayActionPointsCenter = TRUE;
+
+		if (!EnoughPoints(s, gsCurrentActionPoints, 0, FALSE))
+		{
+			gfUIDisplayActionPointsInvalid = TRUE;
+			return BAD_REPAIR_UICURSOR;
+		}
+	}
+
+	return GOOD_REPAIR_UICURSOR;
+}
+
+
 static UICursorID HandleRefuelCursor(SOLDIERTYPE* const s, GridNo const map_pos, MouseMoveState const uiCursorFlags)
 {
 	HandleUIMovementCursor(s, uiCursorFlags, map_pos, MOVEUI_TARGET_REFUEL);
@@ -1097,7 +1129,8 @@ void HandleRightClickAdjustCursor( SOLDIERTYPE *pSoldier, INT16 usMapPos )
 		case TARGETCURS:
 
 			// CHECK IF GUY HAS IN HAND A WEAPON
-			if ( pSoldier->bDoBurst )
+			// Clearing a jam takes no aim either
+			if ( pSoldier->bDoBurst || IsUnjamOnly( *pSoldier ) )
 			{
 				// Do nothing!
 				// pSoldier->bShownAimTime = REFINE_AIM_BURST;
@@ -1282,8 +1315,8 @@ void HandleWheelAdjustCursor(SOLDIERTYPE* const pSoldier, INT16 usMapPos, const 
 	switch( ubCursor )
 	{
 		case TARGETCURS:
-			// A burst has no aim levels to step through
-			if ( pSoldier->bDoBurst ) return;
+			// A burst has no aim levels to step through, nor does clearing a jam
+			if ( pSoldier->bDoBurst || IsUnjamOnly( *pSoldier ) ) return;
 
 			bStep   = 2;
 			bMinAim = REFINE_AIM_1;

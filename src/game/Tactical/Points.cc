@@ -29,6 +29,7 @@
 
 #include "ContentManager.h"
 #include "GameInstance.h"
+#include "policy/GamePolicy.h"
 #include "WeaponModels.h"
 #include "Weapons.h"
 
@@ -897,24 +898,41 @@ UINT8 CalcAPsToBurst(INT8 const bBaseActionPoints, OBJECTTYPE const& o)
 }
 
 
+static UINT8 APsToTurnAndRaiseGun(SOLDIERTYPE&, UINT16 item, GridNo, bool add_turning_cost, bool after_moving);
+
+
+// What an attack costs when it first has to clear a jam, given what the shot
+// alone would cost
+static UINT8 APsToUnjam(SOLDIERTYPE& s, GridNo const grid_no, bool const add_turning_cost, UINT8 const shot_cost)
+{
+	// A set unjam cost covers turning and raising the gun, without one those
+	// are all the try costs, as in vanilla
+	UINT8 const unjam_cost = gamepolicy(ap_unjam);
+	UINT8 const prep_cost  = APsToTurnAndRaiseGun(s, s.inv[HANDPOS].usItem, grid_no, add_turning_cost, false);
+	if (gamepolicy(unjam_makes_no_shot)) return unjam_cost ? unjam_cost : prep_cost;
+	if (!unjam_cost) return shot_cost;
+	return unjam_cost + std::max(shot_cost - prep_cost, 0);
+}
+
+
 UINT8 CalcTotalAPsToAttack(SOLDIERTYPE * const s, GridNo const grid_no, bool const add_turning_cost, INT8 const aim_time)
 {
 	UINT16            ap_cost = 0;
 	OBJECTTYPE const& in_hand = s->inv[HANDPOS];
-	// Clearing a jam is all the attack does, and it fires nothing
-	if (IsUnjamAttempt(*s)) return AP_UNJAM;
-
 	switch (GCM->getItem(in_hand.usItem)->getItemClass())
 	{
 		case IC_GUN:
 		case IC_LAUNCHER:
 		case IC_TENTACLES:
 		case IC_THROWING_KNIFE:
-			return MinAPsToAttack(s, grid_no, add_turning_cost) +
+		{
+			UINT8 const shot_cost = MinAPsToAttack(s, grid_no, add_turning_cost) +
 				(s->bDoBurst ? CalcAPsToBurst(CalcActionPoints(s), in_hand) :
 				// WM_ATTACHED is already handled by MinAPsToAttack and the
 				// aim time cannot be refined further.
 				s->bWeaponMode == WM_ATTACHED ? 0 : aim_time);
+			return IsUnjamAttempt(*s) ? APsToUnjam(*s, grid_no, add_turning_cost, shot_cost) : shot_cost;
+		}
 
 		case IC_GRENADE:
 		case IC_BOMB:
@@ -1115,24 +1133,14 @@ void GetAPChargeForShootOrStabWRTGunRaises(SOLDIERTYPE const* const s, GridNo gr
 }
 
 
-UINT8 MinAPsToShootOrStab(SOLDIERTYPE& s, GridNo gridno, bool const add_turning_cost, bool const after_moving)
+// APs to turn towards gridno and raise the gun, the way a shot charges them
+static UINT8 APsToTurnAndRaiseGun(SOLDIERTYPE& s, UINT16 const item, GridNo const gridno, bool const add_turning_cost, bool const after_moving)
 {
-	OBJECTTYPE const& in_hand = s.inv[HANDPOS];
-	UINT16     const  item =
-	s.bWeaponMode == WM_ATTACHED ? UNDER_GLAUNCHER : in_hand.usItem;
-
 	BOOLEAN	adding_turning_cost;
 	BOOLEAN	adding_raise_gun_cost;
 	GetAPChargeForShootOrStabWRTGunRaises(&s, gridno, add_turning_cost, &adding_turning_cost, &adding_raise_gun_cost, after_moving);
 
-	int	ap_cost = AP_MIN_AIM_ATTACK;
-
-	if (GCM->getItem(item)->getItemClass() == IC_THROWING_KNIFE ||
-		item == ROCKET_LAUNCHER)
-	{
-		// Do we need to stand up?
-		ap_cost += GetAPsToChangeStance(&s, ANIM_STAND);
-	}
+	UINT8 ap_cost = 0;
 
 	// ATE: Look at stance
 	if (gAnimControl[s.usAnimState].ubHeight == ANIM_STAND)
@@ -1166,6 +1174,27 @@ UINT8 MinAPsToShootOrStab(SOLDIERTYPE& s, GridNo gridno, bool const add_turning_
 		// an after_moving cost is hypothetical, so it must not change the soldier
 		if (!after_moving) s.fDontChargeReadyAPs = FALSE;
 	}
+
+	return ap_cost;
+}
+
+
+UINT8 MinAPsToShootOrStab(SOLDIERTYPE& s, GridNo gridno, bool const add_turning_cost, bool const after_moving)
+{
+	OBJECTTYPE const& in_hand = s.inv[HANDPOS];
+	UINT16     const  item =
+	s.bWeaponMode == WM_ATTACHED ? UNDER_GLAUNCHER : in_hand.usItem;
+
+	int	ap_cost = AP_MIN_AIM_ATTACK;
+
+	if (GCM->getItem(item)->getItemClass() == IC_THROWING_KNIFE ||
+		item == ROCKET_LAUNCHER)
+	{
+		// Do we need to stand up?
+		ap_cost += GetAPsToChangeStance(&s, ANIM_STAND);
+	}
+
+	ap_cost += APsToTurnAndRaiseGun(s, item, gridno, add_turning_cost, after_moving);
 
 	if (gridno != NOWHERE)
 	{

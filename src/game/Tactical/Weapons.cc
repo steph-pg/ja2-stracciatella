@@ -311,8 +311,9 @@ FireWeaponResult CheckForGunJam(SOLDIERTYPE * const pSoldier)
 			}
 			else if (obj.bGunAmmoStatus < 0)
 			{
-				// try to unjam gun, whether it works or not
-				DeductPoints(pSoldier, AP_UNJAM, 0);
+				// try to unjam gun, a set cost is paid whether it works or not
+				UINT8 const unjam_cost = gamepolicy(ap_unjam);
+				if (unjam_cost) DeductPoints(pSoldier, unjam_cost, 0);
 
 				if (SkillCheck(pSoldier, UNJAM_GUN_CHECK,
 					GCM->getItem(obj.usItem)->getReliability() * 4) > 0)

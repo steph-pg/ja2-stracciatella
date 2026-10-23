@@ -56,6 +56,9 @@ public:
 	bool fixed_cost_to_shoot;    // Changes the formula for APs to shoot
 	uint8_t ap_burst;                     // APs to fire a burst for a merc with 25 base APs, scaled to their actual base APs (vanilla 5)
 
+	uint8_t ap_unjam;            // APs to try clearing a jammed gun, raising and turning included; 0 charges only the raise, as vanilla
+	bool unjam_makes_no_shot;    // clearing a jam is an action of its own, the shot waits for the next order
+
 	int8_t enemy_weapon_minimal_status;   /**< Minimal status of the enemy weapon (0 - 100). */
 
 	int8_t gun_jam_chance_minimum;        // Minimum % chance for a gun to jam even in perfect condition (0 = vanilla, never jams above status 80)
