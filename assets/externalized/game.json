@@ -84,6 +84,16 @@
   // vanilla setting: false
   "fixed_cost_to_shoot": false,
 
+  //  Action points to try clearing a jammed gun, win or lose. They cover raising the gun and turning to the target too.
+  //  Set to 0 for vanilla: the try itself is free and only raising the gun is charged.
+  //  vanilla setting: 0
+  "ap_unjam": 0,
+
+  //  Clearing a jam is an action of its own: the merc only works the gun and the shot waits for the next order.
+  //  The cursor shows a repair icon over a jammed gun and takes no aim clicks. Vanilla fires right after a successful try.
+  //  vanilla setting: false
+  "unjam_makes_no_shot": false,
+
   //  Minimal status in % for each gun in the hand of enemy soldiers. Note that this value has no influence on enemy behaviour like CTH.
   //  vanilla value: 0
   "enemy_weapon_minimal_status": 0,

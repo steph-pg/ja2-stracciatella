@@ -114,6 +114,23 @@ properties:
       discount when injured.
 
       Vanilla setting: `false`
+  ap_unjam:
+    $ref: types/uint8.schema.yaml
+    title: APs to clear a gun jam
+    description: |
+      Action points to try clearing a jammed gun, win or lose. They cover raising the gun and turning to the target
+      too. Set to 0 for vanilla: the try itself is free and only raising the gun is charged.
+
+      Vanilla setting: `0`
+  unjam_makes_no_shot:
+    type: boolean
+    title: Clearing a jam makes no shot
+    description: |
+      Clearing a jam is an action of its own: the merc only works the gun and the shot waits for the next order. The
+      cursor shows a repair icon over a jammed gun and takes no aim clicks. Vanilla fires right after a successful
+      try.
+
+      Vanilla setting: `false`
   enemy_weapon_minimal_status:
     $ref: types/percentage.schema.yaml
     title: Minimal status of enemy weapons

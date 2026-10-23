@@ -17,6 +17,7 @@
 #include "Faces.h"
 #include "Font_Control.h"
 #include "GameInstance.h"
+#include "policy/GamePolicy.h"
 #include "GameSettings.h"
 #include "Game_Clock.h"
 #include "HImage.h"
@@ -1412,7 +1413,8 @@ void EVENT_InitNewSoldierAnim(SOLDIERTYPE* const pSoldier, UINT16 usNewState, UI
 		case READY_DUAL_PRONE:
 
 			// OK, get points to ready weapon....
-			if ( !pSoldier->fDontChargeReadyAPs )
+			// Raising a jammed gun to clear it is part of a set unjam cost
+			if ( !pSoldier->fDontChargeReadyAPs && !( gamepolicy(ap_unjam) && IsUnjamAttempt( *pSoldier ) ) )
 			{
 				sAPCost = GetAPsToReadyWeapon( pSoldier, usNewState );
 				DeductPoints( pSoldier, sAPCost, sBPCost );

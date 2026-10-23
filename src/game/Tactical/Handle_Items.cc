@@ -63,6 +63,7 @@
 
 #include "ContentManager.h"
 #include "GameInstance.h"
+#include "policy/GamePolicy.h"
 #include "Soldier.h"
 #include "Logger.h"
 #include "MercProfile.h"
@@ -358,12 +359,16 @@ ItemHandleResult HandleItem(SOLDIERTYPE* const s, INT16 usGridNo, const INT8 bLe
 			if (fAddingTurningCost) s->fDontChargeReadyAPs = TRUE;
 		}
 
+		// Turning to clear a jam is part of a set unjam cost
+		if (gamepolicy(ap_unjam) && IsUnjamAttempt(*s)) s->fDontChargeTurningAPs = TRUE;
+
 		// If this is a player guy, show message about no APS
 		if (!EnoughPoints(s, sAPCost, 0, fFromUI)) return ITEM_HANDLE_NOAPS;
 
 		// Psychos might possibly switch to burst if they can
 		if (s->ubProfile != NO_PROFILE &&
 			gMercProfiles[s->ubProfile].bPersonalityTrait == PSYCHO &&
+			!(gamepolicy(unjam_makes_no_shot) && IsUnjamAttempt(*s)) &&
 			!s->bDoBurst &&
 			IsGunBurstCapable(s, HANDPOS))
 		{
