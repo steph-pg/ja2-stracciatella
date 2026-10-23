@@ -294,6 +294,12 @@
   "tactical_head_damage_multiplier": 1.7,
   "tactical_legs_damage_multiplier": 0.7,
 
+  //  Deduct a weapon's ubBurstPenalty after chance-to-hit is clamped to the min/max above, not before.
+  //  Otherwise the penalty is swallowed by the clamp for anyone with headroom above the cap, and every
+  //  round of a burst ends up with the same chance to hit.
+  //  vanilla setting: false
+  "burst_penalty_after_cth_cap": true,
+
   //  Aim bonus per spent AP and for using scopes
   //  vanilla setting (%): 10, 20, 20
   "aim_bonus_per_std_ap": 8,

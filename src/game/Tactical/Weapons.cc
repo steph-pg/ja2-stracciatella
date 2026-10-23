@@ -2089,6 +2089,28 @@ BOOLEAN InRange(const SOLDIERTYPE* pSoldier, INT16 sGridNo)
 	return( FALSE );
 }
 
+// Chance-to-hit penalty for the current round of a burst: ubBurstPenalty per shot
+// after the first, reduced for the autofire trait. Zero for the first round and for
+// non-burst attacks.
+static INT32 CalcBurstPenalty( const SOLDIERTYPE *pSoldier, UINT16 usInHand )
+{
+	if ( !pSoldier->bDoBurst )
+	{
+		return 0;
+	}
+
+	INT32 iPenalty = GCM->getWeapon(usInHand)->ubBurstPenalty * (pSoldier->bDoBurst - 1);
+
+	// halve the penalty for people with the autofire trait
+	UINT AutoWeaponsSkill = NUM_SKILL_TRAITS(pSoldier, AUTO_WEAPS);
+	if (AutoWeaponsSkill != 0)
+	{
+		iPenalty /= 2 * AutoWeaponsSkill;
+	}
+
+	return iPenalty;
+}
+
 UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime, UINT8 ubAimPos, BOOLEAN fModify )
 {
 	INT32 iChance, iRange, iSightRange, iMaxRange, iScopeBonus, iBonus; //, minRange;
@@ -2223,18 +2245,12 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 		}
 	}
 
-	// If in burst mode, deduct points for change to hit for each shot after the first
-	if ( pSoldier->bDoBurst )
+	// If in burst mode, deduct points for change to hit for each shot after the first.
+	// With burst_penalty_after_cth_cap the deduction is postponed until after the
+	// min/max clamp at the end of this function instead.
+	if ( !gamepolicy(burst_penalty_after_cth_cap) )
 	{
-		iPenalty = GCM->getWeapon(usInHand)->ubBurstPenalty * (pSoldier->bDoBurst - 1);
-
-		// halve the penalty for people with the autofire trait
-		UINT AutoWeaponsSkill = NUM_SKILL_TRAITS(pSoldier, AUTO_WEAPS);
-		if (AutoWeaponsSkill != 0)
-		{
-			iPenalty /= 2 * AutoWeaponsSkill;
-		}
-		iChance -= iPenalty;
+		iChance -= CalcBurstPenalty( pSoldier, usInHand );
 	}
 
 	sDistVis = DistanceVisible( pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, 0 );
@@ -2656,6 +2672,21 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, UINT16 sGridNo, UINT8 ubAimTime
 	{
 		if (iChance > MAXCHANCETOHIT)
 			iChance = MAXCHANCETOHIT;
+	}
+
+	// Apply the burst penalty after the clamp, so it always bites. Deducted before the
+	// clamp (vanilla) it is silently swallowed whenever the raw chance sits far enough
+	// outside the [MINCHANCETOHIT, MAXCHANCETOHIT] band: a shooter with headroom above
+	// the cap - prone with a bipod, laserscope, close range - gets every round of the
+	// burst clamped back to the same number, so the spray-vs-aim tradeoff disappears
+	// exactly for the mercs it should apply to. The two range halvings above also
+	// dilute the penalty along with everything else.
+	if ( gamepolicy(burst_penalty_after_cth_cap) )
+	{
+		iChance -= CalcBurstPenalty( pSoldier, usInHand );
+
+		// don't let the penalty push a round below the floor the clamp just established
+		iChance = std::max(iChance, TANK( pSoldier ) ? 0 : INT32(MINCHANCETOHIT));
 	}
 
 	return (iChance);

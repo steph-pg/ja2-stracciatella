@@ -106,6 +106,8 @@ public:
 	int8_t chance_to_hit_minimum;         //Minimum chance to hit (0 - chance_to_hit_maximum) vanilla 1
 	int8_t chance_to_hit_maximum;         //Maximum chance to hit (chance_to_hit_minimum - 100) vanilla 99
 
+	bool burst_penalty_after_cth_cap;     // subtract the per-shot burst penalty after clamping chance-to-hit instead of before, so it is not swallowed by the cap/floor (false = vanilla)
+
 	int8_t aim_bonus_per_std_ap;          // Aim bonus % for first 4 AP (aim clicks) spent
 	int8_t aim_bonus_sniperscope;         // Flat bonus after at suitable range
 	int8_t aim_bonus_laserscope;          // Aim bonus in the dark

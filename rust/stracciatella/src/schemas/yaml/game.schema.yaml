@@ -472,6 +472,27 @@ properties:
       Value above which chance-to-hit can never go
 
       Vanilla setting: `99`
+  burst_penalty_after_cth_cap:
+    type: boolean
+    title: Apply burst penalty after the chance-to-hit clamp
+    description: |
+      Controls when a weapon's `ubBurstPenalty` (the accuracy loss per burst round after the first)
+      is deducted.
+
+      Vanilla deducts it from the raw chance-to-hit, before that value is clamped to
+      `chance_to_hit_minimum` / `chance_to_hit_maximum`. This means the penalty is invisible for any
+      shooter whose raw chance sits far enough outside that band. A merc prone with a bipod, a
+      laserscope and a target at close range can be 40 points above the cap, so all rounds of the
+      burst clamp back to the same displayed number and bursts are no less accurate than single
+      shots. The same happens at the bottom of the band, where hopeless shots are all pinned to
+      the minimum. Range penalties, which halve the chance-to-hit for shots beyond the gun's range
+      or beyond the shooter's own vision, dilute the burst penalty further.
+
+      When `true`, the penalty is deducted after clamping instead (then floored at
+      `chance_to_hit_minimum`), so each successive round of a burst is genuinely less accurate
+      regardless of how much headroom the shooter has.
+
+      Vanilla setting: `false`
   tactical_head_damage_multiplier:
     type: number
     title: Damage multiplier head
