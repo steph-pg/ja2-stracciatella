@@ -107,6 +107,7 @@ public:
 	int8_t chance_to_hit_maximum;         //Maximum chance to hit (chance_to_hit_minimum - 100) vanilla 99
 
 	bool burst_penalty_after_cth_cap;     // subtract the per-shot burst penalty after clamping chance-to-hit instead of before, so it is not swallowed by the cap/floor (false = vanilla)
+	int8_t burst_sound_mode;              // 0 = vanilla burst recording, 1 = single shot sound per round, 2 = longest recording not exceeding the burst
 
 	int8_t aim_bonus_per_std_ap;          // Aim bonus % for first 4 AP (aim clicks) spent
 	int8_t aim_bonus_sniperscope;         // Flat bonus after at suitable range

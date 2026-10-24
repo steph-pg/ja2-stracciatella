@@ -300,6 +300,12 @@
   //  vanilla setting: false
   "burst_penalty_after_cth_cap": true,
 
+  //  How a burst sounds. 0: one recording matching the number of rounds, else the generic burst sound.
+  //  1: every round plays the gun's single shot sound. 2: the longest recording with no more rounds than
+  //  the burst, so raising ubShotsPerBurst past the original recordings keeps the calibre's own sound.
+  //  vanilla setting: 0
+  "burst_sound_mode": 2,
+
   //  Aim bonus per spent AP and for using scopes
   //  vanilla setting (%): 10, 20, 20
   "aim_bonus_per_std_ap": 8,

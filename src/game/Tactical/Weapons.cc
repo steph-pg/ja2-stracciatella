@@ -43,6 +43,7 @@
 #include "SaveLoadMap.h"
 #include "Soldier_Macros.h"
 #include "SmokeEffects.h"
+#include "SoundMan.h"
 #include "Auto_Resolve.h"
 
 #include "ContentManager.h"
@@ -609,20 +610,38 @@ bool IsSilenced(SOLDIERTYPE const& soldier)
 }
 
 
+ST::string FindBurstSound(ST::string const& burstSound, UINT8 const ubBullets)
+{
+	if (burstSound.empty()) return ST::string();
+
+	// Outside vanilla burst_sound_mode a burst longer than any recording borrows
+	// the longest recording that exists, instead of the generic burst sound.
+	// Mode 1 only gets here for guns without a single shot sound, and from
+	// autoresolve, where all rounds go off at once.
+	UINT8 const ubLowest = gamepolicy(burst_sound_mode) != 0 ? 1 : ubBullets;
+	for (UINT8 n = ubBullets; n >= ubLowest && n > 0; --n)
+	{
+		auto tryBurstSound = st_format_printf(burstSound, n);
+		if (GCM->doesGameResExists(tryBurstSound))
+		{
+			return tryBurstSound;
+		}
+	}
+	return ST::string();
+}
+
+
 static ST::string GetBurstSoundName(SOLDIERTYPE const& soldier)
 {
 	auto * const weapon = GCM->getWeapon(soldier.usAttackingWeapon);
 	bool isSilenced = IsSilenced(soldier);
 	auto const& burstSound = isSilenced ? weapon->silencedBurstSound : weapon->burstSound;
 
-	if (!burstSound.empty())
+	// Was a burst sound specified and do we have the matching sound file?
+	auto tryBurstSound = FindBurstSound(burstSound, soldier.bBulletsLeft);
+	if (!tryBurstSound.empty())
 	{
-		// Was a burst sound specified and do we have the matching sound file?
-		auto tryBurstSound = st_format_printf(burstSound, soldier.bBulletsLeft);
-		if (GCM->doesGameResExists(tryBurstSound))
-		{
-			return tryBurstSound;
-		}
+		return tryBurstSound;
 	}
 
 	if (soldier.bBulletsLeft == 1)
@@ -663,13 +682,30 @@ static void UseGun(SOLDIERTYPE * const pSoldier, GridNo const sTargetGridNo)
 
 	if ( pSoldier->bDoBurst )
 	{
+		// With burst_sound_mode 1 every round plays the gun's single shot sound,
+		// so the burst sounds right whatever its length
+		auto * const weapon = GCM->getWeapon(usItemNum);
+		auto const& singleSound = IsSilenced(*pSoldier) ? weapon->silencedSound : weapon->sound;
+		bool const fSoundPerRound = gamepolicy(burst_sound_mode) == 1 && !singleSound.empty();
+		if (fSoundPerRound)
+		{
+			PlayLocationJA2Sample(pSoldier->sGridNo, singleSound, HIGHVOLUME, 1);
+		}
+
 		// ONly deduct points once
 		if ( pSoldier->bDoBurst == 1 )
 		{
-			auto burstSound = GetBurstSoundName(*pSoldier);
-			SLOGD("Using burst sound {}", burstSound);
-			pSoldier->uiBurstSoundID = PlayLocationJA2SampleFromFile(pSoldier->sGridNo,
-				burstSound.c_str(), HIGHVOLUME, 1);
+			if (fSoundPerRound)
+			{
+				pSoldier->uiBurstSoundID = NO_SAMPLE;
+			}
+			else
+			{
+				auto burstSound = GetBurstSoundName(*pSoldier);
+				SLOGD("Using burst sound {}", burstSound);
+				pSoldier->uiBurstSoundID = PlayLocationJA2SampleFromFile(pSoldier->sGridNo,
+					burstSound.c_str(), HIGHVOLUME, 1);
+			}
 
 			DeductAttackPoints(pSoldier, sAPCost);
 		}
