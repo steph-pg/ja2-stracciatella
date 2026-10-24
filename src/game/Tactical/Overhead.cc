@@ -3789,6 +3789,49 @@ INT16 FindAdjacentPunchTarget(const SOLDIERTYPE* const pSoldier, const SOLDIERTY
 }
 
 
+// Like FindAdjacentGridEx, but considers all 8 tiles around the target, since
+// melee attacks are possible diagonally too (see FindAdjacentPunchTarget)
+INT16 FindAdjacentMeleeGrid(SOLDIERTYPE* const pSoldier, const SOLDIERTYPE* const pTargetSoldier, UINT8* const pubDirection, INT16* const psAdjustedTargetGridNo)
+{
+	INT16 const sTargetGridNo = pTargetSoldier->sGridNo;
+	INT8  const bLevel        = pSoldier->bLevel;
+	INT16 sClosest     = NOWHERE;
+	INT16 sCloseGridNo = NOWHERE;
+
+	if (psAdjustedTargetGridNo) *psAdjustedTargetGridNo = sTargetGridNo;
+
+	for (UINT8 i = 0; i < NUM_WORLD_DIRECTIONS; ++i)
+	{
+		INT16 const sSpot = NewGridNo(sTargetGridNo, DirectionInc(i));
+		UINT8 const ubDir = OppositeDirection(i); // from the spot towards the target
+
+		if (DoorTravelCost(pSoldier, sTargetGridNo, gubWorldMovementCosts[sTargetGridNo][ubDir][bLevel], FALSE, NULL) >= TRAVELCOST_BLOCKED)
+		{
+			// blocked!
+			continue;
+		}
+
+		if (sSpot == pSoldier->sGridNo)
+		{
+			if (pubDirection) *pubDirection = ubDir;
+			return sSpot;
+		}
+
+		INT16 sDistance;
+		if (NewOKDestinationAndDirection(pSoldier, sSpot, ubDir, TRUE, bLevel) > 0 &&
+				(sDistance = PlotPath(pSoldier, sSpot, NO_COPYROUTE, NO_PLOT, pSoldier->usUIMovementMode, pSoldier->bActionPoints)) > 0 &&
+				sDistance < sClosest)
+		{
+			sClosest     = sDistance;
+			sCloseGridNo = sSpot;
+			if (pubDirection) *pubDirection = ubDir;
+		}
+	}
+
+	return sCloseGridNo == NOWHERE ? -1 : sCloseGridNo;
+}
+
+
 BOOLEAN UIOKMoveDestination(const SOLDIERTYPE* pSoldier, UINT16 usMapPos)
 {
 	if ( !NewOKDestination( pSoldier, usMapPos, FALSE, (INT8) gsInterfaceLevel ) )
