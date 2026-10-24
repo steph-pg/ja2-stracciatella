@@ -470,7 +470,9 @@ ItemHandleResult HandleItem(SOLDIERTYPE* const s, INT16 usGridNo, const INT8 bLe
 		if (sGotLocation == NOWHERE)
 		{
 			// See if we can get there to punch
-			const INT16 sActionGridNo = FindAdjacentGridEx(s, usGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
+			const INT16 sActionGridNo = tgt ?
+				FindAdjacentMeleeGrid(s, tgt, &ubDirection, &sAdjustedGridNo) :
+				FindAdjacentGridEx(s, usGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
 			if (sActionGridNo != -1)
 			{
 				// OK, we've got somebody...
@@ -811,6 +813,10 @@ ItemHandleResult HandleItem(SOLDIERTYPE* const s, INT16 usGridNo, const INT8 bLe
 			{
 				sActionGridNo = FindAdjacentGridEx(s, usGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
 			}
+		}
+		else if (tgt)
+		{
+			sActionGridNo = FindAdjacentMeleeGrid(s, tgt, &ubDirection, &sAdjustedGridNo);
 		}
 		else
 		{

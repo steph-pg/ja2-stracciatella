@@ -964,6 +964,7 @@ UINT8 CalcTotalAPsToAttack(SOLDIERTYPE * const s, GridNo const grid_no, bool con
 				else
 				{
 					GridNo got_location = NOWHERE;
+					bool got_adjacent = false;
 
 					if (SOLDIERTYPE const* const tgt = WhoIsThere2(grid_no, s->bLevel))
 					{
@@ -975,10 +976,15 @@ UINT8 CalcTotalAPsToAttack(SOLDIERTYPE * const s, GridNo const grid_no, bool con
 						else
 						{
 							got_location = FindAdjacentPunchTarget(s, tgt, &adjusted_grid_no);
+							if (got_location == NOWHERE)
+							{
+								got_location = FindAdjacentMeleeGrid(s, tgt, 0, &adjusted_grid_no);
+								if (got_location == -1) got_location = NOWHERE;
+								got_adjacent = true;
+							}
 						}
 					}
 
-					bool got_adjacent = false;
 					if (got_location == NOWHERE && s->ubBodyType != BLOODCAT)
 					{
 						got_location = FindAdjacentGridEx(s, grid_no, 0, &adjusted_grid_no, TRUE, FALSE);

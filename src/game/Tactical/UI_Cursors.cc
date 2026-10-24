@@ -677,7 +677,9 @@ static UICursorID HandleKnifeCursor(SOLDIERTYPE* const s, GridNo const map_pos, 
 		bool enough_points = true;
 		if (gTacticalStatus.uiFlags & INCOMBAT)
 		{
-			gsCurrentActionPoints         = CalcTotalAPsToAttack(s, map_pos, TRUE, s->bShownAimTime / 2);
+			// Same gridno as SelectedMercCanAffordAttack() checks on click
+			GridNo const tgt_pos = gUIFullTarget ? gUIFullTarget->sGridNo : map_pos;
+			gsCurrentActionPoints         = CalcTotalAPsToAttack(s, tgt_pos, TRUE, s->bShownAimTime / 2);
 			gfUIDisplayActionPoints       = TRUE;
 			gfUIDisplayActionPointsCenter = TRUE;
 
@@ -689,7 +691,7 @@ static UICursorID HandleKnifeCursor(SOLDIERTYPE* const s, GridNo const map_pos, 
 			}
 
 			INT8  const future_aim = REFINE_KNIFE_2;
-			INT16 const ap_costs   = CalcTotalAPsToAttack(s, map_pos, TRUE, future_aim / 2);
+			INT16 const ap_costs   = CalcTotalAPsToAttack(s, tgt_pos, TRUE, future_aim / 2);
 			if (!EnoughPoints(s, ap_costs, 0, FALSE)) enough_points = false;
 		}
 
@@ -764,7 +766,9 @@ static UICursorID HandlePunchCursor(SOLDIERTYPE* const s, GridNo const map_pos, 
 		// Calculate action points
 		bool enough_points = true;
 
-		gsCurrentActionPoints         = CalcTotalAPsToAttack(s, map_pos, TRUE, s->bShownAimTime / 2);
+		// Same gridno as SelectedMercCanAffordAttack() checks on click
+		GridNo const tgt_pos = gUIFullTarget ? gUIFullTarget->sGridNo : map_pos;
+		gsCurrentActionPoints         = CalcTotalAPsToAttack(s, tgt_pos, TRUE, s->bShownAimTime / 2);
 		gfUIDisplayActionPoints       = TRUE;
 		gfUIDisplayActionPointsCenter = TRUE;
 
@@ -776,7 +780,7 @@ static UICursorID HandlePunchCursor(SOLDIERTYPE* const s, GridNo const map_pos, 
 		}
 
 		INT8  const future_aim = REFINE_PUNCH_2;
-		INT16 const ap_costs   = CalcTotalAPsToAttack(s, map_pos, TRUE, future_aim / 2);
+		INT16 const ap_costs   = CalcTotalAPsToAttack(s, tgt_pos, TRUE, future_aim / 2);
 		if (!EnoughPoints(s, ap_costs, 0, FALSE)) enough_points = false;
 
 		if (!(gTacticalStatus.uiFlags & INCOMBAT) && COUNTERDONE(NONGUNTARGETREFINE))
