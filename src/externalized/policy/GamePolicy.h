@@ -103,6 +103,7 @@ public:
 
 	float critical_damage_head_multiplier;//Head damage multiplier. Vanilla 1.5
 	float critical_damage_legs_multiplier;//Legs damage multiplier. Vanilla 0.5
+	int16_t hand_to_hand_breath_loss_modifier; // % modifier to the breath a hand-to-hand hit takes away (100 = vanilla)
 	int8_t chance_to_hit_minimum;         //Minimum chance to hit (0 - chance_to_hit_maximum) vanilla 1
 	int8_t chance_to_hit_maximum;         //Maximum chance to hit (chance_to_hit_minimum - 100) vanilla 99
 
