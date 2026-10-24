@@ -74,9 +74,6 @@ void TownMilitiaTrainingCompleted(SOLDIERTYPE *pTrainer, const SGPSector& sector
 	}
 
 
-	// force tactical to update militia status
-	gfStrategicMilitiaChangesMade = TRUE;
-
 	// ok, so what do we do with all this training?  Well, in order of decreasing priority:
 	// 1) If there's room in training sector, create new GREEN militia guys there
 	// 2) If not enough room there, create new GREEN militia guys in friendly sectors of the same town
@@ -210,6 +207,9 @@ static void StrategicAddMilitiaToSector(const SGPSector& sMap, UINT8 ubRank, UIN
 
 	// update the screen display
 	fMapPanelDirty = TRUE;
+
+	// force tactical to update militia status
+	if (sMap == gWorldSector) gfStrategicMilitiaChangesMade = TRUE;
 }
 
 
@@ -226,6 +226,9 @@ static void StrategicPromoteMilitiaInSector(const SGPSector& sMap, UINT8 const c
 	si.ubNumberOfCivsAtLevel[current_rank + 1] += n;
 
 	fMapPanelDirty = TRUE;
+
+	// force tactical to update militia status
+	if (sMap == gWorldSector) gfStrategicMilitiaChangesMade = TRUE;
 }
 
 
