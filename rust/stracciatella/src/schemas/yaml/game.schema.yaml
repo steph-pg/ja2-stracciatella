@@ -523,6 +523,15 @@ properties:
       Multiplier for damage that is inflicted on the legs
 
       Vanilla setting: `0.5`
+  hand_to_hand_breath_loss_modifier:
+    $ref: types/int16.schema.yaml
+    title: Hand-to-hand breath loss modifier
+    description: |
+      Percentage modifier to the breath a hand-to-hand hit takes away, for fists, brass knuckles
+      and the crowbar. `100` leaves it vanilla, `50` halves it so it takes about twice as many
+      blows to knock someone out. The wound a hit causes is not affected.
+
+      Vanilla setting: `100`
   aim_bonus_per_std_ap:
     $ref: types/int8.schema.yaml
     title: Aim bonus per spent AP
@@ -1110,6 +1119,7 @@ required:
   - chance_to_hit_maximum
   - tactical_head_damage_multiplier
   - tactical_legs_damage_multiplier
+  - hand_to_hand_breath_loss_modifier
   - aim_bonus_per_std_ap
   - aim_bonus_sniperscope
   - aim_bonus_laserscope

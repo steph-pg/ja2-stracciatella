@@ -74,6 +74,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 
 	critical_damage_head_multiplier = gp.getOptionalDouble("tactical_head_damage_multiplier", 1.5);
 	critical_damage_legs_multiplier = gp.getOptionalDouble("tactical_legs_damage_multiplier", 0.5);
+	hand_to_hand_breath_loss_modifier = gp.getOptionalInt("hand_to_hand_breath_loss_modifier", 100);
 	chance_to_hit_maximum = gp.getOptionalInt("chance_to_hit_maximum", 99);
 	chance_to_hit_minimum = gp.getOptionalInt("chance_to_hit_minimum", 1);
 

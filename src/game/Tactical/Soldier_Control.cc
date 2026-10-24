@@ -2741,7 +2741,7 @@ void EVENT_SoldierGotHit(SOLDIERTYPE* pSoldier, const UINT16 usWeaponIndex, INT1
 	{
 		// damage from hand-to-hand is 1/4 normal, 3/4 breath.. the sDamage value
 		// is actually how much breath we'll take away
-		sBreathLoss = sDamage * 100;
+		sBreathLoss = sDamage * gamepolicy(hand_to_hand_breath_loss_modifier);
 		sDamage = sDamage / PUNCH_REAL_DAMAGE_PORTION;
 		if ( AreInMeanwhile() && gCurrentMeanwhileDef.ubMeanwhileID == INTERROGATION )
 		{

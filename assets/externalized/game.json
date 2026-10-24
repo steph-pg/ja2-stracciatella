@@ -294,6 +294,11 @@
   "tactical_head_damage_multiplier": 1.7,
   "tactical_legs_damage_multiplier": 0.7,
 
+  //  Percentage modifier to the breath a hand-to-hand hit takes away (fists, brass knuckles, crowbar).
+  //  The wound itself is unchanged; lower values make it take more blows to knock someone out.
+  //  vanilla setting: 100
+  "hand_to_hand_breath_loss_modifier": 100,
+
   //  Deduct a weapon's ubBurstPenalty after chance-to-hit is clamped to the min/max above, not before.
   //  Otherwise the penalty is swallowed by the clamp for anyone with headroom above the cap, and every
   //  round of a burst ends up with the same chance to hit.
