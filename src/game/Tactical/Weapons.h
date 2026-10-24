@@ -4,6 +4,8 @@
 #include "Item_Types.h"
 #include "JA2Types.h"
 
+#include <string_theory/string>
+
 struct CalibreModel;
 
 
@@ -162,6 +164,9 @@ void EnsureConsistentWeaponMode(SOLDIERTYPE*);
 bool HasLauncher(SOLDIERTYPE const*);
 // Is a silencer attached to the weapon the soldier is attacking with?
 bool IsSilenced(SOLDIERTYPE const&);
+// Burst sound file for this many rounds from a calibre's or weapon's burstSound
+// pattern, empty if none exists
+ST::string FindBurstSound(ST::string const& burstSound, UINT8 ubBullets);
 extern INT32 CalcBodyImpactReduction( UINT8 ubAmmoType, UINT8 ubHitLocation );
 INT32 TotalArmourProtection(SOLDIERTYPE&, UINT8 ubHitLocation, INT32 iImpact, UINT8 ubAmmoType);
 INT8 ArmourPercent(const SOLDIERTYPE* pSoldier);

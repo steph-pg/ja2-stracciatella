@@ -493,6 +493,22 @@ properties:
       regardless of how much headroom the shooter has.
 
       Vanilla setting: `false`
+  burst_sound_mode:
+    type: integer
+    minimum: 0
+    maximum: 2
+    title: Burst sound mode
+    description: |
+      How a burst sounds. Burst recordings exist only for the burst lengths the original weapons
+      fire, so vanilla falls back to a generic burst sound when `ubShotsPerBurst` is raised past them.
+
+      * `0`: vanilla, one recording matching the number of rounds, else the generic burst sound
+      * `1`: every round plays the gun's single shot sound
+      * `2`: one recording, the longest one with no more rounds than the burst
+
+      Autoresolve fires all rounds at once and uses the mode `2` lookup under both `1` and `2`.
+
+      Vanilla setting: `0`
   tactical_head_damage_multiplier:
     type: number
     title: Damage multiplier head

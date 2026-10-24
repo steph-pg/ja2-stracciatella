@@ -78,6 +78,7 @@ DefaultGamePolicy::DefaultGamePolicy(const JsonValue& json)
 	chance_to_hit_minimum = gp.getOptionalInt("chance_to_hit_minimum", 1);
 
 	burst_penalty_after_cth_cap = gp.getOptionalBool("burst_penalty_after_cth_cap");
+	burst_sound_mode = gp.getOptionalInt("burst_sound_mode", 0);
 
 	aim_bonus_per_std_ap = gp.getOptionalInt("aim_bonus_per_std_ap", 10);
 	aim_bonus_sniperscope = gp.getOptionalInt("aim_bonus_sniperscope", 20);

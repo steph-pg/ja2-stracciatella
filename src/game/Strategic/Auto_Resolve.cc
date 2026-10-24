@@ -2832,13 +2832,10 @@ static ST::string GetAutoResolveBurstSound(OBJECTTYPE const& gun, UINT8 const ub
 	auto const* const weapon = GCM->getWeapon(gun.usItem);
 	bool const fSilenced = FindAttachment(&gun, SILENCER) != NO_SLOT;
 	auto const& burstSound = fSilenced ? weapon->silencedBurstSound : weapon->burstSound;
-	if (!burstSound.empty())
+	auto const sound = FindBurstSound(burstSound, ubBullets);
+	if (!sound.empty())
 	{
-		auto const sound = st_format_printf(burstSound, ubBullets);
-		if (GCM->doesGameResExists(sound))
-		{
-			return sound;
-		}
+		return sound;
 	}
 	return "sounds/weapons/bursttype1.wav";
 }
