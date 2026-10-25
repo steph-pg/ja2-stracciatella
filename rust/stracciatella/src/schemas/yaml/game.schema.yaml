@@ -262,6 +262,16 @@ properties:
       Packages at Drassen airport never get stolen, no need to bribe Pablo.
 
       Vanilla setting: `false`
+  pablo_bribe_days:
+    type: integer
+    minimum: 0
+    maximum: 127
+    title: Pablo bribe duration
+    description: |
+      Number of days a bribe keeps Pablo from stealing. Bribing again restarts
+      the countdown. 0 means the bribe never wears off.
+
+      Vanilla setting: `0`
   chance_to_hit_minimum:
     type: integer
     title: Chance-to-hit minimum
@@ -597,6 +607,7 @@ required:
   - skip_sleep_explanation
   - extra_attachments
   - pablo_wont_steal
+  - pablo_bribe_days
   - chance_to_hit_minimum
   - chance_to_hit_maximum
   - tactical_head_damage_multiplier
