@@ -458,6 +458,16 @@ properties:
       while the squad is still all elites and still heading for the SAM site.
 
       Vanilla setting: `false`
+  pablo_bribe_days:
+    type: integer
+    minimum: 0
+    maximum: 127
+    title: Pablo bribe duration
+    description: |
+      Number of days a bribe keeps Pablo from stealing. Bribing again restarts
+      the countdown. 0 means the bribe never wears off.
+
+      Vanilla setting: `0`
   chance_to_hit_minimum:
     type: integer
     title: Chance-to-hit minimum
@@ -1115,6 +1125,7 @@ required:
   - extra_attachments
   - pablo_wont_steal
   - sam_reinforcements_march_at_night
+  - pablo_bribe_days
   - chance_to_hit_minimum
   - chance_to_hit_maximum
   - tactical_head_damage_multiplier

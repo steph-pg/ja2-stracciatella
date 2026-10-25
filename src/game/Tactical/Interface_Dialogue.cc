@@ -2008,6 +2008,16 @@ void HandleNPCDoAction( UINT8 ubTargetNPC, UINT16 usActionCode, UINT8 ubQuoteNum
 				}
 				break;
 
+			case NPC_ACTION_SET_PABLO_BRIBE_DELAY:
+				// the bribe wears off after the configured number of days, 0 means never;
+				// bribing again restarts the countdown
+				if (gamepolicy(pablo_bribe_days) > 0)
+				{
+					DeleteStrategicEvent(EVENT_SET_BY_NPC_SYSTEM, FACT_PABLOS_BRIBED);
+					AddFutureDayStrategicEvent(EVENT_SET_BY_NPC_SYSTEM, GetWorldMinutesInDay(), FACT_PABLOS_BRIBED, gamepolicy(pablo_bribe_days));
+				}
+				break;
+
 			case NPC_ACTION_RETURN_STOLEN_SHIPMENT_ITEMS:
 			{
 				AddFutureDayStrategicEvent( EVENT_SET_BY_NPC_SYSTEM, 480 + Random( 60 ), NPC_SYSTEM_EVENT_ACTION_PARAM_BONUS + NPC_ACTION_RETURN_STOLEN_SHIPMENT_ITEMS, 1 );

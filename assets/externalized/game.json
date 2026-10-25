@@ -287,6 +287,11 @@
   //  vanilla setting: false
   "sam_reinforcements_march_at_night": false,
 
+  //  Number of days a bribe keeps Pablo from stealing. Bribing again restarts
+  //  the countdown. 0 means the bribe never wears off.
+  //  vanilla_setting: 0
+  "pablo_bribe_days": 0,
+
   //  Min/max chance to hit and headshot damage multiplier.
   //  vanilla_setting: 1, 99, 1.5, 0.5
   "chance_to_hit_minimum": 1,
