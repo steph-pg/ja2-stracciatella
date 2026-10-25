@@ -123,8 +123,7 @@ void HandleStructChangeFromGridNo(SOLDIERTYPE* const s, GridNo const grid_no)
 			auto primaryDest = GCM->getPrimaryShippingDestination();
 			if (grid_no        == primaryDest->deliverySectorGridNo  &&
 			    gWorldSector == primaryDest->deliverySector &&
-					CheckFact(FACT_PABLOS_STOLE_FROM_LATEST_SHIPMENT, 0) &&
-					!CheckFact(FACT_PLAYER_FOUND_ITEMS_MISSING, 0))
+					CheckFact(FACT_PABLOS_STOLE_FROM_LATEST_SHIPMENT, 0))
 			{
 				SayQuoteFromNearbyMercInSector(grid_no, 3, QUOTE_STUFF_MISSING_DRASSEN);
 				did_missing_quote = true;

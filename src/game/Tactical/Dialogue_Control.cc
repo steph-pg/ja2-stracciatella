@@ -1416,7 +1416,10 @@ void SayQuoteFromNearbyMercInSector(GridNo const gridno, INT8 const distance, UI
 		SOLDIERTYPE* const chosen = mercs_in_sector[Random(n_mercs)];
 		if (quote_id == QUOTE_STUFF_MISSING_DRASSEN)
 		{
+			// FACT_PLAYER_FOUND_ITEMS_MISSING is never reset by Pablo's script, so clear
+			// the per-shipment fact instead, letting each later theft be noticed again
 			SetFactTrue(FACT_PLAYER_FOUND_ITEMS_MISSING);
+			SetFactFalse(FACT_PABLOS_STOLE_FROM_LATEST_SHIPMENT);
 		}
 		TacticalCharacterDialogue(chosen, quote_id);
 	}
