@@ -53,6 +53,7 @@ const std::vector<VideoScaleQuality> scalingModes = {
 	VideoScaleQuality::NEAR_PERFECT,
 	VideoScaleQuality::PERFECT,
 	VideoScaleQuality::SCALE2X,
+	VideoScaleQuality::SCALE3X,
 };
 
 void showError(const ST::string& error) {

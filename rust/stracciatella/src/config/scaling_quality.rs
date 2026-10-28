@@ -20,6 +20,8 @@ pub enum ScalingQuality {
     PERFECT,
     /// Upscale 2x with the Scale2x pixel art algorithm, then scale linearly to the window
     SCALE2X,
+    /// Upscale 3x with the Scale3x pixel art algorithm, then scale linearly to the window
+    SCALE3X,
 }
 
 impl FromStr for ScalingQuality {
@@ -31,6 +33,7 @@ impl FromStr for ScalingQuality {
             "NEAR_PERFECT" => Ok(ScalingQuality::NEAR_PERFECT),
             "PERFECT" => Ok(ScalingQuality::PERFECT),
             "SCALE2X" => Ok(ScalingQuality::SCALE2X),
+            "SCALE3X" => Ok(ScalingQuality::SCALE3X),
             _ => Err(format!("Scaling quality {} is unknown", s)),
         }
     }
@@ -46,6 +49,7 @@ impl Display for ScalingQuality {
                 ScalingQuality::NEAR_PERFECT => "Near perfect with oversampling",
                 ScalingQuality::PERFECT => "Pixel perfect centered",
                 ScalingQuality::SCALE2X => "Scale2x smoothing",
+                ScalingQuality::SCALE3X => "Scale3x smoothing",
             }
         )
     }
