@@ -2979,6 +2979,16 @@ BOOLEAN HandleSoldierDeath( SOLDIERTYPE *pSoldier , BOOLEAN *pfMadeCorpse )
 				SLOGD("Releasesoldierattacker, code 497 = handle soldier death");
 				ReleaseSoldiersAttacker( pSoldier );
 			}
+			else if ( pSoldier->bBeingAttackedCount > 1 )
+			{
+				// Bleeding out added one to the count with no attack behind it, but any
+				// hit still playing out (a punch landed just before) holds the attack
+				// busy count. The corpse never finishes that hit animation, so release
+				// those hits here or the end of battle check stays blocked for good.
+				pSoldier->bBeingAttackedCount--;
+				SLOGD("Releasesoldierattacker, pending hits on external death");
+				ReleaseSoldiersAttacker( pSoldier );
+			}
 		}
 
 		if ( !( *pfMadeCorpse ) )
