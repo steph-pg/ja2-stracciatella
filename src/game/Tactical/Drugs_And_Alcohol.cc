@@ -195,8 +195,13 @@ BOOLEAN ApplyDrugs( SOLDIERTYPE *pSoldier, OBJECTTYPE *pObject, BOOLEAN *pfGoodA
 			// ATE: Make guy collapse from heart attack if too much stuff taken....
 			if ( pSoldier->bDrugSideEffect[ ubDrugType ] > ( ubDrugSideEffect[ ubDrugType ] * 3 ) )
 			{
-				// Keel over...
-				DeductPoints( pSoldier, 0, 10000, FALSE );
+				// Keel over... drain the breath directly, DeductPoints scales the
+				// cost by strength and could leave a few points, so no collapse
+				pSoldier->sBreathRed = 10000;
+				pSoldier->bBreath    = 0;
+				DirtyMercPanelInterface(pSoldier, DIRTYLEVEL1);
+				// Collapse right away rather than on the next tile or turn
+				if (pSoldier->bInSector) CheckForBreathCollapse(*pSoldier);
 
 				// Permanently lower certain stats...
 				pSoldier->bWisdom    -= HEART_ATTACK_STAT_REDUCE;
