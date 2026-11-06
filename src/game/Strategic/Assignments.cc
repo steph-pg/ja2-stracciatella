@@ -1246,9 +1246,17 @@ static UINT16 TotalMedicalKitPoints(SOLDIERTYPE* pSoldier)
 
 
 // Have we spent enough time on assignment for it to count?
-static bool EnoughTimeOnAssignment(SOLDIERTYPE const& s)
+static bool EnoughTimeOnAssignment(SOLDIERTYPE const& s, UINT32 const now = GetWorldTotalMin())
 {
-	return GetWorldTotalMin() - s.uiLastAssignmentChangeMin >= MINUTES_FOR_ASSIGNMENT_TO_COUNT;
+	return now - s.uiLastAssignmentChangeMin >= MINUTES_FOR_ASSIGNMENT_TO_COUNT;
+}
+
+
+// world minute of the next hourly update, when health, energy and morale change
+static UINT32 NextHourlyUpdateMin()
+{
+	UINT32 const now = GetWorldTotalMin();
+	return now - now % 60 + 60;
 }
 
 
@@ -2095,41 +2103,41 @@ static bool IsItemRepairable(UINT16 const item_id, INT8 const status)
 static UINT8 CalcSoldierNeedForSleep(SOLDIERTYPE const&);
 
 
-// rest the character
-static void RestCharacter(SOLDIERTYPE* pSoldier)
+static INT8 ClampBreathMax(INT32 const breath_max)
 {
-	// handle the sleep of this character, update bBreathMax based on sleep they have
-	INT8 bMaxBreathRegain = 0;
+	return std::clamp(breath_max, INT32(BREATHMAX_ABSOLUTE_MINIMUM), 100);
+}
 
-	bMaxBreathRegain = 50 / CalcSoldierNeedForSleep(*pSoldier);
+
+// how much bBreathMax an hour of rest ending at minute 'now' gives back
+static INT8 CalcRestBreathMaxRegain(SOLDIERTYPE const& s, UINT32 const now)
+{
+	INT8 bMaxBreathRegain = 50 / CalcSoldierNeedForSleep(s);
 
 	// if breath max is below the "really tired" threshold
-	if( pSoldier -> bBreathMax < BREATHMAX_PRETTY_TIRED )
+	if (s.bBreathMax < BREATHMAX_PRETTY_TIRED)
 	{
 		// real tired, rest rate is 50% higher (this is to prevent absurdly long sleep times for totally exhausted mercs)
 		bMaxBreathRegain = ( bMaxBreathRegain * 3 / 2 );
 	}
 
 	// only rested for the part of the hour since arriving on foot, in quarters rounded up
-	UINT32 const minutes_since_arrival = GetWorldTotalMin() - pSoldier->uiLastArrivalTime;
+	UINT32 const minutes_since_arrival = now - s.uiLastArrivalTime;
 	if (gamepolicy(prorated_rest_after_arrival) && minutes_since_arrival < 60)
 	{
 		UINT32 const quarters = std::max((minutes_since_arrival * 4 + 59) / 60, 1U);
 		bMaxBreathRegain = bMaxBreathRegain * quarters / 4;
 	}
 
-	pSoldier -> bBreathMax += bMaxBreathRegain;
+	return bMaxBreathRegain;
+}
 
 
-	if( pSoldier -> bBreathMax > 100 )
-	{
-		pSoldier -> bBreathMax = 100;
-	}
-	else if( pSoldier -> bBreathMax < BREATHMAX_ABSOLUTE_MINIMUM )
-	{
-		pSoldier -> bBreathMax = BREATHMAX_ABSOLUTE_MINIMUM;
-	}
-
+// rest the character
+static void RestCharacter(SOLDIERTYPE* pSoldier)
+{
+	// handle the sleep of this character, update bBreathMax based on sleep they have
+	pSoldier->bBreathMax = ClampBreathMax(pSoldier->bBreathMax + CalcRestBreathMaxRegain(*pSoldier, GetWorldTotalMin()));
 	pSoldier -> bBreath = pSoldier -> bBreathMax;
 
 
@@ -2140,12 +2148,9 @@ static void RestCharacter(SOLDIERTYPE* pSoldier)
 }
 
 
-void FatigueCharacter(SOLDIERTYPE& s)
+// how much bBreathMax an hour of activity costs
+static INT8 CalcFatigueBreathMaxLoss(SOLDIERTYPE const& s)
 {
-	if (IsMechanical(s))                 return;
-	if (IsCharacterInTransit(s))         return;
-	if (s.bAssignment == ASSIGNMENT_POW) return;
-
 	INT8 const divisor         = 24 - CalcSoldierNeedForSleep(s);
 	INT8       max_breath_loss = 50 / divisor;
 	if (max_breath_loss < 2) max_breath_loss = 2;
@@ -2163,24 +2168,22 @@ void FatigueCharacter(SOLDIERTYPE& s)
 		}
 	}
 
-	INT8 breath_max = s.bBreathMax;
-
-	if (breath_max < BREATHMAX_PRETTY_TIRED)
+	if (s.bBreathMax < BREATHMAX_PRETTY_TIRED)
 	{ // Real tired, fatigue rate is 50% higher
 		max_breath_loss = max_breath_loss * 3 / 2;
 	}
 
-	breath_max -= max_breath_loss;
+	return max_breath_loss;
+}
 
-	if (breath_max > 100)
-	{
-		breath_max = 100;
-	}
-	else if (breath_max < BREATHMAX_ABSOLUTE_MINIMUM)
-	{
-		breath_max = BREATHMAX_ABSOLUTE_MINIMUM;
-	}
 
+void FatigueCharacter(SOLDIERTYPE& s)
+{
+	if (IsMechanical(s))                 return;
+	if (IsCharacterInTransit(s))         return;
+	if (s.bAssignment == ASSIGNMENT_POW) return;
+
+	INT8 const breath_max = ClampBreathMax(s.bBreathMax - CalcFatigueBreathMaxLoss(s));
 	s.bBreathMax = breath_max;
 	// Current breath can't exceed maximum
 	if (s.bBreath > breath_max) s.bBreath = breath_max;
@@ -2942,35 +2945,29 @@ static void HandleNaturalHealing(void)
 static void UpDateSoldierLife(SOLDIERTYPE* pSoldier);
 
 
-// handle healing of this soldier by natural causes.
-static void HandleHealingByNaturalCauses(SOLDIERTYPE* pSoldier)
+// hundredths of life points natural healing gives back this hour
+static INT16 CalcNaturalHealingHundredths(SOLDIERTYPE const& s, bool const time_compressed)
 {
+	SOLDIERTYPE const* const pSoldier = &s;
 	UINT32 uiPercentHealth = 0;
 	INT8 bActivityLevelDivisor = 0;
-
-
-	// check if soldier valid
-	if( pSoldier == NULL )
-	{
-		return;
-	}
 
 	// dead
 	if( pSoldier -> bLife == 0 )
 	{
-		return;
+		return 0;
 	}
 
 	// lost any pts?
 	if( pSoldier -> bLife == pSoldier -> bLifeMax )
 	{
-		return;
+		return 0;
 	}
 
 	// any bleeding pts - can' recover if still bleeding!
 	if( pSoldier -> bBleeding != 0 )
 	{
-		return;
+		return 0;
 	}
 
 
@@ -2990,7 +2987,7 @@ static void HandleHealingByNaturalCauses(SOLDIERTYPE* pSoldier)
 	else if ( pSoldier->bAssignment < ON_DUTY )
 	{
 		// if time is being compressed, and the soldier is not moving strategically
-		if ( IsTimeBeingCompressed() && !PlayerIDGroupInMotion( pSoldier->ubGroupID ) )
+		if ( time_compressed && !PlayerIDGroupInMotion( pSoldier->ubGroupID ) )
 		{
 			// basically resting
 			bActivityLevelDivisor = LOW_ACTIVITY_LEVEL;
@@ -3011,7 +3008,17 @@ static void HandleHealingByNaturalCauses(SOLDIERTYPE* pSoldier)
 	uiPercentHealth = ( pSoldier->bLife * 100 ) / pSoldier->bLifeMax;
 
 	// gain that many hundredths of life points back, divided by the activity level modifier
-	pSoldier->sFractLife += ( INT16 ) ( uiPercentHealth / bActivityLevelDivisor );
+	return ( INT16 ) ( uiPercentHealth / bActivityLevelDivisor );
+}
+
+
+// handle healing of this soldier by natural causes.
+static void HandleHealingByNaturalCauses(SOLDIERTYPE* pSoldier)
+{
+	INT16 const hundredths = CalcNaturalHealingHundredths(*pSoldier, IsTimeBeingCompressed());
+	if (hundredths == 0) return;
+
+	pSoldier->sFractLife += hundredths;
 
 	// now update the real life values
 	UpDateSoldierLife( pSoldier );
@@ -5776,7 +5783,7 @@ static void PositionCursorForTacticalAssignmentBox(void)
 }
 
 
-static bool CharacterIsTakingItEasy(SOLDIERTYPE const&);
+static bool CharacterIsTakingItEasy(SOLDIERTYPE const&, UINT32 now = GetWorldTotalMin());
 
 
 static void HandleRestFatigueAndSleepStatus()
@@ -7005,7 +7012,7 @@ void UnEscortEPC(SOLDIERTYPE* const s)
 }
 
 
-static bool CharacterIsTakingItEasy(SOLDIERTYPE const& s)
+static bool CharacterIsTakingItEasy(SOLDIERTYPE const& s, UINT32 const now)
 {
 	if (s.fMercAsleep) return true;
 
@@ -7022,7 +7029,7 @@ static bool CharacterIsTakingItEasy(SOLDIERTYPE const& s)
 
 	// On a real assignment, but done with it?
 	if (s.fDoneAssignmentAndNothingToDoFlag) return true;
-	if (!EnoughTimeOnAssignment(s)) return true;
+	if (!EnoughTimeOnAssignment(s, now)) return true;
 
 	// On assignment
 	return false;
@@ -7047,6 +7054,97 @@ static UINT8 CalcSoldierNeedForSleep(SOLDIERTYPE const& s)
 	if (need_for_sleep <  4) return  4;
 	if (need_for_sleep > 12) return 12;
 	return need_for_sleep;
+}
+
+
+// a doctor's healing points split evenly among the patients they can treat at
+// minute 'at', the leftovers handed to the worst hurt are not counted
+static UINT16 ForecastDoctorHundredths(SOLDIERTYPE const& patient, UINT32 const at)
+{
+	if (patient.bAssignment != PATIENT && patient.bAssignment != DOCTOR) return 0;
+	if (!EnoughTimeOnAssignment(patient, at)) return 0;
+
+	UINT16 hundredths = 0;
+	FOR_EACH_IN_TEAM(d, OUR_TEAM)
+	{
+		if (d->bAssignment != DOCTOR)                                        continue;
+		if (d->fMercAsleep)                                                  continue;
+		if (!CanCharacterDoctor(d))                                          continue;
+		if (!EnoughTimeOnAssignment(*d, at))                                 continue;
+		if (!CanSoldierBeHealedByDoctor(&patient, d, FALSE, FALSE, FALSE)) continue;
+
+		UINT8 patients = 0;
+		CFOR_EACH_IN_TEAM(p, OUR_TEAM)
+		{
+			if (CanSoldierBeHealedByDoctor(p, d, FALSE, FALSE, FALSE) && EnoughTimeOnAssignment(*p, at)) ++patients;
+		}
+
+		UINT16 max_pts;
+		hundredths += CalculateHealingPointsForDoctor(d, &max_pts, FALSE) / patients;
+	}
+	return hundredths;
+}
+
+
+INT8 ForecastLifeNextHour(SOLDIERTYPE const& s)
+{
+	if (s.bLife == 0 || IsMechanical(s)) return s.bLife;
+
+	INT32 life  = s.bLife;
+	INT32 fract = s.sFractLife;
+
+	// natural healing, assuming time is compressed as it usually is between hours
+	INT16 const natural = CalcNaturalHealingHundredths(s, true);
+	if (natural != 0)
+	{
+		fract += natural;
+		life  += fract / 100;
+		fract %= 100;
+		if (life >= s.bLifeMax)
+		{
+			life  = s.bLifeMax;
+			fract = 0;
+		}
+	}
+
+	// doctors, mending life below OKLIFE at double cost first
+	UINT16 const doctored = ForecastDoctorHundredths(s, NextHourlyUpdateMin());
+	if (doctored != 0 && life < s.bLifeMax)
+	{
+		fract += doctored;
+		INT32 points = fract / 100;
+		if (life < OKLIFE)
+		{
+			INT32 const used = std::min(points, POINT_COST_PER_HEALTH_BELOW_OKLIFE * (OKLIFE - life));
+			life   += used / POINT_COST_PER_HEALTH_BELOW_OKLIFE;
+			points -= used;
+		}
+		life = std::min(life + points, INT32(s.bLifeMax));
+	}
+
+	return life;
+}
+
+
+void ForecastBreathNextHour(SOLDIERTYPE const& s, INT8& breath, INT8& breath_max)
+{
+	breath     = s.bBreath;
+	breath_max = s.bBreathMax;
+	if (IsMechanical(s))                 return;
+	if (s.bAssignment == ASSIGNMENT_POW) return;
+	if (s.bAssignment == IN_TRANSIT)     return;
+
+	UINT32 const at = NextHourlyUpdateMin();
+	if (CharacterIsTakingItEasy(s, at))
+	{
+		breath_max = ClampBreathMax(s.bBreathMax + CalcRestBreathMaxRegain(s, at));
+		breath     = breath_max;
+	}
+	else
+	{
+		breath_max = ClampBreathMax(s.bBreathMax - CalcFatigueBreathMaxLoss(s));
+		breath     = std::min(breath, breath_max);
+	}
 }
 
 

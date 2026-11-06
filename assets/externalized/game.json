@@ -259,7 +259,8 @@
 
   //  Displays modifiers in hover boxes revealing hidden mechanics. Also lists the mercs
   //  a merc gets along with, and the ones they cannot stand, when hovering their
-  //  portrait in the mapscreen.
+  //  portrait in the mapscreen, and how their health, energy and morale will change
+  //  at the next hour when hovering their status bars.
   //  vanilla_setting: false
   "informative_tooltips": true,
 

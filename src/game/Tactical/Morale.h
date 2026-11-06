@@ -63,6 +63,8 @@ extern void RefreshSoldierMorale( SOLDIERTYPE * pSoldier );
 extern INT8 GetMoraleModifier( const SOLDIERTYPE * pSoldier );
 
 void HourlyMoraleUpdate( void );
+// Morale the merc will have after the next hourly update
+INT8 ForecastMoraleNextHour(SOLDIERTYPE const& s);
 void DailyMoraleUpdate( SOLDIERTYPE *pSoldier );
 
 void DecayTacticalMoraleModifiers( void );

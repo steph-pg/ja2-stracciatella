@@ -1,4 +1,5 @@
 #include "Map_Screen_Interface.h"
+#include "Assignments.h"
 #include "ContentManager.h"
 #include "Dialogue_Control.h"
 #include "Directories.h"
@@ -29,6 +30,7 @@
 #include "MapScreen.h"
 #include "MercPortrait.h"
 #include "Message.h"
+#include "Morale.h"
 #include "Object_Cache.h"
 #include "Overhead.h"
 #include "PopUpBox.h"
@@ -1291,10 +1293,26 @@ void UpdateCharRegionHelpText(void)
 	{
 		// person (health/energy/morale)
 		ST::string morale = GetMoraleString(*s);
-		status = ST::format("{}: {}/{}, {}: {}/{}, {}: {}",
-			pMapScreenStatusStrings[0], s->bLife,   s->bLifeMax,
-			pMapScreenStatusStrings[1], s->bBreath, s->bBreathMax,
-			pMapScreenStatusStrings[2], morale
+
+		// how each one changes at the next hourly update, energy by its maximum
+		ST::string life_change, breath_change, morale_change;
+		if (gamepolicy(informative_tooltips))
+		{
+			auto const change = [](int const from, int const to)
+			{
+				return from == to ? ST::string() : ST::format(" ({+d})", to - from);
+			};
+			INT8 breath, breath_max;
+			ForecastBreathNextHour(*s, breath, breath_max);
+			life_change   = change(s->bLife,      ForecastLifeNextHour(*s));
+			breath_change = change(s->bBreathMax, breath_max);
+			morale_change = change(s->bMorale,    ForecastMoraleNextHour(*s));
+		}
+
+		status = ST::format("{}: {}/{}{}, {}: {}/{}{}, {}: {}{}",
+			pMapScreenStatusStrings[0], s->bLife,   s->bLifeMax,   life_change,
+			pMapScreenStatusStrings[1], s->bBreath, s->bBreathMax, breath_change,
+			pMapScreenStatusStrings[2], morale,                    morale_change
 		);
 	}
 	gMapStatusBarsRegion.SetFastHelpText(status);
