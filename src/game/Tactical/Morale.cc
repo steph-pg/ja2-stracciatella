@@ -7,6 +7,7 @@
 #include "Strategic_Status.h"
 #include "SkillCheck.h"
 #include "Drugs_And_Alcohol.h"
+#include "Game_Clock.h"
 #include "Debug.h"
 #include "Squads.h"
 #include "AI.h"
@@ -106,35 +107,45 @@ INT8 GetMoraleModifier( const SOLDIERTYPE * pSoldier )
 }
 
 
+// a tactical or strategic morale modifier after one decay step
+static INT8 DecayedMoraleMod(INT8 const mod)
+{
+	if (mod > 0) return std::max(0, mod - (8 - mod / 10));
+	if (mod < 0) return std::min(0, mod + (6 + mod / 10));
+	return 0;
+}
+
+
 static void DecayTacticalMorale(SOLDIERTYPE* pSoldier)
 {
-	// decay the tactical morale modifier
-	if (pSoldier->bTacticalMoraleMod != 0)
-	{
-		// decay the modifier!
-		if (pSoldier->bTacticalMoraleMod > 0)
-		{
-			pSoldier->bTacticalMoraleMod = std::max(0, pSoldier->bTacticalMoraleMod - (8 - pSoldier->bTacticalMoraleMod / 10));
-		}
-		else
-		{
-			pSoldier->bTacticalMoraleMod = std::min(0, pSoldier->bTacticalMoraleMod + (6 + pSoldier->bTacticalMoraleMod / 10));
-		}
-	}
+	pSoldier->bTacticalMoraleMod = DecayedMoraleMod(pSoldier->bTacticalMoraleMod);
 }
 
 
 static void DecayStrategicMorale(SOLDIERTYPE* pSoldier)
 {
-	// decay the modifier!
-	if (pSoldier->bStrategicMoraleMod > 0)
+	pSoldier->bStrategicMoraleMod = DecayedMoraleMod(pSoldier->bStrategicMoraleMod);
+}
+
+
+// Is a nervous merc away from everyone else on the team?
+static bool NervousMercFeelsAlone(SOLDIERTYPE const& s)
+{
+	if (s.ubGroupID != 0 && s.bAssignment <= SQUAD_20 && PlayerIDGroupInMotion(s.ubGroupID))
 	{
-		pSoldier->bStrategicMoraleMod = std::max(0, pSoldier->bStrategicMoraleMod - (8 - pSoldier->bStrategicMoraleMod / 10));
+		return NumberOfPeopleInSquad(s.bAssignment) == 1;
 	}
-	else
+	if (s.bInSector)
 	{
-		pSoldier->bStrategicMoraleMod = std::min(0, pSoldier->bStrategicMoraleMod + (6 + pSoldier->bStrategicMoraleMod / 10));
+		// DistanceToClosestFriend() only reads the soldier
+		return DistanceToClosestFriend(const_cast<SOLDIERTYPE*>(&s)) > NERVOUS_RADIUS;
 	}
+	// look for anyone else in same sector
+	CFOR_EACH_IN_TEAM(other, OUR_TEAM)
+	{
+		if (other != &s && other->sSector == s.sSector) return false;
+	}
+	return true;
 }
 
 
@@ -168,32 +179,7 @@ void DecayTacticalMoraleModifiers(void)
 			case NERVOUS:
 				if (s->bMorale < 50)
 				{
-					BOOLEAN handle_nervous;
-					if (s->ubGroupID != 0 && s->bAssignment <= SQUAD_20 && PlayerIDGroupInMotion(s->ubGroupID))
-					{
-						handle_nervous = NumberOfPeopleInSquad(s->bAssignment) == 1;
-					}
-					else if (s->bInSector)
-					{
-						handle_nervous = DistanceToClosestFriend(s) > NERVOUS_RADIUS;
-					}
-					else
-					{
-						// look for anyone else in same sector
-						handle_nervous = TRUE;
-						CFOR_EACH_IN_TEAM(other, OUR_TEAM)
-						{
-							if (other != s &&
-									other->sSector == s->sSector)
-							{
-								// found someone!
-								handle_nervous = FALSE;
-								break;
-							}
-						}
-					}
-
-					if (handle_nervous)
+					if (NervousMercFeelsAlone(*s))
 					{
 						if (s->bTacticalMoraleMod == PHOBIC_LIMIT)
 						{
@@ -244,52 +230,58 @@ static void DecayStrategicMoraleModifiers(void)
 
 
 
+// morale the soldier has with the given team, tactical and strategic modifiers
+static INT8 CalcMoraleFromMods(SOLDIERTYPE const& s, INT32 const team_mod, INT32 const tactical_mod, INT32 const strategic_mod)
+{
+	// CJC, April 19, 1999: added up to 20% morale boost according to progress
+	INT32 iActualMorale = DEFAULT_MORALE + team_mod + tactical_mod + strategic_mod + (INT32) (CurrentPlayerProgressPercentage() / 5);
+
+	// ATE: Modify morale based on drugs....
+	iActualMorale  += ( ( s.bDrugEffect[ DRUG_TYPE_ADRENALINE ] * DRUG_EFFECT_MORALE_MOD ) / 100 );
+	iActualMorale  += ( ( s.bDrugEffect[ DRUG_TYPE_ALCOHOL ] * ALCOHOL_EFFECT_MORALE_MOD ) / 100 );
+
+	return (INT8) std::clamp(iActualMorale, 0, 100);
+}
+
+
 void RefreshSoldierMorale( SOLDIERTYPE * pSoldier )
 {
-	INT32 iActualMorale;
-
 	if ( pSoldier->fMercAsleep )
 	{
 		// delay this till later!
 		return;
 	}
 
-	// CJC, April 19, 1999: added up to 20% morale boost according to progress
-	iActualMorale = DEFAULT_MORALE + (INT32) pSoldier->bTeamMoraleMod + (INT32) pSoldier->bTacticalMoraleMod + (INT32) pSoldier->bStrategicMoraleMod + (INT32) (CurrentPlayerProgressPercentage() / 5);
-
-	// ATE: Modify morale based on drugs....
-	iActualMorale  += ( ( pSoldier->bDrugEffect[ DRUG_TYPE_ADRENALINE ] * DRUG_EFFECT_MORALE_MOD ) / 100 );
-	iActualMorale  += ( ( pSoldier->bDrugEffect[ DRUG_TYPE_ALCOHOL ] * ALCOHOL_EFFECT_MORALE_MOD ) / 100 );
-
-	pSoldier->bMorale = (INT8) std::clamp(iActualMorale, 0, 100);
+	pSoldier->bMorale = CalcMoraleFromMods(*pSoldier, pSoldier->bTeamMoraleMod, pSoldier->bTacticalMoraleMod, pSoldier->bStrategicMoraleMod);
 
 	// update mapscreen as needed
 	fCharacterInfoPanelDirty = TRUE;
 }
 
 
-static void UpdateSoldierMorale(SOLDIERTYPE* pSoldier, UINT8 ubType, INT8 bMoraleMod)
+// do morale events affect this soldier right now?
+static bool CanMoraleEventAffect(SOLDIERTYPE const& s)
 {
-	int iMoraleModTotal;
+	if (!s.bActive)              return false;
+	if (s.bLife < CONSCIOUSNESS) return false;
+	if (IsMechanical(s))         return false;
+	if (AM_AN_EPC(&s))           return false;
 
-	if (!pSoldier->bActive)              return;
-	if (pSoldier->bLife < CONSCIOUSNESS) return;
-	if (IsMechanical(*pSoldier))         return;
-	if (AM_AN_EPC(pSoldier))             return;
-
-	if ((pSoldier->bAssignment == ASSIGNMENT_DEAD) ||
-		(pSoldier->bAssignment == ASSIGNMENT_POW) ||
-		(pSoldier->bAssignment == IN_TRANSIT))
+	if ((s.bAssignment == ASSIGNMENT_DEAD) ||
+		(s.bAssignment == ASSIGNMENT_POW) ||
+		(s.bAssignment == IN_TRANSIT))
 	{
-		return;
+		return false;
 	}
 
+	return s.ubProfile != NO_PROFILE;
+}
 
-	if ( pSoldier->ubProfile == NO_PROFILE )
-	{
-		return;
-	}
 
+// a morale event's change after the soldier's attitude and level have their say
+static INT8 AdjustMoraleEventMod(SOLDIERTYPE const& s, INT8 bMoraleMod)
+{
+	SOLDIERTYPE const* const pSoldier = &s;
 	MERCPROFILESTRUCT const& p = GetProfile(pSoldier->ubProfile);
 
 	if (bMoraleMod > 0)
@@ -337,6 +329,18 @@ static void UpdateSoldierMorale(SOLDIERTYPE* pSoldier, UINT8 ubType, INT8 bMoral
 			bMoraleMod = 0;
 		}
 	}
+	return bMoraleMod;
+}
+
+
+static void UpdateSoldierMorale(SOLDIERTYPE* pSoldier, UINT8 ubType, INT8 bMoraleMod)
+{
+	int iMoraleModTotal;
+
+	if (!CanMoraleEventAffect(*pSoldier)) return;
+
+	bMoraleMod = AdjustMoraleEventMod(*pSoldier, bMoraleMod);
+
 	// apply change!
 	if (ubType == TACTICAL_MORALE_EVENT)
 	{
@@ -665,137 +669,158 @@ void HandleMoraleEvent(SOLDIERTYPE *pSoldier, INT8 bMoraleEvent, const SGPSector
 }
 
 
-void HourlyMoraleUpdate()
+// hours since the strategic morale modifiers last decayed
+static INT8 strategic_morale_update_counter = 0;
+
+
+// does this soldier's morale take part in the hourly update?
+static bool TakesPartInHourlyMorale(SOLDIERTYPE const& s)
 {
-	static INT8 strategic_morale_update_counter = 0;
+	//if the merc is active, in Arulco, and conscious, not POW
+	if (s.ubProfile   == NO_PROFILE)      return false;
+	if (s.fMercAsleep)                    return false;
+	if (s.bAssignment == IN_TRANSIT)      return false;
+	if (s.bAssignment == ASSIGNMENT_DEAD) return false;
+	if (s.bAssignment == ASSIGNMENT_POW)  return false;
+	return true;
+}
 
-	// loop through all mercs to calculate their morale
-	FOR_EACH_IN_TEAM(s, OUR_TEAM)
+
+// the soldier's opinion of the people they are with, HATED through BUDDY
+static INT8 CalcTeamOpinion(SOLDIERTYPE const& s)
+{
+	// calculate the guy's opinion of the people he is with
+	MERCPROFILESTRUCT const& p = GetProfile(s.ubProfile);
+
+	// If we're moving, we only check our opinions of people in our squad
+	bool const same_group_only = s.ubGroupID != 0 && PlayerIDGroupInMotion(s.ubGroupID);
+	bool       found_hated     = false;
+
+	// Counts to calculate average opinion
+	INT32 sum_opinions   = 0;
+	INT8  n_team_members = 0;
+
+	// Let people with high leadership affect their own morale
+	INT8 highest_team_leadership = EffectiveLeadership(&s);
+
+	// loop through all other mercs
+	CFOR_EACH_IN_TEAM(other, OUR_TEAM)
 	{
-		//if the merc is active, in Arulco, and conscious, not POW
-		if (s->ubProfile   == NO_PROFILE)      continue;
-		if (s->fMercAsleep)                    continue;
-		if (s->bAssignment == IN_TRANSIT)      continue;
-		if (s->bAssignment == ASSIGNMENT_DEAD) continue;
-		if (s->bAssignment == ASSIGNMENT_POW)  continue;
+		// skip past ourselves and all inactive mercs
+		if (other              == &s)              continue;
+		if (other->ubProfile   == NO_PROFILE)      continue;
+		if (other->fMercAsleep)                    continue;
+		if (other->bAssignment == IN_TRANSIT)      continue;
+		if (other->bAssignment == ASSIGNMENT_DEAD) continue;
+		if (other->bAssignment == ASSIGNMENT_POW)  continue;
 
-		// calculate the guy's opinion of the people he is with
-		MERCPROFILESTRUCT const& p = GetProfile(s->ubProfile);
-
-		// If we're moving, we only check our opinions of people in our squad
-		bool const same_group_only = s->ubGroupID != 0 && PlayerIDGroupInMotion(s->ubGroupID);
-		bool       found_hated     = false;
-
-		// Counts to calculate average opinion
-		INT32 sum_opinions   = 0;
-		INT8  n_team_members = 0;
-
-		// Let people with high leadership affect their own morale
-		INT8 highest_team_leadership = EffectiveLeadership(s);
-
-		// loop through all other mercs
-		CFOR_EACH_IN_TEAM(other, OUR_TEAM)
+		if (same_group_only)
 		{
-			// skip past ourselves and all inactive mercs
-			if (other              == s)               continue;
-			if (other->ubProfile   == NO_PROFILE)      continue;
-			if (other->fMercAsleep)                    continue;
-			if (other->bAssignment == IN_TRANSIT)      continue;
-			if (other->bAssignment == ASSIGNMENT_DEAD) continue;
-			if (other->bAssignment == ASSIGNMENT_POW)  continue;
+			// All we have to check is the group ID
+			if (s.ubGroupID != other->ubGroupID) continue;
+		}
+		else
+		{
+			// Check to see if the location is the same
+			if (other->sSector != s.sSector) continue;
 
-			if (same_group_only)
+			// If the OTHER soldier is in motion then we don't do anything!
+			if (other->ubGroupID != 0 && PlayerIDGroupInMotion(other->ubGroupID)) continue;
+		}
+
+		INT8 opinion = p.bMercOpinion[other->ubProfile];
+		if (opinion == HATED_OPINION)
+		{
+			HatedSlot const hated = WhichHated(s.ubProfile, other->ubProfile);
+			INT8 hated_time = 0;
+			if (hated >= LEARNED_TO_HATE_SLOT)
 			{
-				// All we have to check is the group ID
-				if (s->ubGroupID != other->ubGroupID) continue;
+				// Learn to hate which has become full-blown hatred, full strength
+				found_hated = true;
+				break;
 			}
-			else
+			else if (hated >= HATED_SLOT1)
 			{
-				// Check to see if the location is the same
-				if (other->sSector != s->sSector) continue;
-
-				// If the OTHER soldier is in motion then we don't do anything!
-				if (other->ubGroupID != 0 && PlayerIDGroupInMotion(other->ubGroupID)) continue;
-			}
-
-			INT8 opinion = p.bMercOpinion[other->ubProfile];
-			if (opinion == HATED_OPINION)
-			{
-				HatedSlot const hated = WhichHated(s->ubProfile, other->ubProfile);
-				INT8 hated_time = 0;
-				if (hated >= LEARNED_TO_HATE_SLOT)
+				hated_time = p.bHatedTime[hated];
+				if (p.bHatedCount[hated] <= hated_time)
 				{
-					// Learn to hate which has become full-blown hatred, full strength
+					// We're teamed with someone we hate! We HATE this! Ignore everyone else!
 					found_hated = true;
 					break;
 				}
-				else if (hated >= HATED_SLOT1)
-				{
-					hated_time = p.bHatedTime[hated];
-					if (p.bHatedCount[hated] <= hated_time)
-					{
-						// We're teamed with someone we hate! We HATE this! Ignore everyone else!
-						found_hated = true;
-						break;
-					}
-				}
-				else
-				{
-					SLOGW("Unexpected WhichHated() result");
-				}
-
-				// Otherwise just mix this opinion in with everyone else
-
-				// Scale according to how close to we are to snapping
-				//KM : Divide by 0 error found.  Wrapped into an if statement.
-				if (hated_time != 0)
-				{
-					opinion = (INT32)opinion * (hated_time - p.bHatedCount[hated]) / hated_time;
-				}
 			}
-			sum_opinions += opinion;
-			++n_team_members;
-			INT8 const other_leadership = EffectiveLeadership(other);
-			if (highest_team_leadership < other_leadership) highest_team_leadership = other_leadership;
-		}
+			else
+			{
+				SLOGW("Unexpected WhichHated() result");
+			}
 
-		INT8 actual_team_opinion;
-		if (found_hated)
-		{
-			// If teamed with someone we hated, team opinion is automatically minimum
-			actual_team_opinion = HATED_OPINION;
-		}
-		else if (n_team_members > 0)
-		{
-			actual_team_opinion = sum_opinions / n_team_members;
-			// give bonus/penalty for highest leadership value on team
-			actual_team_opinion += (highest_team_leadership - 50) / 10;
-		}
-		else // alone
-		{
-			actual_team_opinion = 0;
-		}
+			// Otherwise just mix this opinion in with everyone else
 
-		// reduce to a range of HATED through BUDDY
-		if (actual_team_opinion > BUDDY_OPINION)
-		{
-			actual_team_opinion = BUDDY_OPINION;
+			// Scale according to how close to we are to snapping
+			//KM : Divide by 0 error found.  Wrapped into an if statement.
+			if (hated_time != 0)
+			{
+				opinion = (INT32)opinion * (hated_time - p.bHatedCount[hated]) / hated_time;
+			}
 		}
-		else if (actual_team_opinion < HATED_OPINION)
-		{
-			actual_team_opinion = HATED_OPINION;
-		}
+		sum_opinions += opinion;
+		++n_team_members;
+		INT8 const other_leadership = EffectiveLeadership(other);
+		if (highest_team_leadership < other_leadership) highest_team_leadership = other_leadership;
+	}
+
+	INT8 actual_team_opinion;
+	if (found_hated)
+	{
+		// If teamed with someone we hated, team opinion is automatically minimum
+		actual_team_opinion = HATED_OPINION;
+	}
+	else if (n_team_members > 0)
+	{
+		actual_team_opinion = sum_opinions / n_team_members;
+		// give bonus/penalty for highest leadership value on team
+		actual_team_opinion += (highest_team_leadership - 50) / 10;
+	}
+	else // alone
+	{
+		actual_team_opinion = 0;
+	}
+
+	// reduce to a range of HATED through BUDDY
+	if (actual_team_opinion > BUDDY_OPINION)
+	{
+		actual_team_opinion = BUDDY_OPINION;
+	}
+	else if (actual_team_opinion < HATED_OPINION)
+	{
+		actual_team_opinion = HATED_OPINION;
+	}
+	return actual_team_opinion;
+}
+
+
+// the team morale modifier after an hour of shifting ~10% towards the team opinion
+static INT8 ShiftedTeamMoraleMod(INT8 const team_morale_mod, INT8 const team_opinion)
+{
+	// This should range between -75 and +75
+	INT8 const team_morale_mod_diff   = team_opinion - team_morale_mod;
+	INT8 const team_morale_mod_change =
+		team_morale_mod_diff > 0 ?  1 + team_morale_mod_diff / 10 :
+		team_morale_mod_diff < 0 ? -1 + team_morale_mod_diff / 10 :
+		0;
+	return std::clamp(team_morale_mod + team_morale_mod_change, -MORALE_MOD_MAX, MORALE_MOD_MAX);
+}
+
+
+void HourlyMoraleUpdate()
+{
+	// loop through all mercs to calculate their morale
+	FOR_EACH_IN_TEAM(s, OUR_TEAM)
+	{
+		if (!TakesPartInHourlyMorale(*s)) continue;
 
 		// Shift morale from team by ~10%
-
-		// This should range between -75 and +75
-		INT8 const team_morale_mod_diff   = actual_team_opinion - s->bTeamMoraleMod;
-		INT8 const team_morale_mod_change =
-			team_morale_mod_diff > 0 ?  1 + team_morale_mod_diff / 10 :
-			team_morale_mod_diff < 0 ? -1 + team_morale_mod_diff / 10 :
-			0;
-		s->bTeamMoraleMod += team_morale_mod_change;
-		s->bTeamMoraleMod = std::clamp(int(s->bTeamMoraleMod), -MORALE_MOD_MAX, MORALE_MOD_MAX);
+		s->bTeamMoraleMod = ShiftedTeamMoraleMod(s->bTeamMoraleMod, CalcTeamOpinion(*s));
 
 		// New, December 3rd, 1998, by CJC --
 		// If delayed strategic modifier exists then incorporate it in strategic mod
@@ -816,6 +841,58 @@ void HourlyMoraleUpdate()
 		strategic_morale_update_counter = 0;
 		DecayStrategicMoraleModifiers();
 	}
+}
+
+
+INT8 ForecastMoraleNextHour(SOLDIERTYPE const& s)
+{
+	// asleep or away, the shown morale stays as it is
+	if (!TakesPartInHourlyMorale(s)) return s.bMorale;
+
+	INT32 team_mod      = s.bTeamMoraleMod;
+	INT32 tactical_mod  = s.bTacticalMoraleMod;
+	INT32 strategic_mod = s.bStrategicMoraleMod;
+
+	// the quarter-hour updates still due before the hourly one, the one on the hour included
+	UINT32 const quarters = 4 - GetWorldTotalMin() % 60 / 15;
+	INT8   const trait    = GetProfile(s.ubProfile).bPersonalityTrait;
+	for (UINT32 i = 0; i != quarters; ++i)
+	{
+		INT8 phobic_event = -1;
+		if (trait == CLAUSTROPHOBIC && s.sSector.z > 0)
+		{
+			// underground, no recovery
+			if (tactical_mod <= PHOBIC_LIMIT) continue;
+			phobic_event = MORALE_CLAUSTROPHOBE_UNDERGROUND;
+		}
+		else if (trait == NERVOUS &&
+			CalcMoraleFromMods(s, team_mod, tactical_mod, strategic_mod) < 50 &&
+			NervousMercFeelsAlone(s))
+		{
+			// alone, no recovery
+			if (tactical_mod == PHOBIC_LIMIT) continue;
+			phobic_event = MORALE_NERVOUS_ALONE;
+		}
+
+		if (phobic_event == -1)
+		{
+			tactical_mod = DecayedMoraleMod(tactical_mod);
+		}
+		else if (CanMoraleEventAffect(s))
+		{
+			tactical_mod += AdjustMoraleEventMod(s, gbMoraleEvent[phobic_event].bChange);
+			tactical_mod  = std::clamp(tactical_mod, -MORALE_MOD_MAX, MORALE_MOD_MAX);
+		}
+	}
+
+	team_mod      = ShiftedTeamMoraleMod(team_mod, CalcTeamOpinion(s));
+	strategic_mod = std::clamp(strategic_mod + s.bDelayedStrategicMoraleMod, -MORALE_MOD_MAX, MORALE_MOD_MAX);
+	if (strategic_morale_update_counter + 1 == HOURS_BETWEEN_STRATEGIC_DECAY)
+	{
+		strategic_mod = DecayedMoraleMod(strategic_mod);
+	}
+
+	return CalcMoraleFromMods(s, team_mod, tactical_mod, strategic_mod);
 }
 
 

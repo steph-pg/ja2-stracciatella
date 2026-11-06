@@ -145,6 +145,10 @@ void AssignmentDone( SOLDIERTYPE *pSoldier, BOOLEAN fSayQuote, BOOLEAN fMeToo );
 
 void FatigueCharacter(SOLDIERTYPE& s);
 
+// Health and energy the merc will have after the next hourly update
+INT8 ForecastLifeNextHour(SOLDIERTYPE const& s);
+void ForecastBreathNextHour(SOLDIERTYPE const& s, INT8& breath, INT8& breath_max);
+
 extern PopUpBox* ghAssignmentBox;
 extern PopUpBox* ghEpcBox;
 extern PopUpBox* ghSquadBox;
