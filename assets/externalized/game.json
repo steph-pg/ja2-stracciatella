@@ -108,7 +108,7 @@
   // spots him (the merc enters the enemy's opplist as seen). Normally interrupts only fire when an enemy is newly sighted.
   // The enemy's alert status does not matter, only that this enemy did not have this merc in sight. Player's team only.
   // vanilla setting: false
-  "allow_overwatch_interrupt": false,
+  "allow_overwatch_interrupt": true,
 
   // Boosting stats like agility, dexterity, exp. level and health absurdly increases the action points cost to shoot.
   // With this option on: the better the stats the fewer APs will be needed. Note that you also won't get AP discount when injured.
@@ -119,17 +119,17 @@
   // merc's actual base APs, rounded up, and never drops below 3. A spring and bolt upgrade
   // still discounts it; the G11 always pays 1.
   // vanilla value: 5
-  "ap_burst": 5,
+  "ap_burst": 3,
 
   //  Action points to try clearing a jammed gun, win or lose. They cover raising the gun and turning to the target too.
   //  Set to 0 for vanilla: the try itself is free and only raising the gun is charged.
   //  vanilla setting: 0
-  "ap_unjam": 0,
+  "ap_unjam": 5,
 
   //  Clearing a jam is an action of its own: the merc only works the gun and the shot waits for the next order.
   //  The cursor shows a repair icon over a jammed gun and takes no aim clicks. Vanilla fires right after a successful try.
   //  vanilla setting: false
-  "unjam_makes_no_shot": false,
+  "unjam_makes_no_shot": true,
 
   //  Minimal status in % for each gun in the hand of enemy soldiers. Note that this value has no influence on enemy behaviour like CTH.
   //  vanilla value: 0
@@ -143,7 +143,7 @@
 
   // Action points to snatch an item from someone's hands, on top of walking up and standing.
   // vanilla value: 10
-  "ap_steal_item": 10,
+  "ap_steal_item": 6,
 
   // Maxiumum number of soldiers in one squad.
   // Larger squad sizes requires the wider screen to display all members. For a squad size of n, the screen must be at
@@ -272,7 +272,7 @@
   //  actually there for, in quarters, rounded up: arriving at 13:58 and resting until 14:00
   //  still gives a quarter. Vanilla gives the full hour no matter when they arrived.
   //  vanilla setting: false
-  "prorated_rest_after_arrival": false,
+  "prorated_rest_after_arrival": true,
 
   //  Enables extra attachments: boosters and break lights on leggings, goggles on helmets,
   //  quick glue and duct tape in a repair kit. A stack gives up one item per attachment.
@@ -286,12 +286,12 @@
   //  The all-elite squad the queen sends to retake a captured SAM site marches through the
   //  night instead of stopping to sleep on the way, like other enemy groups sometimes do.
   //  vanilla setting: false
-  "sam_reinforcements_march_at_night": false,
+  "sam_reinforcements_march_at_night": true,
 
   //  Number of days a bribe keeps Pablo from stealing. Bribing again restarts
   //  the countdown. 0 means the bribe never wears off.
   //  vanilla_setting: 0
-  "pablo_bribe_days": 0,
+  "pablo_bribe_days": 5,
 
   //  Min/max chance to hit and headshot damage multiplier.
   //  vanilla_setting: 1, 99, 1.5, 0.5
@@ -303,7 +303,7 @@
   //  Percentage modifier to the breath a hand-to-hand hit takes away (fists, brass knuckles, crowbar).
   //  The wound itself is unchanged; lower values make it take more blows to knock someone out.
   //  vanilla setting: 100
-  "hand_to_hand_breath_loss_modifier": 100,
+  "hand_to_hand_breath_loss_modifier": 60,
 
   //  Deduct a weapon's ubBurstPenalty after chance-to-hit is clamped to the min/max above, not before.
   //  Otherwise the penalty is swallowed by the clamp for anyone with headroom above the cap, and every
@@ -319,13 +319,13 @@
 
   //  Aim bonus per spent AP and for using scopes
   //  vanilla setting (%): 10, 20, 20
-  "aim_bonus_per_std_ap": 8,
-  "aim_bonus_sniperscope": 16,
+  "aim_bonus_per_std_ap": 10,
+  "aim_bonus_sniperscope": 15,
   "aim_bonus_laserscope": 20,
 
   //  Extra aim bonus for a bipod when prone, in percent of the prone bonus.
   //  vanilla setting (%): 50
-  "aim_bonus_bipod": 80,
+  "aim_bonus_bipod": 50,
 
   //  Distance beyond which a sniper scope starts to help, and up to which
   //  a laser scope still helps (0 means no limit). 10 per 1 tile.
@@ -342,12 +342,12 @@
   //  Launchers and unaerodynamic items are unaffected. Applied before the breath penalty and the
   //  Throwing trait bonus.
   //  vanilla setting: 100
-  "thrown_range_modifier": 70,
+  "thrown_range_modifier": 85,
 
   //  Percentage modifier to how much a merc can carry before their load counts as 100%.
   //  Vanilla capacity is 500 grams per point of Strength, with each point above 80 counting double.
   //  vanilla setting: 100
-  "carry_capacity_modifier": 90,
+  "carry_capacity_modifier": 80,
 
   //  Does a load over 100% cut action points directly, on top of the agility penalty?
   //  When false, overburdening only lowers agility, which still costs some APs through it.
@@ -396,12 +396,12 @@
   //  like over a fence. An intact window gets smashed, cutting the jumper a little.
   //  Civilians and creatures never do, and AI soldiers only once they are on red alert or above.
   //  vanilla setting: false
-  "path_through_windows": false,
+  "path_through_windows": true,
 
   //  Thrown knives that hit someone stay regular throwing knives instead of turning bloody,
   //  so they stack with the rest and need no cleaning.
   //  vanilla setting: false
-  "thrown_knives_stay_clean": false,
+  "thrown_knives_stay_clean": true,
 
   //  IMP creation tweaks
   "imp": {
@@ -563,7 +563,7 @@
   //  and to militia defending it, but never to elites. Drinkers start at the "feeling
   //  good" level, which wears off without a hangover.
   //  vanilla setting: 0
-  "bar_defenders_drunk_chance": 10,
+  "bar_defenders_drunk_chance": 5,
 
   //  Settings for newly started campaigns.
   //  Most probably you do not need to change these unless you are running a full conversion mod.
@@ -594,7 +594,7 @@
 
   //  Morale a merc loses when an alcohol buzz wears off, once for each level of drunkenness.
   //  vanilla setting: 10
-  "alcohol_crash_morale_loss": 10,
+  "alcohol_crash_morale_loss": 2,
 
   //  Night vision gear runs on batteries.
   //    true  - NV and UV goggles only extend sight while batteries are attached
